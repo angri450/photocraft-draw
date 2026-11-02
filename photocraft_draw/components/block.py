@@ -246,6 +246,37 @@ def build_block_horse(params: dict, pen: Pen) -> None:
                      fill=color, stroke_width=None, stroke=None, name=label)
 
 
+def build_custom_shape(params: dict, pen: Pen) -> None:
+    """自定义路径：把一组路径点直接交给画笔。
+
+    参数：
+        subpaths  路径列表，每项 {"closed": 是否闭合, "knots": [...]}，必填
+        fill      填充色，默认 surface
+        stroke    描边色，给了才描边
+        stroke_width 描边宽度
+    """
+    subpaths = params.get("subpaths")
+    if not isinstance(subpaths, (list, tuple)) or not subpaths:
+        raise ValueError("自定义路径需要 subpaths：一个非空的路径列表")
+    fill = params.get("fill", "surface")
+    stroke = params.get("stroke")
+    width = params.get("stroke_width")
+    pen.path(subpaths, fill=fill, stroke_width=width, stroke=stroke or "line",
+             name=params.get("name") or "自定义路径")
+
+
+COMPONENTS["custom_shape"] = {
+    "name": "自定义路径",
+    "description": "直接给路径点，支持贝塞尔控制点，画任意形状",
+    "params": {
+        "subpaths": "路径列表，每项 {closed, knots}，必填",
+        "fill": "填充色，默认 surface",
+        "stroke": "描边色，可选",
+        "stroke_width": "描边宽度，可选",
+    },
+    "build": build_custom_shape,
+}
+
 COMPONENTS["block_horse"] = {
     "name": "积木马",
     "description": "十个长方形和椭圆拼的马，身体、颈、头、四条腿、尾、耳、眼",
@@ -259,4 +290,5 @@ COMPONENTS["block_horse"] = {
     "build": build_block_horse,
 }
 
-__all__ = ["build_block_figure", "build_block_horse", "POSES", "HORSE_POSES", "ORDER", "COMPONENTS"]
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape",
+           "POSES", "HORSE_POSES", "ORDER", "COMPONENTS"]

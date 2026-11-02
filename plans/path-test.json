@@ -1,0 +1,115 @@
+{
+  "name": "路径测试",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "三角",
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "subpaths": [
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    100,
+                    200
+                  ],
+                  [
+                    400,
+                    200
+                  ],
+                  [
+                    250,
+                    500
+                  ]
+                ]
+              }
+            ],
+            "fill": "line"
+          }
+        }
+      ]
+    },
+    {
+      "name": "曲线",
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "subpaths": [
+              {
+                "closed": true,
+                "knots": [
+                  {
+                    "anchor": [
+                      500,
+                      300
+                    ],
+                    "in": [
+                      500,
+                      220
+                    ],
+                    "out": [
+                      620,
+                      300
+                    ]
+                  },
+                  {
+                    "anchor": [
+                      700,
+                      300
+                    ],
+                    "in": [
+                      700,
+                      220
+                    ],
+                    "out": [
+                      700,
+                      380
+                    ]
+                  },
+                  {
+                    "anchor": [
+                      600,
+                      480
+                    ],
+                    "in": [
+                      680,
+                      420
+                    ],
+                    "out": [
+                      520,
+                      420
+                    ]
+                  },
+                  {
+                    "anchor": [
+                      500,
+                      300
+                    ],
+                    "in": [
+                      500,
+                      380
+                    ],
+                    "out": [
+                      500,
+                      380
+                    ]
+                  }
+                ]
+              }
+            ],
+            "fill": "mid"
+          }
+        }
+      ]
+    }
+  ]
+}

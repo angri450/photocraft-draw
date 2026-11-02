@@ -85,3 +85,36 @@ class RigTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PathTest(unittest.TestCase):
+    def test_path_command_shape(self):
+        target = pen()
+        target.path([{"closed": True, "knots": [[10, 20], [30, 20], [20, 40]]}], fill="line")
+        item = target.commands[0]
+        self.assertEqual(item["command"], "shape.create")
+        self.assertEqual(item["params"]["kind"], "path")
+        self.assertEqual(len(item["params"]["path"]["subpaths"][0]["knots"]), 3)
+
+    def test_bezier_knots_keep_handles(self):
+        target = pen()
+        target.path([{"closed": True, "knots": [
+            {"anchor": [10, 20], "in": [5, 10], "out": [20, 10]},
+            {"anchor": [40, 20], "in": [30, 10], "out": [50, 10]},
+        ]}], fill="line")
+        knots = target.commands[0]["params"]["path"]["subpaths"][0]["knots"]
+        self.assertIn("in", knots[0])
+        self.assertIn("out", knots[1])
+
+    def test_custom_shape_component(self):
+        from photocraft_draw.components import block
+        target = pen()
+        block.build_custom_shape({"subpaths": [{"closed": True,
+                                                "knots": [[10, 10], [50, 10], [30, 40]]}],
+                                  "fill": "line"}, target)
+        self.assertEqual(target.commands[0]["params"]["kind"], "path")
+
+    def test_custom_shape_needs_subpaths(self):
+        from photocraft_draw.components import block
+        with self.assertRaises(ValueError):
+            block.build_custom_shape({}, pen())

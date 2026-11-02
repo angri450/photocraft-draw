@@ -119,6 +119,46 @@ class Pen:
             },
         })
 
+    def path(self, subpaths, fill="surface", stroke_width=None, stroke="line",
+             fill_rule="nonzero", name=None) -> None:
+        """画任意路径。
+
+        subpaths 里每一项是 {"closed": 是否闭合, "knots": [...]}，knots 可以是
+        [x, y]，也可以是 {"anchor": [x, y], "in": [x, y], "out": [x, y]}，
+        带 in/out 的就是贝塞尔控制点。坐标按参考画布写，这里统一缩放。
+        """
+        scaled = []
+        for sub in subpaths:
+            knots = []
+            for knot in sub.get("knots") or []:
+                if isinstance(knot, dict):
+                    item = {"anchor": self._xy(knot.get("anchor"))}
+                    if knot.get("in") is not None:
+                        item["in"] = self._xy(knot["in"])
+                    if knot.get("out") is not None:
+                        item["out"] = self._xy(knot["out"])
+                    if knot.get("smooth"):
+                        item["smooth"] = True
+                    knots.append(item)
+                else:
+                    knots.append(self._xy(knot))
+            scaled.append({"closed": bool(sub.get("closed", True)), "knots": knots})
+        self.commands.append({
+            "command": "shape.create",
+            "params": {
+                "kind": "path",
+                "path": {"subpaths": scaled, "fillRule": fill_rule},
+                "fill": color_of(self.palette, fill),
+                "stroke": self._stroke(stroke_width, stroke),
+                **({"name": str(name)} if name else {}),
+            },
+        })
+
+    def _xy(self, point) -> list[int]:
+        if not isinstance(point, (list, tuple)) or len(point) != 2:
+            raise ValueError("路径点要写成 [x, y]")
+        return [self._x(point[0]), self._x(point[1])]
+
     def text(self, x, y, text, size=24, color="ink", font="Noto Serif CJK SC",
              align=None, weight=None, tracking=None, name=None) -> None:
         params = {
