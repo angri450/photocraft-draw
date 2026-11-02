@@ -1,0 +1,213 @@
+{
+  "name": "最后的晚餐组件示例",
+  "canvas": [1600, 900],
+  "ref_width": 800,
+  "palette": "fresco",
+  "caption": "IL CENACOLO · COMPONENT DEMO",
+  "layers": [
+    {
+      "name": "室内背景",
+      "components": [
+        {
+          "component": "indoor_backdrop",
+          "params": {
+            "wall": [0, 0, 800, 450],
+            "floor": [0, 348, 800, 102]
+          }
+        }
+      ]
+    },
+    {
+      "name": "建筑结构",
+      "components": [
+        {
+          "component": "coffered_ceiling",
+          "params": {
+            "ceiling": [0, 0, 800, 112],
+            "vanish": [400, 200],
+            "columns": 6,
+            "rows": 4
+          }
+        },
+        {
+          "component": "side_drapery",
+          "params": {
+            "draperies": [[8, 112, 54, 236], [738, 112, 54, 236]],
+            "cast_shadow": true
+          }
+        },
+        {
+          "component": "soft_vignette",
+          "params": {
+            "frame": [0, 0, 800, 450],
+            "corners": false,
+            "under_shadow": [400, 396, 300, 20],
+            "colors": {"shade_far": "muted", "shade_deep": "ink"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "窗光",
+      "components": [
+        {
+          "component": "window_glow",
+          "params": {
+            "window": [352, 126, 96, 148],
+            "glow": false,
+            "halo": [400, 210, 190, 80]
+          }
+        }
+      ]
+    },
+    {
+      "name": "拱形窗户",
+      "components": [
+        {
+          "component": "arched_windows",
+          "params": {
+            "windows": [[168, 150, 72, 112], [352, 126, 96, 148], [560, 150, 72, 112]],
+            "mullions": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "人物躯干",
+      "components": [
+        {"component": "seated_figure", "params": {"seat": [53, 170, 50, 144], "pose": "side", "robe": "muted"}},
+        {"component": "seated_figure", "params": {"seat": [105, 170, 50, 144], "pose": "front", "robe": "deep"}},
+        {"component": "seated_figure", "params": {"seat": [157, 170, 50, 144], "pose": "open", "robe": "mid"}},
+        {"component": "leaning_figure", "params": {"seat": [206, 176, 56, 124], "elbow": [258, 298], "robe": "mid"}},
+        {"component": "seated_figure", "params": {"seat": [267, 170, 50, 144], "pose": "point", "robe": "ink"}},
+        {"component": "seated_figure", "params": {"seat": [319, 170, 50, 144], "pose": "side", "robe": "deep", "trim": "accent"}},
+        {"component": "seated_figure", "params": {"seat": [374, 168, 56, 148], "pose": "open", "robe": "deep", "trim": "accent"}},
+        {"component": "seated_figure", "params": {"seat": [435, 170, 50, 144], "pose": "point", "robe": "mid"}},
+        {"component": "seated_figure", "params": {"seat": [489, 170, 50, 144], "pose": "open", "robe": "muted"}},
+        {"component": "seated_figure", "params": {"seat": [541, 170, 50, 144], "pose": "front", "robe": "deep", "trim": "accent"}},
+        {"component": "seated_figure", "params": {"seat": [591, 170, 50, 144], "pose": "point", "robe": "mid"}},
+        {"component": "seated_figure", "params": {"seat": [639, 170, 50, 144], "pose": "open", "robe": "ink"}},
+        {"component": "seated_figure", "params": {"seat": [689, 170, 50, 144], "pose": "side", "robe": "muted"}}
+      ]
+    },
+    {
+      "name": "人物头部",
+      "components": [
+        {"component": "figure_head", "params": {"center": [78, 150], "size": 42, "turn": "right"}},
+        {"component": "figure_head", "params": {"center": [130, 150], "size": 42, "turn": "front"}},
+        {"component": "figure_head", "params": {"center": [182, 150], "size": 42, "turn": "right", "beard": true}},
+        {"component": "figure_head", "params": {"center": [238, 156], "size": 42, "turn": "right", "beard": true, "hair": "mid"}},
+        {"component": "figure_head", "params": {"center": [292, 148], "size": 44, "turn": "right", "beard": true}},
+        {"component": "figure_head", "params": {"center": [344, 150], "size": 40, "turn": "right"}},
+        {"component": "figure_head", "params": {"center": [402, 148], "size": 48, "turn": "front", "beard": true}},
+        {"component": "figure_head", "params": {"center": [460, 148], "size": 42, "turn": "left"}},
+        {"component": "figure_head", "params": {"center": [514, 150], "size": 42, "turn": "left", "beard": true}},
+        {"component": "figure_head", "params": {"center": [566, 150], "size": 40, "turn": "left"}},
+        {"component": "figure_head", "params": {"center": [616, 150], "size": 42, "turn": "left", "beard": true}},
+        {"component": "figure_head", "params": {"center": [664, 150], "size": 42, "turn": "left"}},
+        {"component": "figure_head", "params": {"center": [714, 150], "size": 42, "turn": "left", "beard": true}}
+      ]
+    },
+    {
+      "name": "长条餐桌",
+      "components": [
+        {
+          "component": "long_table",
+          "params": {
+            "table": [40, 300, 720, 40],
+            "front": 38
+          }
+        },
+        {
+          "component": "table_cloth_folds",
+          "params": {
+            "area": [40, 340, 720, 38],
+            "folds": [0.12, 0.3, 0.52, 0.75, 0.9]
+          }
+        }
+      ]
+    },
+    {
+      "name": "桌面器物",
+      "components": [
+        {"component": "dinner_plate", "params": {"center": [120, 330], "size": 26}},
+        {"component": "dinner_plate", "params": {"center": [200, 330], "size": 24}},
+        {"component": "dinner_plate", "params": {"center": [285, 331], "size": 28}},
+        {"component": "dinner_plate", "params": {"center": [400, 332], "size": 30}},
+        {"component": "dinner_plate", "params": {"center": [505, 330], "size": 26}},
+        {"component": "dinner_plate", "params": {"center": [590, 331], "size": 24}},
+        {"component": "dinner_plate", "params": {"center": [660, 330], "size": 22}},
+        {"component": "dinner_plate", "params": {"center": [725, 330], "size": 22}},
+        {"component": "bread_loaf", "params": {"center": [160, 322], "size": 14}},
+        {"component": "bread_loaf", "params": {"center": [245, 321], "size": 12, "cut": true}},
+        {"component": "bread_loaf", "params": {"center": [350, 323], "size": 15}},
+        {"component": "bread_loaf", "params": {"center": [455, 321], "size": 12}},
+        {"component": "bread_loaf", "params": {"center": [560, 322], "size": 14, "cut": true}},
+        {"component": "bread_loaf", "params": {"center": [640, 321], "size": 12}},
+        {"component": "wine_goblet", "params": {"center": [150, 332], "height": 22}},
+        {"component": "wine_goblet", "params": {"center": [300, 332], "height": 20}},
+        {"component": "wine_goblet", "params": {"center": [380, 333], "height": 22}},
+        {"component": "wine_goblet", "params": {"center": [480, 332], "height": 20}},
+        {"component": "wine_goblet", "params": {"center": [610, 332], "height": 22}}
+      ]
+    },
+    {
+      "name": "手部",
+      "components": [
+        {
+          "component": "figure_hands",
+          "params": {
+            "hands": [
+              [61, 282, "rest"],
+              [116, 296, "rest"],
+              [144, 296, "rest"],
+              [165, 269, "open"],
+              [199, 269, "open"],
+              [269, 294, "grip"],
+              [276, 274, "rest"],
+              [312, 239, "point"],
+              [327, 282, "rest"],
+              [383, 270, "open"]
+            ],
+            "size": 14
+          }
+        },
+        {
+          "component": "figure_hands",
+          "params": {
+            "hands": [
+              [421, 270, "open"],
+              [444, 274, "rest"],
+              [480, 239, "point"],
+              [497, 269, "open"],
+              [531, 269, "open"],
+              [552, 296, "rest"],
+              [580, 296, "rest"],
+              [600, 274, "rest"],
+              [636, 239, "point"],
+              [647, 269, "open"],
+              [681, 269, "open"],
+              [697, 282, "rest"]
+            ],
+            "size": 14
+          }
+        }
+      ]
+    },
+    {
+      "name": "边缘老化",
+      "components": [
+        {
+          "component": "soft_vignette",
+          "params": {
+            "frame": [0, 0, 800, 450],
+            "corners": true,
+            "corner_x": 120,
+            "corner_y": 70,
+            "colors": {"far": "#6b5c4c", "mid": "#574737", "deep": "#43331f"}
+          }
+        }
+      ]
+    }
+  ]
+}
