@@ -160,7 +160,7 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
 1. 左边图层树点选图层，前面的眼睛开关控制显隐，关掉别的层就只看这一层。
 2. 在图上拖动框选区域，框选会挂到当前选中的图层上，图层名和编号自动带进意见。
 3. 选动作、写说明，Enter 保存；每条意见在图上画一个编号框。
-4. 「批注」页集中列出所有意见和整体意见，点一条跳回对应区域。
+4. 「批注」页集中列出所有意见，点一条跳回对应区域。
 5. 导出 `review.json`，或在页面里复制 JSON。
 
 导出的格式是图层、区域、动作三层数据：
@@ -173,8 +173,7 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
   "annotations": [
     {"id": 1, "index": 1, "layer": 12, "layer_name": "盘子 3", "kind": "Shape",
      "rect": [925, 626, 44, 20], "action": "move", "note": "往右挪 20 像素"}
-  ],
-  "global": "整体偏暗"
+  ]
 }
 ```
 

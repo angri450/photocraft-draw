@@ -77,13 +77,8 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
 .tab.active { color: var(--text); border-bottom-color: var(--accent); background: var(--panel-2); }
 .tab .count { display: inline-block; min-width: 16px; padding: 0 4px; margin-left: 4px; border-radius: 8px; background: var(--warm); color: #fff; font-size: 10px; line-height: 16px; }
 #layerPane, #notePane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#layerPane[hidden], #notePane[hidden] { display: none; }
 #notePane { padding: 10px 12px 14px; overflow: auto; }
-#notePane label { color: var(--muted); font-size: 11px; margin: 4px 0; }
-#globalNote {
-  width: 100%; min-height: 52px; border: 1px solid var(--line); background: var(--bg);
-  color: var(--text); border-radius: 7px; padding: 8px 10px; resize: vertical; margin-bottom: 10px;
-}
-#globalNote:focus { border-color: var(--accent); outline: none; }
 .side .search { margin: 10px 12px 6px; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--text); outline: none; }
 .side .search:focus { border-color: var(--accent); }
 #list { flex: 1; overflow: auto; padding: 6px 8px 16px; }
@@ -135,7 +130,9 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
 }
 #editor * { user-select: text; }
 #editor.open { display: block; }
-.ed-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ed-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; cursor: grab; }
+.ed-head.dragging { cursor: grabbing; }
+.ed-head .grip { color: var(--muted); letter-spacing: -2px; font-size: 14px; }
 .ed-head strong { font-size: 13px; }
 .ed-head .badge { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ed-head .grow { flex: 1; }
@@ -231,8 +228,6 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
         <div id="list"></div>
       </div>
       <div id="notePane" hidden>
-        <label>整体意见</label>
-        <textarea id="globalNote" placeholder="整张图的意见，可留空"></textarea>
         <div id="notes"></div>
       </div>
     </aside>
@@ -246,6 +241,7 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
           <div id="annos"></div>
           <div id="editor">
             <div class="ed-head">
+              <span class="grip" title="拖动卡片">⠿</span>
               <strong id="edTitle">新框选</strong>
               <span id="edLayer" class="badge"></span>
               <span class="grow"></span>
@@ -310,7 +306,6 @@ const edMeta = document.getElementById('edMeta');
 const edNote = document.getElementById('edNote');
 const edOffset = document.getElementById('edOffset');
 const noteCount = document.getElementById('noteCount');
-const globalNote = document.getElementById('globalNote');
 const zoomLabel = document.getElementById('zoomLabel');
 const meta = document.getElementById('meta');
 const modal = document.getElementById('modal');
@@ -336,6 +331,8 @@ let history = [];
 let hIndex = -1;
 let toastTimer = null;
 let drawing = null;
+let editorPos = null;
+let editorDrag = null;
 
 const KIND = { Group: '组', Shape: '形状', Type: '文字', Pixel: '像素' };
 const ACTION = { note: '意见', move: '移动', delete: '删除', recolor: '改色', retext: '改字' };
@@ -581,6 +578,13 @@ function placeEditor(rect) {
   const height = 250;
   const wrapW = natW * scale;
   const wrapH = natH * scale;
+  if (editorPos) {
+    const left = Math.max(0, Math.min(editorPos.left, Math.max(0, wrapW - width)));
+    const top = Math.max(0, Math.min(editorPos.top, Math.max(0, wrapH - height)));
+    editor.style.left = left + 'px';
+    editor.style.top = top + 'px';
+    return;
+  }
   let left = rect[0] * scale + rect[2] * scale + 12;
   let top = rect[1] * scale;
   if (left + width > wrapW - 8) left = rect[0] * scale - width - 12;
@@ -590,6 +594,35 @@ function placeEditor(rect) {
   editor.style.left = left + 'px';
   editor.style.top = top + 'px';
 }
+
+const edHead = document.querySelector('.ed-head');
+edHead.addEventListener('mousedown', event => {
+  if (event.target.closest('button')) return;
+  event.preventDefault();
+  const left = parseFloat(editor.style.left) || 0;
+  const top = parseFloat(editor.style.top) || 0;
+  editorDrag = { x: event.clientX, y: event.clientY, left, top };
+  edHead.classList.add('dragging');
+});
+window.addEventListener('mousemove', event => {
+  if (!editorDrag) return;
+  const wrapW = natW * scale;
+  const wrapH = natH * scale;
+  const width = editor.offsetWidth || 340;
+  const height = editor.offsetHeight || 250;
+  let left = editorDrag.left + (event.clientX - editorDrag.x);
+  let top = editorDrag.top + (event.clientY - editorDrag.y);
+  left = Math.max(0, Math.min(left, Math.max(0, wrapW - width)));
+  top = Math.max(0, Math.min(top, Math.max(0, wrapH - height)));
+  editor.style.left = left + 'px';
+  editor.style.top = top + 'px';
+  editorPos = { left, top };
+});
+window.addEventListener('mouseup', () => {
+  if (!editorDrag) return;
+  editorDrag = null;
+  edHead.classList.remove('dragging');
+});
 
 function setAction(action) {
   if (!editing) return;
@@ -787,8 +820,7 @@ function payload() {
     annotations: annotations.map((item, index) => ({
       id: item.id, index: index + 1, layer: item.layer, layer_name: item.layer_name,
       kind: item.kind, rect: item.rect.map(Math.round), action: item.action, note: item.note || ''
-    })),
-    global: globalNote.value
+    }))
   };
 }
 
