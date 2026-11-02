@@ -14,7 +14,7 @@
           "component": "capsule_person",
           "params": {
             "root": [
-              160,
+              145,
               420
             ],
             "height": 500,
@@ -31,7 +31,7 @@
           "component": "capsule_person",
           "params": {
             "root": [
-              450,
+              415,
               420
             ],
             "height": 500,
@@ -48,7 +48,7 @@
           "component": "capsule_person",
           "params": {
             "root": [
-              600,
+              685,
               420
             ],
             "height": 500,
