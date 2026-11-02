@@ -9,6 +9,8 @@
 """
 from __future__ import annotations
 
+import math
+
 from ..commands import Pen
 
 SKY_BANDS = ("bg", "muted", "mid", "soft", "accent")
@@ -187,50 +189,74 @@ def build_rocky_ground(params: dict, pen: Pen) -> None:
                     fill=dark, stroke_width=None, stroke=None, name=f"石影 {index + 1}")
 
 
+def _wave_line(pen: Pen, x0: float, x1: float, y: float, amplitude: float,
+               cycles: float, weight: float, color: str, name: str) -> int:
+    """用短直线段接成一条正弦波浪，返回段数。
+
+    画笔没有曲线，段长取 14 到 20 像素时，折线接缝在 1600 宽的成图上
+    看不出来，远看就是一条起伏的线。
+    """
+    span = x1 - x0
+    segments = max(12, int(span / 16))
+    step = span / segments
+    previous = None
+    for index in range(segments + 1):
+        x = x0 + step * index
+        y_at = y + math.sin(index / segments * cycles * math.tau) * amplitude
+        if previous is not None:
+            pen.line(previous[0], previous[1], x, y_at, width=weight, color=color,
+                     name=f"{name} {index}")
+        previous = (x, y_at)
+    return segments
+
+
 def build_river_water(params: dict, pen: Pen) -> None:
-    """河流：水面、横向波纹和几处水花。
+    """河流：水面、起伏的波浪线和波峰上的白色泡沫。
 
     参数：
         area     [x, y, 宽, 高]，水面范围，必填
-        waves    横向波纹条数，0 到 12，默认 5
-        splashes [[中心x, 中心y, 半径x, 半径y], …]，水花位置，可选
+        waves    波浪条数，0 到 8，默认 4
+        amplitude 波浪起伏幅度，默认 5
+        cycles   每条波浪里的起伏次数，默认 3
+        foam     是否在每个波峰点一个白点，默认 true
         colors   {water, light, foam, dark}，可选
     """
     x, y, w, h = _box(params.get("area"), "河流需要 area：[x, y, 宽, 高]")
-    waves = int(params.get("waves", 5))
-    if not 0 <= waves <= 12:
-        raise ValueError("河流的 waves 要在 0 到 12 之间")
+    waves = int(params.get("waves", 4))
+    if not 0 <= waves <= 8:
+        raise ValueError("河流的 waves 要在 0 到 8 之间")
+    amplitude = float(params.get("amplitude", 5))
+    if amplitude < 0:
+        raise ValueError("河流的 amplitude 不能是负数")
+    cycles = float(params.get("cycles", 3))
+    if cycles <= 0:
+        raise ValueError("河流的 cycles 要大于 0")
+    foam = bool(params.get("foam", True))
     colors = params.get("colors") or {}
     water = colors.get("water", "bg")
     light = colors.get("light", "soft")
-    foam = colors.get("foam", "surface")
+    foam_color = colors.get("foam", "surface")
     dark = colors.get("dark", "ink")
 
     pen.rect(x, y, w, h, fill=water, stroke_width=None, stroke=None, name="水面")
-    # 远处一条暗带，把水面和岸分开
     pen.rect(x, y, w, max(1.5, h * 0.04), fill=dark, stroke_width=None, stroke=None,
              name="水岸线")
 
     for index in range(waves):
-        ratio = (index + 1) / (waves + 1)
-        band_y = y + h * ratio
-        inset = w * 0.04 * ((index % 3) - 1) * 0.5
-        pen.rect(x + inset, band_y, w * (0.2 + 0.1 * (index % 4)), max(1.5, h * 0.02),
-                 fill=light, stroke_width=None, stroke=None, name=f"波纹 {index + 1}")
-        pen.rect(x + w * (0.35 + 0.05 * ((index + 2) % 4)), band_y + h * 0.03,
-                 w * (0.15 + 0.05 * (index % 3)), max(1.5, h * 0.015),
-                 fill=light, stroke_width=None, stroke=None, name=f"波纹 {index + 1} 右")
+        band_y = y + h * (0.28 + 0.62 * (index / max(waves - 1, 1)))
+        inset = w * 0.05 * (index % 2)
+        _wave_line(pen, x + inset, x + w - inset, band_y,
+                   amplitude * (0.7 + 0.15 * (index % 3)), cycles,
+                   2.2 if index < 2 else 1.6, light, f"波浪 {index + 1}")
 
-    for index, (cx, cy, rx, ry) in enumerate(_points(
-            params.get("splashes") or [], 4,
-            "每处水花要写 [中心x, 中心y, 半径x, 半径y]")):
-        # 贴着水面的白色泡沫，两层错开，避免排成一条
-        pen.ellipse(cx, cy, rx, ry * 0.42, fill=foam, stroke_width=None, stroke=None,
-                    name=f"水花 {index + 1}")
-        pen.ellipse(cx + rx * 0.45, cy + ry * 0.3, rx * 0.42, ry * 0.26,
-                    fill=foam, stroke_width=None, stroke=None, name=f"水花 {index + 1} 右")
-        pen.ellipse(cx - rx * 0.4, cy - ry * 0.2, rx * 0.3, ry * 0.2,
-                    fill=foam, stroke_width=None, stroke=None, name=f"水花 {index + 1} 左")
+        if foam:
+            for peak in range(int(cycles)):
+                peak_ratio = (0.25 + peak) / cycles
+                peak_x = x + inset + (w - inset * 2) * peak_ratio
+                peak_y = band_y - amplitude * (0.7 + 0.15 * (index % 3))
+                pen.ellipse(peak_x, peak_y - 2, 3.4, 1.3,
+                            fill=foam_color, stroke_width=None, stroke=None,
+                            name=f"浪花 {index + 1}-{peak + 1}")
 
 
 COMPONENTS = {
