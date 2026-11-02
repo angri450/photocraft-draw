@@ -109,8 +109,8 @@
             ],
             "snow": false,
             "colors": {
-              "far": "line",
-              "near": "line"
+              "far": "muted",
+              "near": "muted"
             }
           }
         }
@@ -171,10 +171,10 @@
           "params": {
             "center": [
               470,
-              812
+              822
             ],
-            "rx": 130,
-            "ry": 22,
+            "rx": 135,
+            "ry": 20,
             "color": "ink",
             "name": "马影"
           }
@@ -189,7 +189,7 @@
           "params": {
             "root": [
               470,
-              620
+              638
             ],
             "length": 300,
             "pose": "stand"
@@ -224,9 +224,9 @@
               ]
             ],
             "colors": {
-              "stone": "muted",
-              "light": "surface",
-              "dark": "line",
+              "stone": "line",
+              "light": "muted",
+              "dark": "ink",
               "shadow": "ink"
             }
           }
