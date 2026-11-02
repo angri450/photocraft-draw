@@ -1,5 +1,5 @@
 {
-  "name": "拿破仑翻越阿尔卑斯",
+  "name": "拿破仑翻越阿尔卑斯山 · 布局稿",
   "canvas": [
     900,
     1200
@@ -222,6 +222,27 @@
       "describe_en": "a mountain stream running across the lower edge, deep blue water cut by five wavy white ripples with small splashes on the crests"
     },
     {
+      "name": "人物",
+      "describe_zh": "拿破仑骑着前蹄扬起的战马，右手高举指向前方，红斗篷在身后展开",
+      "describe_en": "Napoleon on a rearing warhorse, right arm raised pointing forward, crimson cloak billowing behind",
+      "components": [
+        {
+          "component": "rider_placeholder",
+          "params": {
+            "box": [
+              170,
+              190,
+              580,
+              710
+            ],
+            "horse": "surface",
+            "rider": "deep",
+            "skin": "soft"
+          }
+        }
+      ]
+    },
+    {
       "name": "前景",
       "components": [
         {
@@ -293,13 +314,5 @@
     "mood": "heroic and solemn",
     "camera": "low three-quarter front angle",
     "palette": "ochre, burnt umber, deep crimson and cold slate grey"
-  },
-  "actors": [
-    {
-      "name": "拿破仑",
-      "before": "前景",
-      "describe_zh": "拿破仑骑在白马上，马前蹄扬起，他戴黑色双角帽，深蓝军装配金色滚边，白裤黑靴，红色斗篷在风里展开，右手高举指向前方",
-      "describe_en": "Napoleon on the rearing pale horse, black bicorne hat, dark blue uniform with gold trim, white breeches, tall black boots, crimson cloak billowing, right arm raised pointing forward"
-    }
-  ]
+  }
 }

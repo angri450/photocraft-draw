@@ -357,6 +357,59 @@ def build_figure_row(params: dict, pen: Pen) -> None:
         }, pen)
 
 
+def build_rider_placeholder(params: dict, pen: Pen) -> None:
+    """骑手占位：一匹马加一个坐在上面的人，只标位置和遮挡，不画细节。
+
+    草稿阶段用它代替写实人物，明确主体在哪、占多大、挡住后面什么。
+    参数：
+        box     [x, y, 宽, 高]，连人带马的外框，必填
+        horse   马的颜色，默认 mid
+        rider   人的主色，默认 deep
+        skin    头部颜色，默认 soft
+    """
+    x, y, w, h = _box(params.get("box"), "骑手占位需要 box：[x, y, 宽, 高]")
+    horse = params.get("horse", "mid")
+    rider = params.get("rider", "deep")
+    skin = params.get("skin", "soft")
+
+    cx = x + w / 2
+    body_y = y + h * 0.6
+
+    # 马身、颈、头
+    pen.ellipse(cx, body_y, w * 0.3, h * 0.085,
+                fill=horse, stroke_width=None, stroke=None, name="马身")
+    pen.ellipse(cx + w * 0.24, body_y - h * 0.08, w * 0.075, h * 0.09,
+                fill=horse, stroke_width=None, stroke=None, name="马颈")
+    pen.ellipse(cx + w * 0.3, body_y - h * 0.14, w * 0.085, h * 0.045,
+                fill=horse, stroke_width=None, stroke=None, name="马头")
+
+    # 四条腿，前两条抬起
+    pen.line(cx - w * 0.2, body_y + h * 0.07, cx - w * 0.26, body_y + h * 0.22,
+             width=6, color=horse, name="马后腿 1")
+    pen.line(cx - w * 0.11, body_y + h * 0.08, cx - w * 0.13, body_y + h * 0.24,
+             width=6, color=horse, name="马后腿 2")
+    pen.line(cx + w * 0.15, body_y + h * 0.06, cx + w * 0.2, body_y - h * 0.01,
+             width=6, color=horse, name="马前腿 1")
+    pen.line(cx + w * 0.22, body_y + h * 0.05, cx + w * 0.29, body_y - h * 0.03,
+             width=6, color=horse, name="马前腿 2")
+    # 尾巴
+    pen.line(cx - w * 0.3, body_y - h * 0.03, cx - w * 0.36, body_y + h * 0.1,
+             width=6, color=horse, name="马尾")
+
+    # 人：躯干、头、举起的手臂
+    pen.rounded_rect(cx - w * 0.06, y + h * 0.3, w * 0.12, h * 0.2,
+                     radius=w * 0.04, fill=rider, stroke_width=None, stroke=None, name="骑手躯干")
+    pen.ellipse(cx, y + h * 0.23, w * 0.06, h * 0.05,
+                fill=skin, stroke_width=None, stroke=None, name="骑手头部")
+    pen.line(cx - w * 0.02, y + h * 0.34, cx - w * 0.22, y + h * 0.2,
+             width=6, color=rider, name="举起的手臂")
+    pen.line(cx + w * 0.03, y + h * 0.36, cx + w * 0.13, y + h * 0.4,
+             width=6, color=rider, name="握缰绳的手臂")
+    # 斗篷：身后一块斜着的色块
+    pen.ellipse(cx - w * 0.13, y + h * 0.38, w * 0.09, h * 0.12,
+                fill=rider, stroke_width=None, stroke=None, name="斗篷")
+
+
 COMPONENTS = {
     "seated_figure": {
         "name": "坐姿人物",
@@ -407,6 +460,17 @@ COMPONENTS = {
             "shade": "阴影颜色，默认 line",
         },
         "build": build_figure_hands,
+    },
+    "rider_placeholder": {
+        "name": "骑手占位",
+        "description": "一匹马加一个骑手，只标位置和遮挡关系，草稿阶段代替写实人物",
+        "params": {
+            "box": "[x, y, 宽, 高]，连人带马的外框，必填",
+            "horse": "马的颜色，默认 mid",
+            "rider": "人的主色，默认 deep",
+            "skin": "头部颜色，默认 soft",
+        },
+        "build": build_rider_placeholder,
     },
     "figure_row": {
         "name": "一排人物",
