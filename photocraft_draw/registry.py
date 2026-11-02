@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from .components import (alpine, architecture, arched_windows, block, figures,
+from .components import (alpine, architecture, arched_windows, block, box3d, figures,
                          indoor_backdrop, long_table, rig, tableware)
 
 
@@ -109,6 +109,7 @@ _SPECS.update(figures.COMPONENTS)
 _SPECS.update(alpine.COMPONENTS)
 _SPECS.update(rig.COMPONENTS)
 _SPECS.update(block.COMPONENTS)
+_SPECS.update(box3d.COMPONENTS)
 
 REGISTRY: dict[str, Component] = {
     key: Component(

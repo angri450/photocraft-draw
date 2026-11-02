@@ -1,0 +1,59 @@
+{
+  "name": "三维盒子测试",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "dawn",
+  "layers": [
+    {
+      "name": "盒子",
+      "components": [
+        {
+          "component": "box3d_scene",
+          "params": {
+            "boxes": [
+              {
+                "x": 200,
+                "y": 300,
+                "z": 80,
+                "w": 120,
+                "h": 120,
+                "color": "muted",
+                "name": "远"
+              },
+              {
+                "x": 200,
+                "y": 300,
+                "z": 40,
+                "w": 120,
+                "h": 120,
+                "color": "accent",
+                "name": "中远"
+              },
+              {
+                "x": 200,
+                "y": 300,
+                "z": 0,
+                "w": 120,
+                "h": 120,
+                "color": "mid",
+                "name": "中"
+              },
+              {
+                "x": 200,
+                "y": 300,
+                "z": -40,
+                "w": 120,
+                "h": 120,
+                "color": "deep",
+                "name": "近"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
