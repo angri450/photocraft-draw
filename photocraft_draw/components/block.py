@@ -897,6 +897,25 @@ __all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "bui
            "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]
 
 
+
+
+def _riding_leg(pen: Pen, hip_x: float, hip_y: float, u: float,
+                color: str, label: str, scale: float = 1.0) -> None:
+    """骑马的一条腿：大腿向前、小腿向后弯、脚踩马镫。
+
+    这是骑马这个动作的公式：膝在髋前下方，踝在膝后下方，
+    脚掌再往前伸一点踩住镫。三段连起来是一个向后折的钩子。
+    """
+    knee_x = hip_x + u * 0.14 * scale
+    knee_y = hip_y + u * 0.1 * scale
+    ankle_x = knee_x - u * 0.06 * scale
+    ankle_y = knee_y + u * 0.26 * scale
+    foot_x = ankle_x + u * 0.07 * scale
+    foot_y = ankle_y + u * 0.03 * scale
+    _capsule(pen, hip_x, hip_y, knee_x, knee_y, u * 0.095, color, f"{label}大腿")
+    _capsule(pen, knee_x, knee_y, ankle_x, ankle_y, u * 0.08, color, f"{label}小腿")
+    _capsule(pen, ankle_x, ankle_y, foot_x, foot_y, u * 0.075, "ink", f"{label}靴")
+
 def build_capsule_rider(params: dict, pen: Pen) -> None:
     """骑手：马和人在一个组件里，按前后关系逐层画。
 
@@ -959,14 +978,9 @@ def build_capsule_rider(params: dict, pen: Pen) -> None:
         capsule(tx, ty, ex, ey, u * 0.055, "line", f"尾 {index + 1}")
         tx, ty = ex, ey
 
-    # 2. 远侧腿：先画，等会儿被马身盖掉大半，只露蹄子
+    # 2. 远侧腿：先画，被马身盖住上半
     hip_x, hip_y = sx - u * 0.3, sy - u * 0.14
-    far_x = hip_x - u * 0.08
-    capsule(far_x, hip_y, far_x - u * 0.04, hip_y + u * 0.16, u * 0.09, rider, "远侧大腿")
-    capsule(far_x - u * 0.04, hip_y + u * 0.16, far_x - u * 0.04, hip_y + u * 0.4,
-            u * 0.07, rider, "远侧小腿")
-    capsule(far_x - u * 0.04, hip_y + u * 0.4, far_x - u * 0.04, hip_y + u * 0.46,
-            u * 0.075, "ink", "远侧靴")
+    _riding_leg(pen, hip_x - u * 0.06, hip_y, u, rider, "远侧", scale=0.92)
 
     # 3. 马身：盖住大腿根，露出的只有膝盖以下
     pen.rounded_rect(sx - u * 0.56, sy - u * 0.13, u * 0.58, u * 0.26, radius=u * 0.11,
@@ -980,13 +994,8 @@ def build_capsule_rider(params: dict, pen: Pen) -> None:
     capsule(sx + u * 0.03, sy - u * 0.13, sx + u * 0.14, sy - u * 0.31, u * 0.045, "line", "鬃毛下")
     capsule(sx + u * 0.14, sy - u * 0.31, sx + u * 0.24, sy - u * 0.42, u * 0.04, "line", "鬃毛上")
 
-    # 3.5 近侧腿：后画，压在马身上，整条可见
-    near_x = hip_x + u * 0.1
-    capsule(near_x, hip_y, near_x + u * 0.03, hip_y + u * 0.16, u * 0.095, rider, "近侧大腿")
-    capsule(near_x + u * 0.03, hip_y + u * 0.16, near_x + u * 0.03, hip_y + u * 0.46,
-            u * 0.08, rider, "近侧小腿")
-    capsule(near_x + u * 0.03, hip_y + u * 0.46, near_x + u * 0.03, hip_y + u * 0.52,
-            u * 0.085, "ink", "近侧靴")
+    # 3.5 近侧腿：后画，压在马身上
+    _riding_leg(pen, hip_x + u * 0.08, hip_y, u, rider, "近侧")
 
     # 4. 骑手：躯干压在马上
     body_w, body_h = u * 0.24, u * 0.36
