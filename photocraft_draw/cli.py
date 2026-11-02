@@ -107,6 +107,22 @@ def cmd_doctor(args) -> int:
     return 0
 
 
+def cmd_brief(args) -> int:
+    from .brief import build_brief
+
+    info = build_brief(load_plan(args.plan))
+    print("=== 中文稿 ===")
+    print(info["zh"])
+    print()
+    print("=== 英文稿 ===")
+    print(info["en"])
+    if args.out_zh:
+        Path(args.out_zh).write_text(info["zh"] + "\n", encoding="utf-8")
+    if args.out_en:
+        Path(args.out_en).write_text(info["en"] + "\n", encoding="utf-8")
+    return 0
+
+
 def cmd_check(args) -> int:
     plan = load_plan(args.plan)
     commands, meta = compose_plan(plan)
@@ -253,6 +269,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="用构图组件和绘制方案驱动 PhotoCraft 出图",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    brief = sub.add_parser("brief", help="把绘制方案翻译成生图提示词")
+    brief.add_argument("plan", help="绘制方案文件")
+    brief.add_argument("--out-zh", help="中文稿输出路径")
+    brief.add_argument("--out-en", help="英文稿输出路径")
+    brief.set_defaults(func=cmd_brief)
 
     check = sub.add_parser("check", help="校验绘制方案并统计绘制指令")
     check.add_argument("plan", help="绘制方案文件")

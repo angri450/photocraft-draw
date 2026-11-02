@@ -23,7 +23,9 @@
             "clouds": []
           }
         }
-      ]
+      ],
+      "describe_zh": "黎明的天空，顶部深蓝，靠近地平线渐渐转成暖黄，没有云",
+      "describe_en": "a dawn sky graduating from deep blue at the top to warm amber at the horizon, cloudless"
     },
     {
       "name": "远山",
@@ -76,7 +78,9 @@
             }
           }
         }
-      ]
+      ],
+      "describe_zh": "一排覆雪的远峰，冷灰蓝，轮廓柔和，被空气冲淡",
+      "describe_en": "a distant range of snow-streaked peaks in pale slate blue, soft outlines, hazy with atmosphere"
     },
     {
       "name": "近山",
@@ -111,7 +115,9 @@
             }
           }
         }
-      ]
+      ],
+      "describe_zh": "两座更暗的雪山压在中景，山脊陡峭，山脚有积雪",
+      "describe_en": "two darker snow-covered peaks in the middle distance with steep ridges and snow at their feet"
     },
     {
       "name": "岩地",
@@ -184,7 +190,9 @@
             }
           }
         }
-      ]
+      ],
+      "describe_zh": "裸露的岩石坡，灰褐色，从山脚向画面下方倾斜，散落着碎石",
+      "describe_en": "a bare rocky slope in grey-brown, tilting down toward the viewer, scattered with loose stones"
     },
     {
       "name": "河流",
@@ -209,7 +217,9 @@
             }
           }
         }
-      ]
+      ],
+      "describe_zh": "山涧溪流横过画面下方，水面深蓝，五道起伏的白色波纹，波峰带小水花",
+      "describe_en": "a mountain stream running across the lower edge, deep blue water cut by five wavy white ripples with small splashes on the crests"
     },
     {
       "name": "前景",
@@ -263,7 +273,33 @@
             }
           }
         }
-      ]
+      ],
+      "describe_zh": "几块深色巨石压在画面底部两侧，岩石有投影和明显的明暗面",
+      "describe_en": "several dark boulders anchoring the bottom corners, each with a cast shadow and clear light and dark faces"
+    }
+  ],
+  "brief_zh": {
+    "subject": "拿破仑·波拿巴骑着一匹前蹄扬起的花白骏马翻越阿尔卑斯山，右手高举指向前方，左手握缰绳",
+    "style": "新古典主义油画，可见笔触，强烈的明暗对比",
+    "light": "黎明侧光，地平线暖黄，山体冷蓝",
+    "mood": "英雄主义，肃穆",
+    "camera": "低角度四分之三侧面",
+    "palette": "赭石、焦褐、深红、冷灰"
+  },
+  "brief_en": {
+    "subject": "Napoleon Bonaparte riding a rearing dappled grey horse across the Alps, right arm raised pointing forward, left hand holding the reins",
+    "style": "neoclassical oil painting with visible brushwork and strong chiaroscuro",
+    "light": "dawn side light, warm amber at the horizon, cold blue on the mountains",
+    "mood": "heroic and solemn",
+    "camera": "low three-quarter front angle",
+    "palette": "ochre, burnt umber, deep crimson and cold slate grey"
+  },
+  "actors": [
+    {
+      "name": "拿破仑",
+      "before": "前景",
+      "describe_zh": "拿破仑骑在白马上，马前蹄扬起，他戴黑色双角帽，深蓝军装配金色滚边，白裤黑靴，红色斗篷在风里展开，右手高举指向前方",
+      "describe_en": "Napoleon on the rearing pale horse, black bicorne hat, dark blue uniform with gold trim, white breeches, tall black boots, crimson cloak billowing, right arm raised pointing forward"
     }
   ]
 }
