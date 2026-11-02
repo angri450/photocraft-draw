@@ -5,31 +5,46 @@
   "palette": "fresco",
   "background": "bg",
   "caption": "PHOTOCRAFT-DRAW 0.1",
-  "components": [
+  "layers": [
     {
-      "component": "indoor_backdrop",
-      "params": {
-        "wall": [0, 0, 800, 450],
-        "floor": [0, 355, 800, 95],
-        "ceiling": [90, 30, 620, 70],
-        "tapestries": [[18, 110, 70, 230], [712, 110, 70, 230]]
-      }
+      "name": "室内背景",
+      "components": [
+        {
+          "component": "indoor_backdrop",
+          "params": {
+            "wall": [0, 0, 800, 450],
+            "floor": [0, 355, 800, 95],
+            "ceiling": [90, 30, 620, 70],
+            "tapestries": [[18, 110, 70, 230], [712, 110, 70, 230]]
+          }
+        }
+      ]
     },
     {
-      "component": "arched_windows",
-      "params": {
-        "windows": [[300, 140, 90, 150], [395, 115, 110, 175], [520, 140, 90, 150]]
-      }
+      "name": "拱形窗户",
+      "components": [
+        {
+          "component": "arched_windows",
+          "params": {
+            "windows": [[300, 140, 90, 150], [395, 115, 110, 175], [520, 140, 90, 150]]
+          }
+        }
+      ]
     },
     {
-      "component": "long_table",
-      "params": {
-        "table": [50, 300, 700, 40],
-        "front": 38,
-        "plates": [140, 230, 320, 395, 460, 540, 630, 700],
-        "plate_y": 320,
-        "cup_x": 465
-      }
+      "name": "长条餐桌",
+      "components": [
+        {
+          "component": "long_table",
+          "params": {
+            "table": [50, 300, 700, 40],
+            "front": 38,
+            "plates": [140, 230, 320, 395, 460, 540, 630, 700],
+            "plate_y": 320,
+            "cup_x": 465
+          }
+        }
+      ]
     }
   ]
 }

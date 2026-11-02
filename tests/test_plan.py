@@ -58,6 +58,43 @@ class PlanTest(unittest.TestCase):
         commands, _ = compose_plan(plan)
         self.assertTrue(any(item["command"] == "type.create" for item in commands))
 
+    def test_layers(self):
+        plan = base_plan()
+        plan.pop("components")
+        plan["layers"] = [
+            {"name": "背景层", "components": [
+                {"component": "indoor_backdrop", "params": {"wall": [0, 0, 800, 450]}}
+            ]},
+            {"name": "桌子层", "components": [
+                {"component": "long_table", "params": {"table": [50, 300, 700, 40]}}
+            ]},
+        ]
+        self.assertEqual(validate_plan(plan), [])
+        commands, meta = compose_plan(plan)
+        self.assertEqual(meta["layers"], 2)
+        self.assertEqual(meta["components"], 2)
+        stages = [item["params"]["name"] for item in commands if item["command"] == "layer.new.group"]
+        self.assertEqual(stages, ["背景层", "室内背景", "桌子层", "长条餐桌"])
+
+    def test_cannot_mix_components_and_layers(self):
+        plan = base_plan()
+        plan["layers"] = [
+            {"name": "背景层", "components": [
+                {"component": "indoor_backdrop", "params": {"wall": [0, 0, 800, 450]}}
+            ]},
+        ]
+        errors = validate_plan(plan)
+        self.assertTrue(any("只能给一个" in item for item in errors))
+
+    def test_layer_requires_name(self):
+        plan = base_plan()
+        plan.pop("components")
+        plan["layers"] = [
+            {"components": [{"component": "indoor_backdrop", "params": {"wall": [0, 0, 800, 450]}}]}
+        ]
+        errors = validate_plan(plan)
+        self.assertTrue(any("name" in item for item in errors))
+
     def test_canvas_scaling(self):
         plan = base_plan()
         plan["canvas"] = [1600, 900]

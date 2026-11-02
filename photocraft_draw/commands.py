@@ -22,6 +22,7 @@ class Pen:
         self.k = self.width / self.ref_width
         self.palette = palette or {}
         self.commands: list[dict] = []
+        self._has_stage = False
 
     @property
     def ref_height(self) -> float:
@@ -45,9 +46,19 @@ class Pen:
             "align": "center",
         }
 
-    def stage(self, name: str) -> None:
-        """开一个新图层，后面的图形都落在这一层。"""
-        self.commands.append({"command": "layer.new.layer", "params": {"name": str(name)}})
+    def stage(self, name: str, nested: bool = False) -> None:
+        """开一个图层组。
+
+        顶层的组先选回背景层，保证和上一个组同级；组件组用 nested=True，
+        直接落在当前组里面。
+        """
+        if not nested and self._has_stage:
+            self.commands.append({"command": "layer.select", "params": {"name": "Background"}})
+        command = {"command": "layer.new.group", "params": {"name": str(name)}}
+        if nested:
+            command["_nested"] = True
+        self.commands.append(command)
+        self._has_stage = True
 
     def rect(self, x, y, w, h, fill="surface", stroke_width=None, stroke="line", name=None) -> None:
         self.commands.append({

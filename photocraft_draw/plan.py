@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""绘制方案：读取、校验、合成绘制指令。"""
+"""绘制方案：读取、校验、按图层合成绘制指令。"""
 from __future__ import annotations
 
 import json
@@ -24,6 +24,27 @@ def load_plan(path: str | Path) -> dict:
     if errors:
         raise ValueError("绘制方案有问题：\n- " + "\n- ".join(errors))
     return plan
+
+
+def _validate_component_list(items, where: str, errors: list[str]) -> None:
+    if not isinstance(items, list) or not items:
+        errors.append(f"{where}必须是非空数组")
+        return
+    for index, item in enumerate(items):
+        label = f"{where}第 {index + 1} 项"
+        if not isinstance(item, dict):
+            errors.append(f"{label}必须是一个对象")
+            continue
+        key = item.get("component")
+        if not isinstance(key, str) or not key:
+            errors.append(f"{label}缺少 component")
+            continue
+        try:
+            get_component(key)
+        except KeyError as error:
+            errors.append(f"{label}：{error.args[0]}")
+        if not isinstance(item.get("params", {}), dict):
+            errors.append(f"{label}的 params 必须是对象")
 
 
 def validate_plan(plan: dict) -> list[str]:
@@ -59,26 +80,29 @@ def validate_plan(plan: dict) -> list[str]:
     if palette is not None and not isinstance(palette, (str, dict)):
         errors.append("palette 必须是配色名或角色表")
 
-    components = plan.get("components")
-    if not isinstance(components, list) or not components:
-        errors.append("components 必须是非空数组")
+    has_components = "components" in plan
+    has_layers = "layers" in plan
+    if has_components and has_layers:
+        errors.append("components 和 layers 只能给一个")
+    elif not has_components and not has_layers:
+        errors.append("要有 components 或 layers")
+    elif has_layers:
+        layers = plan.get("layers")
+        if not isinstance(layers, list) or not layers:
+            errors.append("layers 必须是非空数组")
+        else:
+            for index, layer in enumerate(layers):
+                label = f"第 {index + 1} 层"
+                if not isinstance(layer, dict):
+                    errors.append(f"{label}必须是一个对象")
+                    continue
+                name = layer.get("name")
+                if not isinstance(name, str) or not name.strip():
+                    errors.append(f"{label}缺少 name")
+                _validate_component_list(layer.get("components"), f"{label}的 components", errors)
     else:
-        for index, item in enumerate(components):
-            where = f"第 {index + 1} 个构图组件"
-            if not isinstance(item, dict):
-                errors.append(f"{where}必须是一个对象")
-                continue
-            key = item.get("component")
-            if not isinstance(key, str) or not key:
-                errors.append(f"{where}缺少 component")
-                continue
-            try:
-                get_component(key)
-            except KeyError as error:
-                errors.append(f"{where}：{error.args[0]}")
-            params = item.get("params", {})
-            if not isinstance(params, dict):
-                errors.append(f"{where}的 params 必须是对象")
+        _validate_component_list(plan.get("components"), "components", errors)
+
     return errors
 
 
@@ -95,14 +119,30 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
 
     background = plan.get("background")
     if background:
-        pen.rect(0, 0, pen.ref_width, pen.ref_height, fill=background, stroke_width=None, stroke=None, name="底色")
+        pen.rect(0, 0, pen.ref_width, pen.ref_height, fill=background,
+                 stroke_width=None, stroke=None, name="底色")
 
-    for item in plan["components"]:
-        component = get_component(item["component"])
-        component.build(item.get("params") or {}, pen)
+    layers = plan.get("layers")
+    if layers:
+        for layer in layers:
+            pen.stage(layer["name"])
+            for item in layer["components"]:
+                component = get_component(item["component"])
+                pen.stage(component.name, nested=True)
+                component.build(item.get("params") or {}, pen)
+        component_count = sum(len(layer["components"]) for layer in layers)
+        layer_count = len(layers)
+    else:
+        for item in plan["components"]:
+            component = get_component(item["component"])
+            pen.stage(component.name)
+            component.build(item.get("params") or {}, pen)
+        component_count = len(plan["components"])
+        layer_count = 1
 
     caption = plan.get("caption")
     if caption:
+        pen.stage("文字层")
         pen.text(
             pen.ref_width * 0.04, pen.ref_height * 0.96, caption,
             size=14, color=plan.get("caption_color", "surface"),
@@ -113,7 +153,8 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
         "name": plan.get("name") or "未命名",
         "width": int(width),
         "height": int(height),
-        "components": len(plan["components"]),
+        "layers": layer_count,
+        "components": component_count,
         "commands": len(pen.commands),
     }
     return pen.commands, meta

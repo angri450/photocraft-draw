@@ -16,7 +16,6 @@ def build(params: dict, pen: Pen) -> None:
     plate_color = colors.get("plate", "bg")
     bread_color = colors.get("bread", "mid")
 
-    pen.stage("长条餐桌")
     x, y, w, h = table
     front = float(params.get("front", 38))
     pen.rect(x, y, w, h, fill=cloth_color, name="桌面")

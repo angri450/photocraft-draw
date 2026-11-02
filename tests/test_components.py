@@ -24,7 +24,7 @@ class ComponentTest(unittest.TestCase):
         )
         shapes = [item for item in target.commands if item["command"] == "shape.create"]
         self.assertGreater(len(shapes), 10)
-        self.assertEqual(target.commands[0]["command"], "layer.new.layer")
+        self.assertEqual(shapes[0]["command"], "shape.create")
 
     def test_indoor_backdrop_requires_wall(self):
         with self.assertRaises(ValueError):

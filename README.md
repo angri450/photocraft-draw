@@ -1,18 +1,29 @@
 # PhotoCraft-Draw
 
-用构图组件和绘制方案驱动 PhotoCraft 出图。一张画面由若干构图组件拼成，组件只写参考坐标，脚本负责换算成画布坐标和绘制指令，引擎负责落成 PNG 和 PSD。PSD 里的文字仍然是文字层，形状仍然是形状层。
+用构图组件和绘制方案驱动 PhotoCraft 出图。一张画面先分图层，每层由若干构图组件拼成，组件只写参考坐标，脚本换算成画布坐标和绘制指令，引擎落成 PNG 和 PSD。PSD 里图层是图层组，文字是文字层，交付后还能改。
 
 ## 中文叫法
 
 | 叫法 | 含义 |
 |---|---|
 | 构图组件 | 一段可复用的绘图代码，负责画面的一部分 |
-| 绘制方案 | 一份 JSON，写明用哪些构图组件、各给什么参数 |
+| 绘制方案 | 一份 JSON，按图层列出用哪些构图组件、各给什么参数 |
 | 组件目录 | 构图组件的清单和参数说明 |
+| 图层 | 画面的一层，PSD 里是一个图层组 |
 | 画面模板 | 整套构图方式，比如室内场景、海报 |
 | 绘制指令 | 发给引擎的一条条命令 |
 | 绘制服务 | 常驻进程，接收绘制指令并调用引擎 |
 | 执行摘要 | 引擎返回的简短结果 |
+
+## 七步工作流
+
+1. 收到题目先想清楚画面要讲什么，把画面分成几个图层，每层写一句用途。
+2. 到组件目录里找现成的构图组件，先搜再用，不要重复造。
+3. 没有合适的组件，就新写一个：`photocraft_draw/components/` 下建文件，写 `build(params, pen)`，再到 `registry.py` 登记。
+4. 把组件按层填进绘制方案，每层可以放一个或多个组件。
+5. 做完一层就先 `check` 看指令数和参数，确认这一层没问题。
+6. 所有层按从后到前的顺序排好，`draw` 一次组装成图；程序会把每个顶层组提到最前，保证后画的压在前面。
+7. `annotate` 生成单文件批注页，你在网页上点图层、拖方框、写意见，导出 JSON 发回来，我按 JSON 改。
 
 ## 目录
 
@@ -22,10 +33,14 @@ photocraft_draw/
   commands.py      绘图笔：参考坐标换算、绘制指令生成
   palette.py       配色角色
   registry.py      组件目录
-  plan.py          绘制方案：读取、校验、合成
+  plan.py          绘制方案：读取、校验、按图层合成
+  commandbook.py   命令目录：953 条指令的检索和调用
+  catalog.json     命令目录数据，由 tools/build_catalog.py 生成
+  annotate.py      图层批注页
   cli.py           命令行入口
   components/      构图组件
 plans/             绘制方案
+tools/             命令目录生成工具
 tests/             单元测试
 out/               默认输出目录
 ```
@@ -56,9 +71,10 @@ python3 -m pip install -e .
 
 ```sh
 photocraft-draw doctor                      # 看引擎路径和版本
-photocraft-draw components                  # 列组件目录
-photocraft-draw check plans/framework.json  # 校验方案，统计指令
+photocraft-draw components --search 窗      # 搜构图组件
+photocraft-draw check plans/framework.json  # 校验方案，统计图层、组件和指令
 photocraft-draw draw plans/framework.json --out-dir out
+photocraft-draw annotate plans/framework.json --out-dir out --serve
 ```
 
 `draw` 默认同时写 PNG 和 PSD，也可以只给一个：
@@ -71,7 +87,7 @@ photocraft-draw draw plans/framework.json --png out/a.png --psd out/a.psd
 默认只回一行执行摘要：
 
 ```text
-ok | 1600x900 | 3 个构图组件 | 48 条绘制指令 | 3.3s | out/framework.png, out/framework.psd
+ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | out/framework.png, out/framework.psd
 ```
 
 要看每条指令的结果加 `--verbose`，平时不要开。
@@ -86,31 +102,12 @@ ok | 1600x900 | 3 个构图组件 | 48 条绘制指令 | 3.3s | out/framework.pn
   "palette": "fresco",
   "background": "bg",
   "caption": "PHOTOCRAFT-DRAW 0.1",
-  "components": [
+  "layers": [
     {
-      "component": "indoor_backdrop",
-      "params": {
-        "wall": [0, 0, 800, 450],
-        "floor": [0, 355, 800, 95],
-        "ceiling": [90, 30, 620, 70],
-        "tapestries": [[18, 110, 70, 230], [712, 110, 70, 230]]
-      }
-    },
-    {
-      "component": "arched_windows",
-      "params": {
-        "windows": [[300, 140, 90, 150], [395, 115, 110, 175], [520, 140, 90, 150]]
-      }
-    },
-    {
-      "component": "long_table",
-      "params": {
-        "table": [50, 300, 700, 40],
-        "front": 38,
-        "plates": [140, 230, 320, 395, 460, 540, 630, 700],
-        "plate_y": 320,
-        "cup_x": 465
-      }
+      "name": "室内背景",
+      "components": [
+        {"component": "indoor_backdrop", "params": {"wall": [0, 0, 800, 450]}}
+      ]
     }
   ]
 }
@@ -118,12 +115,31 @@ ok | 1600x900 | 3 个构图组件 | 48 条绘制指令 | 3.3s | out/framework.pn
 
 字段说明：
 
-1. `canvas` 是最终画布像素，`ref_width` 是组件的参考宽度，组件里的坐标都按参考宽度写，脚本按 `canvas宽 / ref_width` 统一放大。
+1. `canvas` 是最终像素，`ref_width` 是组件的参考宽度，组件坐标按参考宽度写，脚本按 `canvas宽 / ref_width` 统一放大。
 2. `palette` 可以是配色名，也可以直接写角色表；组件里的颜色写角色名（bg、ink、line 等），不写死色值。
 3. `background` 可选，写一个角色名，铺满整张画布。
 4. `caption` 可选，画面左下角的一行字，会建成文字层，PSD 里可以改；`caption_color` 可选，默认 surface。
-5. `components` 按顺序画，后面的压前面的。
-6. `params` 里每个组件的必填项见 `photocraft-draw components`。
+5. `layers` 按顺序画，先写的在下面，后写的压在上面；每一层是一个图层组，层里的组件是子组。
+6. 也可以不写 `layers`，直接写 `components`，这时每个组件单独成一层，适合快速试验。
+
+## 命令目录
+
+953 条绘制指令分 38 个类别，数据在 `photocraft_draw/catalog.json`，引擎升级后用 `python3 tools/build_catalog.py` 重新生成。
+
+```sh
+photocraft-draw commands --count
+photocraft-draw commands --search 曲线
+photocraft-draw commands --search 锐化 --limit 10
+photocraft-draw commands --category 滤镜效果 --limit 20
+photocraft-draw commands --describe image.adjustments.curves
+```
+
+命令可以接在方案的后面执行，用来做后期：
+
+```sh
+photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast \
+  --params '{"brightness": 5, "contrast": 5}' --png out/graded.png
+```
 
 ## 组件目录
 
@@ -133,18 +149,49 @@ ok | 1600x900 | 3 个构图组件 | 48 条绘制指令 | 3.3s | out/framework.pn
 | arched_windows | 拱形窗户 | windows |
 | long_table | 长条餐桌 | table |
 
+新增组件：在 `photocraft_draw/components/` 写 `build(params, pen)`，只画形状和文字，不建图层；图层由绘制方案负责。再到 `registry.py` 登记编号、名称、说明和参数。
+
+## 批注页
+
+`annotate` 会生成一个单文件网页，图片和图层树都内嵌，不依赖外链。`--serve` 会启动本地服务并打印链接，端口默认 8898。
+
+网页上可以：
+
+1. 点图层看它在图上的范围。
+2. 拖动橙色方框记录位移。
+3. 选动作：移动、隐藏、显示、删除、改色、改字、只写意见。
+4. 写单层备注和整体意见。
+5. 导出 `review.json`，或在页面里复制 JSON。
+
+导出的格式：
+
+```json
+{
+  "plan": "framework",
+  "image": "framework.png",
+  "canvas": [1600, 900],
+  "edits": [
+    {"layer": 12, "name": "盘子 3", "kind": "Shape", "action": "move", "dx": 10, "dy": -4, "note": "往右挪一点"}
+  ],
+  "global": "整体偏暗"
+}
+```
+
+把这份 JSON 发回来，我按图层编号和名称找到对应的组件参数，改完重新出图。
+
 ## 写法约定
 
-1. 组件只写参考坐标，不关心最终画布多大，也不写死色值。
-2. 新增组件必须进 `registry.py`，写清编号、名称、说明和每个参数。
-3. 先 `check` 再 `draw`，方案有问题在合成阶段就报出来。
-4. 默认只回执行摘要，调试才开 `--verbose`。
-5. 文字用 `type.create` 建文字层，不要在 PSD 里当图形画，这样交付后还能改字。
-6. 组件参数缺项要在组件里直接报错，不要静默用默认值兜底。
+1. 组件只写参考坐标和配色角色，不写死画布尺寸和色值。
+2. 组件不建图层，图层由绘制方案统一管理。
+3. 新增组件必须进 `registry.py`，写清编号、名称、说明和每个参数。
+4. 先 `check` 再 `draw`，方案有问题在合成阶段就报出来。
+5. 默认只回执行摘要，调试才开 `--verbose`。
+6. 文字用 `type.create` 建文字层，不要在 PSD 里当图形画，这样交付后还能改字。
 
 ## 边界
 
-1. 首版只有三个构图组件，人物、面部、手势还没做。
+1. 现有三个构图组件，人物、面部、手势还没做。
 2. 引擎是 early alpha，PSD 能否在 Adobe Photoshop 里正常打开没有验证过，只保证引擎自己能读、第三方 psd-tools 能解析。
 3. 引擎的渐变是近似，带滤镜的组会被栅格化，复杂画面要逐张看。
-4. 一张画面不要堆几百条指令，超过一百条先想能不能拆成组件或简化结构。
+4. 一张画面超过一百条指令，先想能不能拆组件或简化，不要硬堆。
+5. 批注页目前只导出意见，回改要人工或脚本按 JSON 执行，还没有一键回改。

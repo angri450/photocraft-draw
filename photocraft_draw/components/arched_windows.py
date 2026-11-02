@@ -15,7 +15,6 @@ def build(params: dict, pen: Pen) -> None:
     light_color = colors.get("light", "surface")
     mullions = bool(params.get("mullions", True))
 
-    pen.stage("拱形窗户")
     for index, item in enumerate(windows):
         if len(item) != 4:
             raise ValueError("windows 里每一项都要是 [x, y, 宽, 高]")

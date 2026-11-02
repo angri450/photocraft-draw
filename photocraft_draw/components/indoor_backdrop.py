@@ -16,7 +16,6 @@ def build(params: dict, pen: Pen) -> None:
     tapestry_color = colors.get("tapestry", "deep")
     fold_color = colors.get("fold", "ink")
 
-    pen.stage("室内背景")
     x, y, w, h = wall
     pen.rect(x, y, w, h, fill=wall_color)
 
