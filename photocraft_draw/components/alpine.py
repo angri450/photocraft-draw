@@ -147,10 +147,10 @@ def build_alpine_peaks(params: dict, pen: Pen) -> None:
 
         if snow:
             # 雪只盖山顶一小块，三层递减，贴着弧线走
-            pen.ellipse(cx, base_y - height * 0.62, half_w * 0.2, height * 0.09,
+            pen.ellipse(cx, base_y - height * 0.72, half_w * 0.15, height * 0.06,
                         fill=snow_color, stroke_width=None, stroke=None,
                         name=f"山 {index + 1} 雪")
-            pen.ellipse(cx, base_y - height * 0.71, half_w * 0.13, height * 0.06,
+            pen.ellipse(cx, base_y - height * 0.8, half_w * 0.09, height * 0.04,
                         fill=snow_color, stroke_width=None, stroke=None,
                         name=f"山 {index + 1} 雪尖")
 
@@ -289,9 +289,9 @@ def build_foreground_rocks(params: dict, pen: Pen) -> None:
                     name=f"石块 {index + 1}")
         pen.ellipse(cx - rx * 0.22, cy - ry * 0.3, rx * 0.42, ry * 0.22,
                     fill=light, stroke_width=None, stroke=None, name=f"石光 {index + 1}")
-        # 贴着底边的一条暗面，做出接触阴影，不往石头内部塞小椭圆
-        pen.ellipse(cx, cy + ry * 0.58, rx * 0.78, ry * 0.3,
-                    fill=dark, stroke_width=None, stroke=None, name=f"石底 {index + 1}")
+        # 主体下方一条投影，别塞进石头内部，不然像甜甜圈
+        pen.ellipse(cx, cy + ry * 0.95, rx * 0.92, ry * 0.26,
+                    fill=shadow, stroke_width=None, stroke=None, name=f"石底 {index + 1}")
 
 
 COMPONENTS = {

@@ -1,0 +1,65 @@
+{
+  "name": "胶囊马三姿态",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "stand",
+      "components": [
+        {
+          "component": "capsule_horse",
+          "params": {
+            "root": [
+              560,
+              280
+            ],
+            "length": 300,
+            "pose": "stand",
+            "body": "mid",
+            "dark": "line"
+          }
+        }
+      ]
+    },
+    {
+      "name": "walk",
+      "components": [
+        {
+          "component": "capsule_horse",
+          "params": {
+            "root": [
+              560,
+              560
+            ],
+            "length": 300,
+            "pose": "walk",
+            "body": "mid",
+            "dark": "line"
+          }
+        }
+      ]
+    },
+    {
+      "name": "gallop",
+      "components": [
+        {
+          "component": "capsule_horse",
+          "params": {
+            "root": [
+              560,
+              840
+            ],
+            "length": 300,
+            "pose": "gallop",
+            "body": "mid",
+            "dark": "line"
+          }
+        }
+      ]
+    }
+  ]
+}

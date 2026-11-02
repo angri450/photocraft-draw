@@ -805,3 +805,93 @@ COMPONENTS["capsule_person"] = {
 __all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
            "build_rig_horse", "build_rig_person", "build_scatter_shape", "build_pixel_person",
            "build_capsule_person", "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]
+
+
+def build_capsule_horse(params: dict, pen: Pen) -> None:
+    """胶囊马：身体圆角矩形，颈、腿、尾巴都是胶囊。
+
+    参数：
+        root    [x, y]，肩部位置，必填
+        length  肩高像素，必填
+        pose    stand / walk / gallop
+        body    马身颜色，默认 muted
+        dark    鬃毛和蹄的颜色，默认 line
+    """
+    root = params.get("root")
+    if not isinstance(root, (list, tuple)) or len(root) != 2:
+        raise ValueError("胶囊马需要 root：[x, y]，肩部位置")
+    height = params.get("length")
+    if isinstance(height, bool) or not isinstance(height, (int, float)) or height <= 0:
+        raise ValueError("胶囊马需要 length，大于 0 的肩高像素")
+    pose = str(params.get("pose", "stand"))
+    if pose not in ("stand", "walk", "gallop"):
+        raise ValueError("胶囊马 pose 只能是 stand、walk、gallop")
+    body = params.get("body", "muted")
+    dark = params.get("dark", "line")
+
+    sx, sy = float(root[0]), float(root[1])
+    u = float(height)
+
+    # 身体：一个大圆角矩形，从肩向后
+    pen.rounded_rect(sx - u * 0.56, sy - u * 0.13, u * 0.58, u * 0.26, radius=u * 0.11,
+                     fill=body, stroke_width=None, stroke=None, name="躯干")
+
+    # 颈：两段胶囊，下段陡上段缓
+    def capsule(x1, y1, x2, y2, width, color, label):
+        _capsule(pen, x1, y1, x2, y2, width, color, label)
+        return x2, y2
+
+    nx, ny = capsule(sx + u * 0.01, sy - u * 0.06, sx + u * 0.12, sy - u * 0.26,
+                     u * 0.13, body, "颈下段")
+    nx, ny = capsule(nx, ny, nx + u * 0.12, ny - u * 0.13, u * 0.105, body, "颈上段")
+    # 头：略向下垂的胶囊
+    capsule(nx, ny, nx + u * 0.22, ny + u * 0.08, u * 0.135, body, "头")
+    # 耳：一个小胶囊竖着
+    capsule(nx + u * 0.02, ny - u * 0.02, nx + u * 0.02, ny - u * 0.09, u * 0.05, body, "耳")
+    # 鬃毛：沿颈背两段深色
+    capsule(sx + u * 0.03, sy - u * 0.13, sx + u * 0.14, sy - u * 0.31,
+            u * 0.045, dark, "鬃毛下")
+    capsule(sx + u * 0.14, sy - u * 0.31, sx + u * 0.24, sy - u * 0.42,
+            u * 0.04, dark, "鬃毛上")
+
+    # 尾巴：三段胶囊往下后甩
+    tx, ty = sx - u * 0.52, sy - u * 0.06
+    for index, angle in enumerate((118, 136, 152)):
+        a = _math.radians(angle)
+        ex = tx + _math.cos(a) * u * 0.15
+        ey = ty + _math.sin(a) * u * 0.15
+        capsule(tx, ty, ex, ey, u * 0.055, dark, f"尾 {index + 1}")
+        tx, ty = ex, ey
+
+    # 四条腿：三段胶囊
+    for key, spec in HORSE_LEGS.items():
+        bx = sx + spec["root"][0] * u
+        by = sy + spec["root"][1] * u
+        angles = spec[pose]
+        x, y = bx, by
+        for index, (angle, length) in enumerate(zip(angles, HORSE_LEG_LENGTHS)):
+            a = _math.radians(angle)
+            ex = x + _math.cos(a) * length * u
+            ey = y + _math.sin(a) * length * u
+            capsule(x, y, ex, ey, HORSE_LEG_WIDTH * u * (1.4 if index == 2 else 1.2),
+                    dark if index == 2 else body, f"腿 {key} 段 {index + 1}")
+            x, y = ex, ey
+
+
+COMPONENTS["capsule_horse"] = {
+    "name": "胶囊马",
+    "description": "身体圆角矩形，颈腿尾巴都是胶囊，关节处圆润",
+    "params": {
+        "root": "[x, y]，肩部位置，必填",
+        "length": "肩高像素，必填",
+        "pose": "stand / walk / gallop",
+        "body": "马身颜色，默认 muted",
+        "dark": "鬃毛和蹄的颜色，默认 line",
+    },
+    "build": build_capsule_horse,
+}
+
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
+           "build_rig_horse", "build_rig_person", "build_scatter_shape", "build_pixel_person",
+           "build_capsule_person", "build_capsule_horse",
+           "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]

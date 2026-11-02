@@ -1,0 +1,249 @@
+{
+  "name": "山涧饮马",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "天空",
+      "components": [
+        {
+          "component": "alpine_sky",
+          "params": {
+            "area": [
+              0,
+              0,
+              800,
+              420
+            ],
+            "bands": 24
+          }
+        }
+      ]
+    },
+    {
+      "name": "远山",
+      "components": [
+        {
+          "component": "alpine_peaks",
+          "params": {
+            "peaks": [
+              [
+                60,
+                440,
+                110,
+                200
+              ],
+              [
+                200,
+                440,
+                130,
+                240
+              ],
+              [
+                360,
+                440,
+                150,
+                280
+              ],
+              [
+                520,
+                440,
+                125,
+                230
+              ],
+              [
+                670,
+                440,
+                140,
+                250
+              ],
+              [
+                780,
+                440,
+                100,
+                190
+              ]
+            ],
+            "snow": true,
+            "colors": {
+              "far": "muted",
+              "near": "muted"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "近山",
+      "components": [
+        {
+          "component": "alpine_peaks",
+          "params": {
+            "peaks": [
+              [
+                150,
+                500,
+                170,
+                320
+              ],
+              [
+                430,
+                500,
+                190,
+                350
+              ],
+              [
+                700,
+                500,
+                175,
+                330
+              ]
+            ],
+            "snow": true,
+            "colors": {
+              "far": "line",
+              "near": "line"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "岩地",
+      "components": [
+        {
+          "component": "rocky_ground",
+          "params": {
+            "area": [
+              0,
+              560,
+              800,
+              340
+            ],
+            "tone": "mid"
+          }
+        },
+        {
+          "component": "foreground_rocks",
+          "params": {
+            "rocks": [
+              [
+                120,
+                700,
+                48,
+                18
+              ],
+              [
+                300,
+                745,
+                60,
+                22
+              ],
+              [
+                520,
+                720,
+                52,
+                19
+              ],
+              [
+                680,
+                770,
+                66,
+                24
+              ]
+            ],
+            "colors": {
+              "stone": "mid",
+              "light": "line",
+              "dark": "ink",
+              "shadow": "ink"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "河流",
+      "components": [
+        {
+          "component": "river_water",
+          "params": {
+            "area": [
+              0,
+              900,
+              800,
+              167
+            ],
+            "waves": 5,
+            "amplitude": 7,
+            "cycles": 3,
+            "colors": {
+              "water": "bg",
+              "light": "soft",
+              "foam": "soft",
+              "dark": "muted"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "马",
+      "components": [
+        {
+          "component": "capsule_horse",
+          "params": {
+            "root": [
+              470,
+              640
+            ],
+            "length": 320,
+            "pose": "stand",
+            "body": "mid",
+            "dark": "line"
+          }
+        }
+      ]
+    },
+    {
+      "name": "前景",
+      "components": [
+        {
+          "component": "foreground_rocks",
+          "params": {
+            "rocks": [
+              [
+                70,
+                1030,
+                120,
+                46
+              ],
+              [
+                800,
+                1010,
+                110,
+                42
+              ],
+              [
+                420,
+                1080,
+                90,
+                34
+              ]
+            ],
+            "colors": {
+              "stone": "line",
+              "light": "mid",
+              "dark": "ink",
+              "shadow": "ink"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
