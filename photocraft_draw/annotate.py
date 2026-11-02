@@ -134,21 +134,10 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
 .ed-head.dragging { cursor: grabbing; }
 .ed-head .grip { color: var(--muted); letter-spacing: -2px; font-size: 14px; }
 .ed-head strong { font-size: 13px; }
-.ed-head select {
-  max-width: 160px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
-  border-radius: 6px; padding: 3px 6px; font-size: 12px; outline: none;
-}
-.ed-head select:focus { border-color: var(--accent); }
 .ed-visible { color: var(--muted); font-size: 11px; margin: -2px 0 8px; line-height: 1.5; }
 .ed-head .badge { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ed-head .grow { flex: 1; }
 .ed-meta { color: var(--muted); font-size: 11px; margin-bottom: 8px; }
-.chips { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
-.chip {
-  padding: 3px 10px; border-radius: 12px; border: 1px solid var(--line);
-  background: transparent; color: var(--muted); font-size: 12px;
-}
-.chip.active { background: var(--warm); border-color: var(--warm); color: #fff; }
 #edNote {
   width: 100%; min-height: 70px; max-height: 150px; resize: vertical;
   border: 1px solid var(--line); background: var(--bg); color: var(--text);
@@ -248,30 +237,22 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
           <div id="editor">
             <div class="ed-head">
               <span class="grip" title="拖动卡片">⠿</span>
-              <strong id="edTitle">新框选</strong>
-              <select id="edLayerSelect" title="框内的图层"></select>
+              <strong id="edTitle">新批注</strong>
               <span class="grow"></span>
               <button id="edClose" title="关闭">×</button>
             </div>
             <div class="ed-meta" id="edMeta"></div>
             <div class="ed-visible" id="edVisible"></div>
-            <div class="chips">
-              <button class="chip active" data-action="note">意见</button>
-              <button class="chip" data-action="move">移动</button>
-              <button class="chip" data-action="delete">删除</button>
-              <button class="chip" data-action="recolor">改色</button>
-              <button class="chip" data-action="retext">改字</button>
-            </div>
-            <textarea id="edNote" placeholder="这块区域要怎么改？Enter 保存，Shift+Enter 换行"></textarea>
+            <textarea id="edNote" placeholder="这里要怎么改？写一句，Enter 保存"></textarea>
             <div class="ed-foot">
-              <span class="muted" id="edOffset"></span>
+              <span class="muted">Enter 保存，Shift+Enter 换行</span>
               <button id="edDelete">删掉</button>
               <button id="edCancel">取消</button>
               <button id="edSave" class="primary">保存</button>
             </div>
           </div>
         </div>
-        <div id="hint">在图上拖框，卡片会列出框内图层和显隐状态，选一个再写</div>
+        <div id="hint">在图上拖框，写一句，Enter 保存</div>
         <div id="toast"></div>
       </section>
     </div>
@@ -308,11 +289,9 @@ const selectionBox = document.getElementById('selectionBox');
 const annos = document.getElementById('annos');
 const editor = document.getElementById('editor');
 const edTitle = document.getElementById('edTitle');
-const edLayerSelect = document.getElementById('edLayerSelect');
 const edMeta = document.getElementById('edMeta');
 const edVisible = document.getElementById('edVisible');
 const edNote = document.getElementById('edNote');
-const edOffset = document.getElementById('edOffset');
 const noteCount = document.getElementById('noteCount');
 const zoomLabel = document.getElementById('zoomLabel');
 const meta = document.getElementById('meta');
@@ -343,7 +322,6 @@ let editorPos = null;
 let editorDrag = null;
 
 const KIND = { Group: '组', Shape: '形状', Type: '文字', Pixel: '像素' };
-const ACTION = { note: '意见', move: '移动', delete: '删除', recolor: '改色', retext: '改字' };
 
 let theme = 'dark';
 try {
@@ -495,7 +473,7 @@ function renderNotes() {
   noteCount.textContent = String(annotations.length);
   notesBox.innerHTML = '';
   if (!annotations.length) {
-    notesBox.innerHTML = '<div class="empty">先点一个图层，再在图上拖一个框，就会生成一条带图层和区域的批注。</div>';
+    notesBox.innerHTML = '<div class="empty">在图上拖一个框，写一句，就会生成一条带图层和区域的批注。</div>';
     return;
   }
   annotations.forEach((item, index) => {
@@ -509,9 +487,6 @@ function renderNotes() {
     const name = document.createElement('span');
     name.className = 'name';
     name.textContent = item.layer_name;
-    const action = document.createElement('span');
-    action.className = 'badge';
-    action.textContent = ACTION[item.action] || item.action;
     const del = document.createElement('button');
     del.className = 'del';
     del.textContent = '×';
@@ -522,7 +497,7 @@ function renderNotes() {
       if (editing && editing.id === item.id) closeEditor();
       renderAll();
     };
-    head.append(indexBadge, name, action, del);
+    head.append(indexBadge, name, del);
     node.appendChild(head);
     const body = document.createElement('div');
     body.className = 'body';
@@ -575,27 +550,6 @@ function layersInRect(rect) {
     })
     .sort((a, b) => (a.bounds[2] * a.bounds[3]) - (b.bounds[2] * b.bounds[3]));
 }
-function fillLayerSelect(candidates, chosen) {
-  edLayerSelect.innerHTML = '';
-  if (!candidates.length) {
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = '画面';
-    edLayerSelect.appendChild(option);
-    return;
-  }
-  candidates.forEach(item => {
-    const option = document.createElement('option');
-    option.value = String(item.id);
-    option.textContent = item.name + ' · ' + (KIND[item.kind] || item.kind || '');
-    if (String(item.id) === String(chosen)) option.selected = true;
-    edLayerSelect.appendChild(option);
-  });
-  if (!candidates.some(item => String(item.id) === String(chosen))) {
-    edLayerSelect.value = String(candidates[0].id);
-  }
-}
-
 function openEditor(existing) {
   if (editing) commitEditing();
   let rect;
@@ -621,21 +575,19 @@ function openEditor(existing) {
     rect = drawing;
     if (!rect) return;
     candidates = layersInRect(rect);
-    const preferred = (selected && candidates.find(item => String(item.id) === String(selected.id))) || candidates[0] || null;
+    const preferred = candidates[0] || null;
     editing = {
       id: null, layer: preferred ? preferred.id : null,
       layer_name: preferred ? preferred.name : '画面', kind: preferred ? preferred.kind : '',
-      rect: rect.slice(), action: 'note', note: '', candidates
+      rect: rect.slice(), note: '', candidates
     };
   }
-  edTitle.textContent = existing ? ('第 ' + (annotations.findIndex(item => item.id === existing.id) + 1) + ' 条') : '新框选';
+  edTitle.textContent = existing ? ('第 ' + (annotations.findIndex(item => item.id === existing.id) + 1) + ' 条') : '新批注';
   edMeta.textContent = '区域 ' + editing.rect.map(Math.round).join(', ') + '　宽高 ' + Math.round(editing.rect[2]) + '×' + Math.round(editing.rect[3]);
-  edVisible.textContent = '框内可见：' + (candidates.map(item => item.name).join('、') || '无')
+  edVisible.textContent = '框内图层：' + (candidates.map(item => item.name).join('、') || '无')
     + (hiddenTopNames().length ? '　隐藏：' + hiddenTopNames().join('、') : '');
-  fillLayerSelect(candidates, editing.layer);
   edNote.value = editing.note || '';
   document.getElementById('edDelete').style.display = existing ? 'inline-block' : 'none';
-  setAction(editing.action || 'note');
   placeEditor(editing.rect);
   editor.classList.add('open');
   hint.style.display = 'none';
@@ -694,17 +646,10 @@ window.addEventListener('mouseup', () => {
   edHead.classList.remove('dragging');
 });
 
-function setAction(action) {
-  if (!editing) return;
-  editing.action = action;
-  document.querySelectorAll('.chip').forEach(chip => chip.classList.toggle('active', chip.dataset.action === action));
-  edOffset.textContent = action === 'move' ? '在备注里写往哪挪，比如“右移 20 像素”' : '';
-}
-
 function commitEditing() {
   if (!editing) return false;
   const note = edNote.value.trim();
-  if (!note && editing.action === 'note') { closeEditor(); return false; }
+  if (!note) { closeEditor(); return false; }
   editing.note = note;
   editing.layers = (editing.candidates || []).map(item => ({ id: item.id, name: item.name, kind: item.kind }));
   editing.visible_layers = visibleTopNames();
@@ -845,28 +790,6 @@ document.querySelectorAll('.tab').forEach(tab => {
   };
 });
 
-document.querySelectorAll('.chip').forEach(chip => {
-  chip.onclick = () => setAction(chip.dataset.action);
-});
-
-edLayerSelect.onchange = () => {
-  if (!editing) return;
-  const item = (editing.candidates || []).find(candidate => String(candidate.id) === edLayerSelect.value);
-  if (!item) return;
-  editing.layer = item.id;
-  editing.layer_name = item.name;
-  editing.kind = item.kind;
-  if (item.bounds) {
-    const [x, y, w, h] = item.bounds;
-    selectionBox.style.display = 'block';
-    selectionBox.style.left = (x * scale) + 'px';
-    selectionBox.style.top = (y * scale) + 'px';
-    selectionBox.style.width = Math.max(1, w * scale) + 'px';
-    selectionBox.style.height = Math.max(1, h * scale) + 'px';
-  }
-  renderNotes();
-};
-
 edNote.addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
     event.preventDefault();
@@ -913,7 +836,7 @@ function payload() {
       id: item.id, index: index + 1, layer: item.layer, layer_name: item.layer_name,
       kind: item.kind, rect: item.rect.map(Math.round),
       layers: item.layers || [], visible_layers: item.visible_layers || [], hidden_layers: item.hidden_layers || [],
-      action: item.action, note: item.note || ''
+      note: item.note || ''
     }))
   };
 }

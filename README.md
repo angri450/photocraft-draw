@@ -158,12 +158,12 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
 网页上可以：
 
 1. 左边图层树点选图层，前面的眼睛开关控制显隐，关掉别的层就只看这一层。
-2. 在图上拖动框选区域，框选会挂到当前选中的图层上，图层名和编号自动带进意见。
-3. 选动作、写说明，Enter 保存；每条意见在图上画一个编号框。
+2. 在图上拖动框选区域，卡片会自动识别框内的图层，默认取最具体的那层。
+3. 写说明，Enter 保存；每条意见在图上画一个编号框。
 4. 「批注」页集中列出所有意见，点一条跳回对应区域。
 5. 导出 `review.json`，或在页面里复制 JSON。
 
-导出的格式是图层、区域、动作三层数据：
+导出的格式是图层、区域、意见三层数据：
 
 ```json
 {
@@ -181,13 +181,13 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
       ],
       "visible_layers": ["文字层", "长条餐桌", "拱形窗户", "室内背景", "底色"],
       "hidden_layers": [],
-      "action": "move", "note": "往右挪 20 像素"
+      "note": "往右挪 20 像素"
     }
   ]
 }
 ```
 
-框选后卡片会列出框内可见的顶层图层，默认选面积最小的那个，也可以下拉换目标；同时记下当时的显隐状态。JSON 里 `layer` 是选中的图层，`layers` 是框内所有可见图层，`visible_layers` 和 `hidden_layers` 是保存时哪些顶层图层显示、哪些关掉。拿到 JSON 后按名称找到构图组件参数，改绘制方案再重新出图。
+框选后卡片会自动列出框内可见的顶层图层，默认取面积最小的那个作为批注对象；同时记下当时的显隐状态。JSON 里 `layer` 是选中的图层，`layers` 是框内所有可见图层，`visible_layers` 和 `hidden_layers` 是保存时哪些顶层图层显示、哪些关掉。拿到 JSON 后按名称找到构图组件参数，改绘制方案再重新出图。
 
 按顶层图层出透明图要跑几次引擎，5 个顶层大约 2.3 秒，结果缓存在 `out/_layers/`。
 
