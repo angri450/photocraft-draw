@@ -730,3 +730,78 @@ COMPONENTS["pixel_person"] = {
 __all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
            "build_rig_horse", "build_rig_person", "build_scatter_shape", "build_pixel_person",
            "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]
+
+
+def _capsule(pen: Pen, x1: float, y1: float, x2: float, y2: float,
+             width: float, color: str, name: str) -> None:
+    """胶囊：一段矩形加两端各一个圆，接头是圆的，不会有方角。"""
+    _segment(pen, x1, y1, _math.degrees(_math.atan2(y2 - y1, x2 - x1)),
+             _math.hypot(x2 - x1, y2 - y1), width, color, name, taper=1.0)
+    radius = width / 2
+    for suffix, (cx, cy) in ((" 头", (x1, y1)), (" 尾", (x2, y2))):
+        pen.ellipse(cx, cy, radius, radius, fill=color, stroke_width=None, stroke=None,
+                    name=name + suffix)
+
+
+def build_capsule_person(params: dict, pen: Pen) -> None:
+    """胶囊人：四肢用胶囊，躯干用圆角矩形，头用圆。
+
+    SDF 那套做法在不能算距离场的画笔上做不到，但可以把"圆角"这一层
+    补上：四肢两端是圆的，关节处自然融在一起，不会有方角戳出来。
+
+    参数：
+        root    [x, y]，肩部位置，必填
+        height  总身高像素，必填
+        pose    stand / walk / run / point
+        body    身体颜色，默认 surface
+    """
+    root = params.get("root")
+    if not isinstance(root, (list, tuple)) or len(root) != 2:
+        raise ValueError("胶囊人需要 root：[x, y]，肩部位置")
+    total = params.get("height")
+    if isinstance(total, bool) or not isinstance(total, (int, float)) or total <= 0:
+        raise ValueError("胶囊人需要 height，大于 0 的总身高像素")
+    pose = str(params.get("pose", "stand"))
+    if pose not in PERSON_POSES:
+        raise ValueError(f"胶囊人 pose 只能是 {'、'.join(PERSON_POSES)}，收到 {pose}")
+    body = params.get("body", "surface")
+    skin = params.get("skin", "body")
+
+    sx, sy = float(root[0]), float(root[1])
+    u = float(total) / 32.0
+    angles = PERSON_POSES[pose]
+
+    # 头：圆，直径 8
+    pen.ellipse(sx, sy - 4 * u, 4 * u, 4 * u, fill=skin if skin != "body" else body,
+                stroke_width=None, stroke=None, name="头")
+    # 躯干：圆角矩形
+    pen.rounded_rect(sx - 4 * u, sy, 8 * u, 12 * u, radius=2.4 * u,
+                     fill=body, stroke_width=None, stroke=None, name="躯干")
+
+    def limb(bx, by, angle, length, width, label):
+        a = _math.radians(angle)
+        ex = bx + _math.cos(a) * length
+        ey = by + _math.sin(a) * length
+        _capsule(pen, bx, by, ex, ey, width, body, label)
+
+    for side, key, label in ((-1, "arm_l", "左臂"), (1, "arm_r", "右臂")):
+        limb(sx + side * 4 * u, sy + 1.2 * u, angles[key], 12 * u, 4 * u, label)
+    for side, key, label in ((-1, "leg_l", "左腿"), (1, "leg_r", "右腿")):
+        limb(sx + side * 2 * u, sy + 12 * u, angles[key], 12 * u, 4 * u, label)
+
+
+COMPONENTS["capsule_person"] = {
+    "name": "胶囊人",
+    "description": "四肢用胶囊、躯干用圆角矩形、头用圆，关节处没有方角",
+    "params": {
+        "root": "[x, y]，肩部位置，必填",
+        "height": "总身高像素，必填",
+        "pose": "stand / walk / run / point",
+        "body": "身体颜色，默认 surface",
+    },
+    "build": build_capsule_person,
+}
+
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
+           "build_rig_horse", "build_rig_person", "build_scatter_shape", "build_pixel_person",
+           "build_capsule_person", "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]

@@ -46,7 +46,7 @@ HORSE_INNER = (
 # 椭圆包络：比多边形宽容，也更符合"内外两层圆"的说法
 # center 是中心相对肩部的偏移，rx/ry 是外椭圆半径，inner 是内层比例
 ENVELOPES = {
-    "person": {"center": (0.0, 0.22), "rx": 0.38, "ry": 0.55, "inner": 0.55},
+    "person": {"center": (0.0, 0.12), "rx": 0.48, "ry": 0.62, "inner": 0.55},
     "horse": {"center": (0.04, 0.10), "rx": 0.82, "ry": 0.68, "inner": 0.5},
 }
 

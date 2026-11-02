@@ -1,0 +1,62 @@
+{
+  "name": "胶囊人三姿态",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "stand",
+      "components": [
+        {
+          "component": "capsule_person",
+          "params": {
+            "root": [
+              160,
+              420
+            ],
+            "height": 500,
+            "pose": "stand",
+            "body": "surface"
+          }
+        }
+      ]
+    },
+    {
+      "name": "walk",
+      "components": [
+        {
+          "component": "capsule_person",
+          "params": {
+            "root": [
+              450,
+              420
+            ],
+            "height": 500,
+            "pose": "walk",
+            "body": "surface"
+          }
+        }
+      ]
+    },
+    {
+      "name": "point",
+      "components": [
+        {
+          "component": "capsule_person",
+          "params": {
+            "root": [
+              600,
+              420
+            ],
+            "height": 500,
+            "pose": "point",
+            "body": "surface"
+          }
+        }
+      ]
+    }
+  ]
+}
