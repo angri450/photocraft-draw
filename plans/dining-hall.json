@@ -55,15 +55,15 @@
             "draperies": [
               [
                 6,
-                96,
+                112,
                 54,
-                256
+                240
               ],
               [
                 740,
-                96,
+                112,
                 54,
-                256
+                240
               ]
             ],
             "cast_shadow": true
@@ -80,21 +80,21 @@
             "windows": [
               [
                 166,
-                132,
+                138,
                 76,
-                120
+                114
               ],
               [
                 350,
-                108,
+                118,
                 100,
-                156
+                146
               ],
               [
                 558,
-                132,
+                138,
                 76,
-                120
+                114
               ]
             ],
             "mullions": true
@@ -109,12 +109,12 @@
           "component": "long_table",
           "params": {
             "table": [
-              120,
-              278,
-              560,
-              42
+              50,
+              268,
+              700,
+              52
             ],
-            "front": 40
+            "front": 46
           }
         }
       ]
@@ -126,7 +126,7 @@
           "component": "wine_goblet",
           "params": {
             "center": [
-              196.5,
+              120,
               292
             ],
             "height": 30
@@ -136,8 +136,8 @@
           "component": "dinner_plate",
           "params": {
             "center": [
-              253.5,
-              296
+              186,
+              300
             ],
             "size": 26
           }
@@ -146,7 +146,7 @@
           "component": "bread_loaf",
           "params": {
             "center": [
-              304.0,
+              248,
               290
             ],
             "size": 15
@@ -156,8 +156,8 @@
           "component": "wine_goblet",
           "params": {
             "center": [
-              424.4,
-              292
+              318,
+              294
             ],
             "height": 34
           }
@@ -166,8 +166,8 @@
           "component": "dinner_plate",
           "params": {
             "center": [
-              377.2,
-              296
+              382,
+              300
             ],
             "size": 28
           }
@@ -176,8 +176,8 @@
           "component": "bread_loaf",
           "params": {
             "center": [
-              474.9,
-              290
+              448,
+              291
             ],
             "size": 16,
             "cut": true
@@ -187,8 +187,38 @@
           "component": "wine_goblet",
           "params": {
             "center": [
-              562.8,
-              292
+              512,
+              293
+            ],
+            "height": 32
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              578,
+              301
+            ],
+            "size": 26
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              640,
+              290
+            ],
+            "size": 14
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              700,
+              294
             ],
             "height": 28
           }
@@ -197,27 +227,17 @@
           "component": "dinner_plate",
           "params": {
             "center": [
-              611.6,
-              296
-            ],
-            "size": 24
-          }
-        },
-        {
-          "component": "dinner_plate",
-          "params": {
-            "center": [
-              168.8,
+              92,
               310
             ],
-            "size": 38
+            "size": 32
           }
         },
         {
           "component": "wine_goblet",
           "params": {
             "center": [
-              219.3,
+              158,
               316
             ],
             "height": 36
@@ -227,71 +247,40 @@
           "component": "dinner_plate",
           "params": {
             "center": [
-              343.0,
+              286,
               312
-            ],
-            "size": 42
-          }
-        },
-        {
-          "component": "bread_loaf",
-          "params": {
-            "center": [
-              307.2,
-              306
-            ],
-            "size": 22
-          }
-        },
-        {
-          "component": "wine_goblet",
-          "params": {
-            "center": [
-              400.0,
-              318
-            ],
-            "height": 40
-          }
-        },
-        {
-          "component": "dinner_plate",
-          "params": {
-            "center": [
-              505.8,
-              310
             ],
             "size": 36
           }
         },
         {
-          "component": "bread_loaf",
-          "params": {
-            "center": [
-              541.6,
-              305
-            ],
-            "size": 20,
-            "cut": true
-          }
-        },
-        {
           "component": "wine_goblet",
           "params": {
             "center": [
-              595.3,
-              315
+              352,
+              318
             ],
-            "height": 32
+            "height": 38
           }
         },
         {
           "component": "dinner_plate",
           "params": {
             "center": [
-              647.4,
-              308
+              470,
+              311
             ],
-            "size": 30
+            "size": 34
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              606,
+              316
+            ],
+            "height": 34
           }
         }
       ]
