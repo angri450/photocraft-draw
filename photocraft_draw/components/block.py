@@ -356,7 +356,7 @@ HORSE_LEGS = {
 }
 
 HORSE_LEG_LENGTHS = (0.17, 0.17, 0.06)
-HORSE_LEG_WIDTH = 0.055
+HORSE_LEG_WIDTH = 0.09
 
 
 def _segment(pen: Pen, x: float, y: float, angle: float, length: float,
@@ -894,4 +894,127 @@ COMPONENTS["capsule_horse"] = {
 __all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
            "build_rig_horse", "build_rig_person", "build_scatter_shape", "build_pixel_person",
            "build_capsule_person", "build_capsule_horse",
+           "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]
+
+
+def build_capsule_rider(params: dict, pen: Pen) -> None:
+    """骑手：马和人在一个组件里，按前后关系逐层画。
+
+    顺序是：马后腿 → 马身 → 颈头尾 → 人 → 人的腿 → 马前腿。
+    这样人的腿压在马身上，马的前腿又压在人的腿前面，
+    前后关系一眼能看出来。
+
+    参数：
+        root    [x, y]，马肩位置，必填
+        length  肩高像素，必填
+        horse   马的颜色，默认 mid
+        rider   人的颜色，默认 deep
+        skin    人的头部颜色，默认 soft
+        pose    stand / walk / gallop，马的步态
+    """
+    root = params.get("root")
+    if not isinstance(root, (list, tuple)) or len(root) != 2:
+        raise ValueError("骑手需要 root：[x, y]，马肩位置")
+    height = params.get("length")
+    if isinstance(height, bool) or not isinstance(height, (int, float)) or height <= 0:
+        raise ValueError("骑手需要 length，大于 0 的肩高像素")
+    pose = str(params.get("pose", "stand"))
+    if pose not in ("stand", "walk", "gallop"):
+        raise ValueError("骑手 pose 只能是 stand、walk、gallop")
+    horse = params.get("horse", "mid")
+    rider = params.get("rider", "deep")
+    skin = params.get("skin", "soft")
+
+    sx, sy = float(root[0]), float(root[1])
+    u = float(height)
+    angles = HORSE_LEGS
+
+    def capsule(x1, y1, x2, y2, width, color, label):
+        _capsule(pen, x1, y1, x2, y2, width, color, label)
+        return x2, y2
+
+    def leg(key, index_range, width_scale=1.2):
+        spec = angles[key]
+        x = sx + spec["root"][0] * u
+        y = sy + spec["root"][1] * u
+        for index in index_range:
+            angle = spec[pose][index]
+            length = HORSE_LEG_LENGTHS[index]
+            a = _math.radians(angle)
+            ex = x + _math.cos(a) * length * u
+            ey = y + _math.sin(a) * length * u
+            _segment(pen, x, y, angle, HORSE_LEG_LENGTHS[index] * u,
+                     HORSE_LEG_WIDTH * u * (1.5 if index == 2 else 1.3),
+                     "ink" if index == 2 else horse, f"{key} 腿 {index + 1}", taper=1.0)
+            x, y = ex, ey
+
+    # 1. 后腿和尾巴：最靠后
+    leg("bl", (0, 1, 2))
+    leg("br", (0, 1, 2))
+    tx, ty = sx - u * 0.52, sy - u * 0.06
+    for index, angle in enumerate((118, 136, 152)):
+        a = _math.radians(angle)
+        ex = tx + _math.cos(a) * u * 0.15
+        ey = ty + _math.sin(a) * u * 0.15
+        capsule(tx, ty, ex, ey, u * 0.055, "line", f"尾 {index + 1}")
+        tx, ty = ex, ey
+
+    # 2. 马身
+    pen.rounded_rect(sx - u * 0.56, sy - u * 0.13, u * 0.58, u * 0.26, radius=u * 0.11,
+                     fill=horse, stroke_width=None, stroke=None, name="马身")
+
+    # 3. 颈、头、鬃毛
+    nx, ny = capsule(sx + u * 0.01, sy - u * 0.06, sx + u * 0.12, sy - u * 0.26,
+                     u * 0.13, horse, "马颈下")
+    nx, ny = capsule(nx, ny, nx + u * 0.12, ny - u * 0.13, u * 0.105, horse, "马颈上")
+    capsule(nx, ny, nx + u * 0.22, ny + u * 0.08, u * 0.135, horse, "马头")
+    capsule(sx + u * 0.03, sy - u * 0.13, sx + u * 0.14, sy - u * 0.31, u * 0.045, "line", "鬃毛下")
+    capsule(sx + u * 0.14, sy - u * 0.31, sx + u * 0.24, sy - u * 0.42, u * 0.04, "line", "鬃毛上")
+
+    # 4. 骑手：臀部坐在马背上
+    hip_x, hip_y = sx - u * 0.16, sy - u * 0.14
+    body_w, body_h = u * 0.24, u * 0.36
+    pen.rounded_rect(hip_x - body_w / 2, hip_y - body_h, body_w, body_h, radius=u * 0.07,
+                     fill=rider, stroke_width=None, stroke=None, name="躯干")
+    pen.ellipse(hip_x, hip_y - body_h - u * 0.11, u * 0.1, u * 0.11,
+                fill=skin, stroke_width=None, stroke=None, name="头")
+    # 举起的右臂、握缰绳的左臂
+    capsule(hip_x + u * 0.08, hip_y - body_h + u * 0.08, hip_x + u * 0.24, hip_y - body_h - u * 0.12,
+            u * 0.075, rider, "举起的手臂")
+    capsule(hip_x - u * 0.06, hip_y - body_h + u * 0.1, hip_x + u * 0.12, hip_y - u * 0.02,
+            u * 0.07, rider, "握缰绳的手臂")
+    # 斗篷：身后一块
+    capsule(hip_x - u * 0.1, hip_y - body_h + u * 0.04, hip_x - u * 0.3, hip_y - u * 0.16,
+            u * 0.12, rider, "斗篷")
+
+    # 5. 骑手的腿：大腿向前，小腿垂下，踩在马镫上
+    knee_x = hip_x + u * 0.14
+    knee_y = hip_y + u * 0.16
+    capsule(hip_x, hip_y + u * 0.02, knee_x, knee_y, u * 0.1, rider, "骑手大腿")
+    capsule(knee_x, knee_y, knee_x - u * 0.03, knee_y + u * 0.24, u * 0.085, rider, "骑手小腿")
+    capsule(knee_x - u * 0.03, knee_y + u * 0.24, knee_x - u * 0.03, knee_y + u * 0.31,
+            u * 0.09, "ink", "骑手靴")
+
+    # 6. 前腿：最前
+    leg("fl", (0, 1, 2))
+    leg("fr", (0, 1, 2))
+
+
+COMPONENTS["capsule_rider"] = {
+    "name": "骑手",
+    "description": "马和人在一个组件里按前后关系画：后腿、马身、颈头、人、人的腿、前腿",
+    "params": {
+        "root": "[x, y]，马肩位置，必填",
+        "length": "肩高像素，必填",
+        "horse": "马的颜色，默认 mid",
+        "rider": "人的颜色，默认 deep",
+        "skin": "头部颜色，默认 soft",
+        "pose": "stand / walk / gallop",
+    },
+    "build": build_capsule_rider,
+}
+
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
+           "build_rig_horse", "build_rig_person", "build_scatter_shape", "build_pixel_person",
+           "build_capsule_person", "build_capsule_horse", "build_capsule_rider",
            "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]

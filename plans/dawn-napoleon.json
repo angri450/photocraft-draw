@@ -1,0 +1,222 @@
+{
+  "name": "晨光山涧 · 拿破仑",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "dawn",
+  "layers": [
+    {
+      "name": "天空",
+      "components": [
+        {
+          "component": "alpine_sky",
+          "params": {
+            "area": [
+              0,
+              0,
+              800,
+              440
+            ],
+            "bands": 24,
+            "colors": {
+              "top": "bg",
+              "bottom": "accent"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "远山",
+      "components": [
+        {
+          "component": "alpine_peaks",
+          "params": {
+            "peaks": [
+              [
+                60,
+                470,
+                115,
+                210
+              ],
+              [
+                205,
+                470,
+                135,
+                250
+              ],
+              [
+                365,
+                470,
+                155,
+                290
+              ],
+              [
+                525,
+                470,
+                130,
+                240
+              ],
+              [
+                675,
+                470,
+                145,
+                260
+              ],
+              [
+                785,
+                470,
+                105,
+                200
+              ]
+            ],
+            "snow": false,
+            "colors": {
+              "far": "muted",
+              "near": "muted"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "近山",
+      "components": [
+        {
+          "component": "alpine_peaks",
+          "params": {
+            "peaks": [
+              [
+                155,
+                530,
+                175,
+                330
+              ],
+              [
+                435,
+                530,
+                195,
+                360
+              ],
+              [
+                705,
+                530,
+                180,
+                340
+              ]
+            ],
+            "snow": false,
+            "colors": {
+              "far": "line",
+              "near": "line"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "岩地",
+      "components": [
+        {
+          "component": "rocky_ground",
+          "params": {
+            "area": [
+              0,
+              570,
+              800,
+              330
+            ],
+            "tone": "mid",
+            "colors": {
+              "base": "line",
+              "light": "muted",
+              "dark": "ink"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "河流",
+      "components": [
+        {
+          "component": "river_water",
+          "params": {
+            "area": [
+              0,
+              890,
+              800,
+              177
+            ],
+            "waves": 5,
+            "amplitude": 8,
+            "cycles": 3,
+            "colors": {
+              "water": "bg",
+              "light": "surface",
+              "foam": "soft",
+              "dark": "line"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "骑手",
+      "components": [
+        {
+          "component": "capsule_rider",
+          "params": {
+            "root": [
+              470,
+              620
+            ],
+            "length": 300,
+            "pose": "stand",
+            "horse": "mid",
+            "rider": "deep",
+            "skin": "soft"
+          }
+        }
+      ]
+    },
+    {
+      "name": "前景",
+      "components": [
+        {
+          "component": "foreground_rocks",
+          "params": {
+            "rocks": [
+              [
+                80,
+                1010,
+                130,
+                48
+              ],
+              [
+                790,
+                995,
+                120,
+                44
+              ],
+              [
+                430,
+                1075,
+                95,
+                34
+              ]
+            ],
+            "colors": {
+              "stone": "line",
+              "light": "muted",
+              "dark": "ink",
+              "shadow": "ink"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
