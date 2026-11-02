@@ -163,6 +163,8 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
 5. 「批注」页集中列出所有意见，点一条跳回对应区域。
 6. 导出 `review.json`，或在页面里复制 JSON。
 
+图层树最底下的 `Background` 是引擎新建文档时自带的底层像素层，不是构图组件；它现在也在叠放里，能用眼睛开关。正常情况下它被室内背景的墙盖住，隐藏所有绘制层才会看到；自动识别批注图层时会跳过它，除非其他层都关掉了。
+
 导出的格式是图层、区域、意见三层数据：
 
 ```json

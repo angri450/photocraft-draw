@@ -596,7 +596,7 @@ function hiddenTopNames() {
 }
 function layersInRect(rect) {
   const [x, y, w, h] = rect;
-  return rows
+  const all = rows
     .filter(layer => layer.depth === 0 && topIds.has(String(layer.id)))
     .filter(layer => {
       if (!layer.bounds) return false;
@@ -605,6 +605,8 @@ function layersInRect(rect) {
       return lx < x + w && lx + lw > x && ly < y + h && ly + lh > y;
     })
     .sort((a, b) => (a.bounds[2] * a.bounds[3]) - (b.bounds[2] * b.bounds[3]));
+  const drawn = all.filter(layer => layer.name !== 'Background');
+  return drawn.length ? drawn : all;
 }
 function openEditor(existing) {
   if (editing) commitEditing();
@@ -1084,10 +1086,7 @@ def render_layer_images(psd_path: Path, out_dir: Path) -> list[dict]:
         [str(cli), "info", str(psd_path)], capture_output=True, text=True, check=True
     )
     data = json.loads(result.stdout)
-    tops = [node for node in data.get("layers") or [] if node.get("name") != "Background"]
-    background = next(
-        (node for node in data.get("layers") or [] if node.get("name") == "Background"), None
-    )
+    tops = list(data.get("layers") or [])
     image_dir = out_dir / "_layers"
     image_dir.mkdir(parents=True, exist_ok=True)
     for old in image_dir.glob("*.png"):
@@ -1103,9 +1102,6 @@ def render_layer_images(psd_path: Path, out_dir: Path) -> list[dict]:
                 continue
             args += ["--cmd", "layer.setProps", "--params",
                      json.dumps({"layer": other.get("id"), "visible": False})]
-        if background:
-            args += ["--cmd", "layer.setProps", "--params",
-                     json.dumps({"layer": background.get("id"), "visible": False})]
         path = image_dir / f"{target.get('id')}.png"
         args += ["--out", str(path)]
         subprocess.run(args, capture_output=True, check=True)
