@@ -114,6 +114,30 @@ def cmd_verify(args) -> int:
     commands, meta = compose_plan(plan)
     result = check_commands(commands, (meta["width"], meta["height"]), expect=args.expect)
     print(report_text(result))
+    if args.envelope:
+        from .checker import parts_of
+        from .envelope import check_envelope, envelope_text
+
+        layers = plan.get("layers") or [{"name": "全部", "components": plan.get("components")}]
+        for layer in layers:
+            sub_commands, _ = compose_plan({**plan, "layers": [layer]})
+            parts = parts_of(sub_commands)
+            if not parts:
+                continue
+            if args.origin:
+                ox, oy = (float(value) for value in args.origin.split(","))
+            else:
+                top = min(part["bbox"][1] for part in parts)
+                bottom = max(part["bbox"][3] for part in parts)
+                left = min(part["bbox"][0] for part in parts)
+                right = max(part["bbox"][2] for part in parts)
+                ratio = 0.30 if args.envelope == "person" else 0.415
+                ox, oy = (left + right) / 2, top + (bottom - top) * ratio
+            scale = float(args.scale) if args.scale else (
+                max(part["bbox"][3] for part in parts) - min(part["bbox"][1] for part in parts))
+            env = check_envelope(parts, args.envelope, (ox, oy), scale)
+            print(f"[{layer.get('name', '')}] {envelope_text(env)}")
+            result["ok"] = result["ok"] and env["ok"]
     if args.verbose:
         for item in result["items"]:
             print(f"  {item['name']}  {item['bbox']}")
@@ -287,6 +311,9 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("plan", help="绘制方案文件")
     verify.add_argument("--expect", choices=["person", "horse"], help="按人物或马的规则检查")
     verify.add_argument("--verbose", action="store_true", help="列出每个部件的包围盒")
+    verify.add_argument("--envelope", choices=["person", "horse"], help="额外按包络检查")
+    verify.add_argument("--origin", help="肩部位置 x,y，不给就按包围盒推断")
+    verify.add_argument("--scale", type=float, help="身高或肩高像素，不给就用总高")
     verify.set_defaults(func=cmd_verify)
 
     brief = sub.add_parser("brief", help="把绘制方案翻译成生图提示词")
