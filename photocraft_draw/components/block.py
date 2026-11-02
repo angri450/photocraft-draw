@@ -1035,3 +1035,43 @@ __all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "bui
            "build_rig_horse", "build_rig_person", "build_scatter_shape", "build_pixel_person",
            "build_capsule_person", "build_capsule_horse", "build_capsule_rider",
            "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]
+
+
+def build_soft_shadow(params: dict, pen: Pen) -> None:
+    """地面投影：一个扁椭圆，把主体按在地上。
+
+    参数：
+        center  [x, y]，阴影中心，必填
+        rx/ry   横向和纵向半径（像素），必填
+        color   颜色，默认 ink
+    """
+    center = params.get("center")
+    if not isinstance(center, (list, tuple)) or len(center) != 2:
+        raise ValueError("地面投影需要 center：[x, y]")
+    rx = params.get("rx")
+    ry = params.get("ry")
+    for name, value in (("rx", rx), ("ry", ry)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+            raise ValueError(f"地面投影需要 {name}，大于 0 的像素半径")
+    pen.ellipse(float(center[0]), float(center[1]), float(rx), float(ry),
+                fill=params.get("color", "ink"), stroke_width=None, stroke=None,
+                name=params.get("name") or "地面投影")
+
+
+COMPONENTS["soft_shadow"] = {
+    "name": "地面投影",
+    "description": "一个扁椭圆，放在主体脚下，把主体按在地上",
+    "params": {
+        "center": "[x, y]，阴影中心，必填",
+        "rx": "横向半径，必填",
+        "ry": "纵向半径，必填",
+        "color": "颜色，默认 ink",
+    },
+    "build": build_soft_shadow,
+}
+
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
+           "build_rig_horse", "build_rig_person", "build_scatter_shape", "build_pixel_person",
+           "build_capsule_person", "build_capsule_horse", "build_capsule_rider",
+           "build_soft_shadow",
+           "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]
