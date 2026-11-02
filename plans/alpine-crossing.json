@@ -1,0 +1,160 @@
+{
+  "name": "拿破仑翻越阿尔卑斯山",
+  "canvas": [
+    1600,
+    900
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "天空",
+      "components": [
+        {
+          "component": "alpine_sky",
+          "params": {
+            "area": [
+              0,
+              0,
+              800,
+              310
+            ],
+            "bands": 22,
+            "clouds": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "远山",
+      "components": [
+        {
+          "component": "alpine_peaks",
+          "params": {
+            "peaks": [
+              [
+                50,
+                318,
+                95,
+                118
+              ],
+              [
+                190,
+                318,
+                115,
+                148
+              ],
+              [
+                330,
+                318,
+                125,
+                168
+              ],
+              [
+                470,
+                318,
+                105,
+                138
+              ],
+              [
+                610,
+                318,
+                120,
+                158
+              ],
+              [
+                750,
+                318,
+                90,
+                112
+              ]
+            ],
+            "snow": false,
+            "colors": {
+              "far": "muted",
+              "near": "muted",
+              "snow": "soft"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "近山",
+      "components": [
+        {
+          "component": "alpine_peaks",
+          "params": {
+            "peaks": [
+              [
+                130,
+                338,
+                135,
+                182
+              ],
+              [
+                390,
+                338,
+                155,
+                204
+              ],
+              [
+                655,
+                338,
+                145,
+                192
+              ]
+            ],
+            "snow": false,
+            "colors": {
+              "far": "line",
+              "near": "line",
+              "snow": "soft"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "岩地",
+      "components": [
+        {
+          "component": "rocky_ground",
+          "params": {
+            "area": [
+              0,
+              312,
+              800,
+              138
+            ],
+            "tone": "mid",
+            "rocks": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "前景",
+      "components": [
+        {
+          "component": "rocky_ground",
+          "params": {
+            "area": [
+              0,
+              404,
+              800,
+              46
+            ],
+            "tone": "dark",
+            "rocks": [],
+            "colors": {
+              "base": "ink",
+              "light": "muted",
+              "dark": "ink"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

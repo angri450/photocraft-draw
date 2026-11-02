@@ -17,6 +17,18 @@ PALETTES = {
         "line": "#9c8a6e",
         "accent": "#f6e6bd",
     },
+    "alpine": {
+        "name": "阿尔卑斯",
+        "bg": "#3f4d57",
+        "surface": "#8d8b7c",
+        "ink": "#211c18",
+        "muted": "#5a5f5e",
+        "deep": "#7c3a2c",
+        "mid": "#7d7059",
+        "soft": "#cfc6b2",
+        "line": "#3c3a35",
+        "accent": "#d9c089",
+    },
     "dusk": {
         "name": "暮色",
         "bg": "#1b1524",
