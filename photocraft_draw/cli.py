@@ -57,7 +57,10 @@ def _render(meta: dict, commands: list[dict], outputs: list[tuple[str, Path]],
     started = time.time()
     out_dir = outputs[0][1].parent
     with Engine(read_root=Path.cwd(), write_root=out_dir) as engine:
-        engine.new_document(meta["width"], meta["height"], meta["name"])
+        engine.new_document(
+            meta["width"], meta["height"], meta["name"],
+            background=meta.get("document_background"),
+        )
         for index, command in enumerate(commands, 1):
             result = engine.execute(command["command"], command.get("params") or {})
             if command["command"] == "layer.new.group" and not command.get("_nested"):
@@ -70,6 +73,8 @@ def _render(meta: dict, commands: list[dict], outputs: list[tuple[str, Path]],
             result = engine.execute(command_id, params)
             if verbose:
                 print(f"  附加 {command_id} -> {result}")
+        if meta.get("document_background") == "transparent":
+            engine.execute("file.scripts.deleteAllEmptyLayers", {})
         for fmt, path in outputs:
             saved = engine.save(path, fmt)
             if verbose and saved.get("warnings"):

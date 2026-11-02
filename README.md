@@ -100,6 +100,7 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
   "canvas": [1600, 900],
   "ref_width": 800,
   "palette": "fresco",
+  "document_background": "transparent",
   "caption": "PHOTOCRAFT-DRAW 0.1",
   "layers": [
     {
@@ -117,9 +118,10 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 1. `canvas` 是最终像素，`ref_width` 是组件的参考宽度，组件坐标按参考宽度写，脚本按 `canvas宽 / ref_width` 统一放大。
 2. `palette` 可以是配色名，也可以直接写角色表；组件里的颜色写角色名（bg、ink、line 等），不写死色值。
 3. `background` 可选，写一个角色名，铺满整张画布；如果室内背景的墙已经铺满画布，就不用写，否则会多出一层颜色完全相同的底色。
-4. `caption` 可选，画面左下角的一行字，会建成文字层，PSD 里可以改；`caption_color` 可选，默认 surface。
-5. `layers` 按顺序画，先写的在下面，后写的压在上面；每一层是一个图层组，层里的组件是子组。
-6. 也可以不写 `layers`，直接写 `components`，这时每个组件单独成一层，适合快速试验。
+4. `document_background` 可选，默认 `white`；写 `transparent` 就不生成 `Background` 层，画完会自动清掉空图层。
+5. `caption` 可选，画面左下角的一行字，会建成文字层，PSD 里可以改；`caption_color` 可选，默认 surface。
+6. `layers` 按顺序画，先写的在下面，后写的压在上面；每一层是一个图层组，层里的组件是子组。
+7. 也可以只写 `components`，每个组件单独成层，适合快速试验。
 
 ## 命令目录
 
@@ -163,7 +165,7 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
 5. 「批注」页集中列出所有意见，点一条跳回对应区域。
 6. 导出 `review.json`，或在页面里复制 JSON。
 
-图层树最底下的 `Background` 是引擎新建文档时自带的底层像素层，不是构图组件；它现在也在叠放里，能用眼睛开关。正常情况下它被室内背景的墙盖住，隐藏所有绘制层才会看到；自动识别批注图层时会跳过它，除非其他层都关掉了。
+框架方案用了 `document_background: transparent`，不会再生成 `Background`，图层树最底下就是室内背景。如果方案用默认白底，图层树最底下会有一个 `Background`，那是引擎新建文档时自带的底层像素层，不是构图组件；它也能用眼睛开关，自动识别批注图层时会跳过它。
 
 导出的格式是图层、区域、意见三层数据：
 

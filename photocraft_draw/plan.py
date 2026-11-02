@@ -68,6 +68,10 @@ def validate_plan(plan: dict) -> list[str]:
     if background is not None and not isinstance(background, str):
         errors.append("background 必须是配色角色名或 #rrggbb")
 
+    document_background = plan.get("document_background")
+    if document_background is not None and not isinstance(document_background, str):
+        errors.append("document_background 必须是 white、black、transparent 或 #rrggbb")
+
     caption = plan.get("caption")
     if caption is not None and not isinstance(caption, str):
         errors.append("caption 必须是字符串")
@@ -115,7 +119,9 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
     width, height = plan["canvas"]
     ref_width = plan.get("ref_width", 800)
     palette = resolve_palette(plan.get("palette"))
-    pen = Pen(int(width), int(height), ref_width=ref_width, palette=palette)
+    document_background = plan.get("document_background", "white")
+    base_layer = "Layer 1" if document_background == "transparent" else "Background"
+    pen = Pen(int(width), int(height), ref_width=ref_width, palette=palette, base_layer=base_layer)
 
     background = plan.get("background")
     if background:
@@ -153,7 +159,7 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
         "name": plan.get("name") or "未命名",
         "width": int(width),
         "height": int(height),
-        "layers": layer_count,
+        "document_background": plan.get("document_background", "white"),        "layers": layer_count,
         "components": component_count,
         "commands": len(pen.commands),
     }

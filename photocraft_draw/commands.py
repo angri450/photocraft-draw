@@ -11,7 +11,8 @@ class Pen:
     构图组件只关心参考坐标（默认 800 宽），不用考虑最终画布多大。
     """
 
-    def __init__(self, width: int, height: int, ref_width: float = 800, palette: dict | None = None):
+    def __init__(self, width: int, height: int, ref_width: float = 800, palette: dict | None = None,
+                 base_layer: str = "Background"):
         if width <= 0 or height <= 0:
             raise ValueError("画布宽高必须大于 0")
         if ref_width <= 0:
@@ -21,6 +22,7 @@ class Pen:
         self.ref_width = float(ref_width)
         self.k = self.width / self.ref_width
         self.palette = palette or {}
+        self.base_layer = str(base_layer)
         self.commands: list[dict] = []
         self._has_stage = False
 
@@ -53,7 +55,7 @@ class Pen:
         直接落在当前组里面。
         """
         if not nested and self._has_stage:
-            self.commands.append({"command": "layer.select", "params": {"name": "Background"}})
+            self.commands.append({"command": "layer.select", "params": {"name": self.base_layer}})
         command = {"command": "layer.new.group", "params": {"name": str(name)}}
         if nested:
             command["_nested"] = True

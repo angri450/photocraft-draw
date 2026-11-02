@@ -166,8 +166,12 @@ class Engine:
                 return message
         raise EngineError(f"{method} 调用超时（{timeout:.0f} 秒）")
 
-    def new_document(self, width: int, height: int, name: str = "untitled") -> None:
-        message = self.call("doc.new", {"width": int(width), "height": int(height), "name": str(name)})
+    def new_document(self, width: int, height: int, name: str = "untitled",
+                     background: str | None = None) -> None:
+        params = {"width": int(width), "height": int(height), "name": str(name)}
+        if background:
+            params["background"] = str(background)
+        message = self.call("doc.new", params)
         if not message.get("ok"):
             raise EngineError(f"新建画布失败：{message.get('error')}")
 
