@@ -343,3 +343,102 @@ COMPONENTS["block_horse"] = {
 
 __all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
            "POSES", "HORSE_POSES", "ORDER", "COMPONENTS"]
+
+
+import math as _math
+
+# 马的四条腿：每条腿三段，角度是绝对角度（0 向右，90 向下）
+HORSE_LEGS = {
+    "fl": {"root": (0.02, 0.10), "stand": (86, 90, 72), "walk": (70, 100, 62), "gallop": (55, 118, 40)},
+    "fr": {"root": (-0.06, 0.10), "stand": (92, 94, 76), "walk": (98, 84, 86), "gallop": (40, 128, 30)},
+    "bl": {"root": (-0.46, 0.10), "stand": (94, 88, 74), "walk": (108, 78, 80), "gallop": (120, 70, 60)},
+    "br": {"root": (-0.38, 0.10), "stand": (90, 86, 70), "walk": (84, 94, 70), "gallop": (110, 78, 52)},
+}
+
+HORSE_LEG_LENGTHS = (0.17, 0.17, 0.06)
+HORSE_LEG_WIDTH = 0.055
+
+
+def _segment(pen: Pen, x: float, y: float, angle: float, length: float,
+             width: float, color: str, name: str) -> tuple[float, float]:
+    """从 (x, y) 按角度画一段有宽度的骨头，返回末端点。"""
+    a = _math.radians(angle)
+    dx, dy = _math.cos(a), _math.sin(a)
+    nx, ny = -dy, dx
+    x2, y2 = x + dx * length, y + dy * length
+    half = width / 2
+    knots = [[x + nx * half, y + ny * half], [x2 + nx * half, y2 + ny * half],
+             [x2 - nx * half, y2 - ny * half], [x - nx * half, y - ny * half]]
+    pen.path([{"closed": True, "knots": knots}], fill=color, name=name)
+    return x2, y2
+
+
+def build_rig_horse(params: dict, pen: Pen) -> None:
+    """关节马：每段骨头是一个可旋转的四边形，腿不会直挺挺。
+
+    参数：
+        root    [x, y]，肩部位置，必填
+        length  肩高像素，必填
+        pose    stand / walk / gallop
+        body    马身颜色，默认 mid
+        dark    蹄和鬃毛的颜色，默认 line
+    """
+    root = params.get("root")
+    if not isinstance(root, (list, tuple)) or len(root) != 2:
+        raise ValueError("关节马需要 root：[x, y]，肩部位置")
+    height = params.get("length")
+    if isinstance(height, bool) or not isinstance(height, (int, float)) or height <= 0:
+        raise ValueError("关节马需要 length，大于 0 的肩高像素")
+    pose = str(params.get("pose", "stand"))
+    if pose not in ("stand", "walk", "gallop"):
+        raise ValueError("关节马 pose 只能是 stand、walk、gallop")
+    body_color = params.get("body", "mid")
+    dark = params.get("dark", "line")
+
+    sx, sy = float(root[0]), float(root[1])
+    u = float(height)
+
+    # 躯干：从肩往后一段斜的厚矩形
+    _segment(pen, sx, sy, 180, u * 0.55, u * 0.25, body_color, "躯干")
+    # 颈：从肩往上偏前
+    nx, ny = _segment(pen, sx + u * 0.02, sy - u * 0.06, -52, u * 0.34, u * 0.15,
+                      body_color, "颈")
+    # 头：接在颈顶，往前
+    _segment(pen, nx, ny, 4, u * 0.28, u * 0.11, body_color, "头")
+    # 鬃毛：颈背一条深色
+    _segment(pen, sx + u * 0.01, sy - u * 0.11, -58, u * 0.32, u * 0.03, dark, "鬃毛")
+
+    # 尾巴：三段往下后甩
+    tx, ty = sx - u * 0.53, sy - u * 0.1
+    for index, angle in enumerate((118, 132, 146)):
+        tx, ty = _segment(pen, tx, ty, angle, u * 0.11, u * 0.05,
+                          dark, f"尾 {index + 1}")
+
+    # 四条腿，每条三段
+    for key, spec in HORSE_LEGS.items():
+        bx = sx + spec["root"][0] * u
+        by = sy + spec["root"][1] * u
+        angles = spec[pose]
+        x, y = bx, by
+        for index, (angle, length) in enumerate(zip(angles, HORSE_LEG_LENGTHS)):
+            x, y = _segment(pen, x, y, angle, length * u,
+                            HORSE_LEG_WIDTH * u * (1.0 if index < 2 else 1.3),
+                            body_color if index < 2 else dark,
+                            f"腿 {key} 段 {index + 1}")
+
+
+COMPONENTS["rig_horse"] = {
+    "name": "关节马",
+    "description": "每段骨头可旋转的马，三段腿，站立走路奔跑三种步态",
+    "params": {
+        "root": "[x, y]，肩部位置，必填",
+        "length": "肩高像素，必填",
+        "pose": "stand / walk / gallop，默认 stand",
+        "body": "马身颜色，默认 mid",
+        "dark": "蹄和鬃毛颜色，默认 line",
+    },
+    "build": build_rig_horse,
+}
+
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
+           "build_rig_horse", "POSES", "HORSE_POSES", "ORDER", "COMPONENTS"]

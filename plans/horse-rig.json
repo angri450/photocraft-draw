@@ -1,0 +1,59 @@
+{
+  "name": "关节马三种步态",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "stand",
+      "components": [
+        {
+          "component": "rig_horse",
+          "params": {
+            "root": [
+              520,
+              320
+            ],
+            "length": 300,
+            "pose": "stand"
+          }
+        }
+      ]
+    },
+    {
+      "name": "walk",
+      "components": [
+        {
+          "component": "rig_horse",
+          "params": {
+            "root": [
+              520,
+              660
+            ],
+            "length": 300,
+            "pose": "walk"
+          }
+        }
+      ]
+    },
+    {
+      "name": "gallop",
+      "components": [
+        {
+          "component": "rig_horse",
+          "params": {
+            "root": [
+              520,
+              1000
+            ],
+            "length": 300,
+            "pose": "gallop"
+          }
+        }
+      ]
+    }
+  ]
+}
