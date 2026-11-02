@@ -171,13 +171,23 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
   "image": "framework.png",
   "canvas": [1600, 900],
   "annotations": [
-    {"id": 1, "index": 1, "layer": 12, "layer_name": "盘子 3", "kind": "Shape",
-     "rect": [925, 626, 44, 20], "action": "move", "note": "往右挪 20 像素"}
+    {
+      "id": 1, "index": 1,
+      "layer": 53, "layer_name": "长条餐桌", "kind": "Group",
+      "rect": [925, 626, 44, 20],
+      "layers": [
+        {"id": 53, "name": "长条餐桌", "kind": "Group"},
+        {"id": 22, "name": "室内背景", "kind": "Group"}
+      ],
+      "visible_layers": ["文字层", "长条餐桌", "拱形窗户", "室内背景", "底色"],
+      "hidden_layers": [],
+      "action": "move", "note": "往右挪 20 像素"
+    }
   ]
 }
 ```
 
-`layer` 是 PSD 图层编号，`layer_name` 是对应的名称，`rect` 是 `[x, y, 宽, 高]` 的图像像素。拿到 JSON 后按名称找到构图组件参数，改绘制方案再重新出图。
+框选后卡片会列出框内可见的顶层图层，默认选面积最小的那个，也可以下拉换目标；同时记下当时的显隐状态。JSON 里 `layer` 是选中的图层，`layers` 是框内所有可见图层，`visible_layers` 和 `hidden_layers` 是保存时哪些顶层图层显示、哪些关掉。拿到 JSON 后按名称找到构图组件参数，改绘制方案再重新出图。
 
 按顶层图层出透明图要跑几次引擎，5 个顶层大约 2.3 秒，结果缓存在 `out/_layers/`。
 

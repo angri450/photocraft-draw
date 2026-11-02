@@ -134,6 +134,12 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
 .ed-head.dragging { cursor: grabbing; }
 .ed-head .grip { color: var(--muted); letter-spacing: -2px; font-size: 14px; }
 .ed-head strong { font-size: 13px; }
+.ed-head select {
+  max-width: 160px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  border-radius: 6px; padding: 3px 6px; font-size: 12px; outline: none;
+}
+.ed-head select:focus { border-color: var(--accent); }
+.ed-visible { color: var(--muted); font-size: 11px; margin: -2px 0 8px; line-height: 1.5; }
 .ed-head .badge { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ed-head .grow { flex: 1; }
 .ed-meta { color: var(--muted); font-size: 11px; margin-bottom: 8px; }
@@ -243,11 +249,12 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
             <div class="ed-head">
               <span class="grip" title="拖动卡片">⠿</span>
               <strong id="edTitle">新框选</strong>
-              <span id="edLayer" class="badge"></span>
+              <select id="edLayerSelect" title="框内的图层"></select>
               <span class="grow"></span>
               <button id="edClose" title="关闭">×</button>
             </div>
             <div class="ed-meta" id="edMeta"></div>
+            <div class="ed-visible" id="edVisible"></div>
             <div class="chips">
               <button class="chip active" data-action="note">意见</button>
               <button class="chip" data-action="move">移动</button>
@@ -264,7 +271,7 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
             </div>
           </div>
         </div>
-        <div id="hint">先点左边图层，再在图上拖框；眼睛开关控制显隐</div>
+        <div id="hint">在图上拖框，卡片会列出框内图层和显隐状态，选一个再写</div>
         <div id="toast"></div>
       </section>
     </div>
@@ -301,8 +308,9 @@ const selectionBox = document.getElementById('selectionBox');
 const annos = document.getElementById('annos');
 const editor = document.getElementById('editor');
 const edTitle = document.getElementById('edTitle');
-const edLayer = document.getElementById('edLayer');
+const edLayerSelect = document.getElementById('edLayerSelect');
 const edMeta = document.getElementById('edMeta');
+const edVisible = document.getElementById('edVisible');
 const edNote = document.getElementById('edNote');
 const edOffset = document.getElementById('edOffset');
 const noteCount = document.getElementById('noteCount');
@@ -545,24 +553,86 @@ function renderAnnos() {
   });
 }
 
+function visibleTopNames() {
+  return rows
+    .filter(layer => layer.depth === 0 && topIds.has(String(layer.id)) && visible.get(String(layer.id)) !== false)
+    .map(layer => layer.name);
+}
+function hiddenTopNames() {
+  return rows
+    .filter(layer => layer.depth === 0 && topIds.has(String(layer.id)) && visible.get(String(layer.id)) === false)
+    .map(layer => layer.name);
+}
+function layersInRect(rect) {
+  const [x, y, w, h] = rect;
+  return rows
+    .filter(layer => layer.depth === 0 && topIds.has(String(layer.id)))
+    .filter(layer => {
+      if (!layer.bounds) return false;
+      if (visible.get(String(layer.id)) === false) return false;
+      const [lx, ly, lw, lh] = layer.bounds;
+      return lx < x + w && lx + lw > x && ly < y + h && ly + lh > y;
+    })
+    .sort((a, b) => (a.bounds[2] * a.bounds[3]) - (b.bounds[2] * b.bounds[3]));
+}
+function fillLayerSelect(candidates, chosen) {
+  edLayerSelect.innerHTML = '';
+  if (!candidates.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = '画面';
+    edLayerSelect.appendChild(option);
+    return;
+  }
+  candidates.forEach(item => {
+    const option = document.createElement('option');
+    option.value = String(item.id);
+    option.textContent = item.name + ' · ' + (KIND[item.kind] || item.kind || '');
+    if (String(item.id) === String(chosen)) option.selected = true;
+    edLayerSelect.appendChild(option);
+  });
+  if (!candidates.some(item => String(item.id) === String(chosen))) {
+    edLayerSelect.value = String(candidates[0].id);
+  }
+}
+
 function openEditor(existing) {
   if (editing) commitEditing();
-  let rect = null;
+  let rect;
+  let candidates;
   if (existing) {
-    editing = { ...existing };
     rect = existing.rect;
+    candidates = layersInRect(rect);
+    if (existing.layer != null && !candidates.some(item => String(item.id) === String(existing.layer))) {
+      const known = rows.find(item => item.id === existing.layer);
+      candidates = candidates.concat([known || {
+        id: existing.layer, name: existing.layer_name, kind: existing.kind, bounds: null, depth: 0
+      }]);
+    }
+    const current = candidates.find(item => String(item.id) === String(existing.layer)) || candidates[0] || null;
+    editing = {
+      ...existing,
+      layer: current ? current.id : existing.layer,
+      layer_name: current ? current.name : existing.layer_name,
+      kind: current ? current.kind : existing.kind,
+      candidates
+    };
   } else {
     rect = drawing;
     if (!rect) return;
-    const layer = selected || hitTest(rect[0] + rect[2] / 2, rect[1] + rect[3] / 2);
+    candidates = layersInRect(rect);
+    const preferred = (selected && candidates.find(item => String(item.id) === String(selected.id))) || candidates[0] || null;
     editing = {
-      id: null, layer: layer ? layer.id : null, layer_name: layer ? layer.name : '画面',
-      kind: layer ? layer.kind : '', rect: rect.slice(), action: 'note', dx: 0, dy: 0, note: ''
+      id: null, layer: preferred ? preferred.id : null,
+      layer_name: preferred ? preferred.name : '画面', kind: preferred ? preferred.kind : '',
+      rect: rect.slice(), action: 'note', note: '', candidates
     };
   }
   edTitle.textContent = existing ? ('第 ' + (annotations.findIndex(item => item.id === existing.id) + 1) + ' 条') : '新框选';
-  edLayer.textContent = editing.layer_name + (editing.kind ? ' · ' + (KIND[editing.kind] || editing.kind) : '');
   edMeta.textContent = '区域 ' + editing.rect.map(Math.round).join(', ') + '　宽高 ' + Math.round(editing.rect[2]) + '×' + Math.round(editing.rect[3]);
+  edVisible.textContent = '框内可见：' + (candidates.map(item => item.name).join('、') || '无')
+    + (hiddenTopNames().length ? '　隐藏：' + hiddenTopNames().join('、') : '');
+  fillLayerSelect(candidates, editing.layer);
   edNote.value = editing.note || '';
   document.getElementById('edDelete').style.display = existing ? 'inline-block' : 'none';
   setAction(editing.action || 'note');
@@ -636,6 +706,10 @@ function commitEditing() {
   const note = edNote.value.trim();
   if (!note && editing.action === 'note') { closeEditor(); return false; }
   editing.note = note;
+  editing.layers = (editing.candidates || []).map(item => ({ id: item.id, name: item.name, kind: item.kind }));
+  editing.visible_layers = visibleTopNames();
+  editing.hidden_layers = hiddenTopNames();
+  delete editing.candidates;
   if (editing.id == null) {
     editing.id = nextId++;
     annotations.push(editing);
@@ -775,6 +849,24 @@ document.querySelectorAll('.chip').forEach(chip => {
   chip.onclick = () => setAction(chip.dataset.action);
 });
 
+edLayerSelect.onchange = () => {
+  if (!editing) return;
+  const item = (editing.candidates || []).find(candidate => String(candidate.id) === edLayerSelect.value);
+  if (!item) return;
+  editing.layer = item.id;
+  editing.layer_name = item.name;
+  editing.kind = item.kind;
+  if (item.bounds) {
+    const [x, y, w, h] = item.bounds;
+    selectionBox.style.display = 'block';
+    selectionBox.style.left = (x * scale) + 'px';
+    selectionBox.style.top = (y * scale) + 'px';
+    selectionBox.style.width = Math.max(1, w * scale) + 'px';
+    selectionBox.style.height = Math.max(1, h * scale) + 'px';
+  }
+  renderNotes();
+};
+
 edNote.addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
     event.preventDefault();
@@ -819,7 +911,9 @@ function payload() {
     canvas: CANVAS,
     annotations: annotations.map((item, index) => ({
       id: item.id, index: index + 1, layer: item.layer, layer_name: item.layer_name,
-      kind: item.kind, rect: item.rect.map(Math.round), action: item.action, note: item.note || ''
+      kind: item.kind, rect: item.rect.map(Math.round),
+      layers: item.layers || [], visible_layers: item.visible_layers || [], hidden_layers: item.hidden_layers || [],
+      action: item.action, note: item.note || ''
     }))
   };
 }
