@@ -170,15 +170,17 @@ def build_rocky_ground(params: dict, pen: Pen) -> None:
     tone = str(params.get("tone", "dark"))
     if tone not in ("dark", "mid"):
         raise ValueError("岩地的 tone 只能是 dark 或 mid")
+    base_block = bool(params.get("base", True))
     colors = params.get("colors") or {}
     base = colors.get("base", "ink" if tone == "dark" else "muted")
     light = colors.get("light", "line")
     dark = colors.get("dark", "muted" if tone == "dark" else "ink")
 
-    pen.rect(x, y, w, h, fill=base, stroke_width=None, stroke=None, name="地面")
-    # 上沿一条亮边，把地面和山脚分开
-    pen.rect(x, y, w, max(2, h * 0.06), fill=light, stroke_width=None, stroke=None,
-             name="地面亮边")
+    if base_block:
+        pen.rect(x, y, w, h, fill=base, stroke_width=None, stroke=None, name="地面")
+        # 上沿一条亮边，把地面和山脚分开
+        pen.rect(x, y, w, max(2, h * 0.06), fill=light, stroke_width=None, stroke=None,
+                 name="地面亮边")
 
     for index, (cx, cy, rx, ry) in enumerate(_points(
             params.get("rocks") or [], 4,
@@ -259,6 +261,39 @@ def build_river_water(params: dict, pen: Pen) -> None:
                             name=f"浪花 {index + 1}-{peak + 1}")
 
 
+def build_foreground_rocks(params: dict, pen: Pen) -> None:
+    """前景石块：每块石头四个面，压住画面底部。
+
+    一块石头用投影、主体、顶面亮部、底部暗部四层椭圆叠出来，比单画一个
+    椭圆有体积。石头要比中景暗，才不会和岩地糊在一起。
+
+    参数：
+        rocks   [[中心x, 中心y, 半径x, 半径y], …]，必填
+        colors  {stone, light, dark, shadow}，可选
+    """
+    rocks = _points(params.get("rocks"), 4,
+                    "前景石块需要 rocks：[[中心x, 中心y, 半径x, 半径y], …]",
+                    required=True)
+    colors = params.get("colors") or {}
+    stone = colors.get("stone", "line")
+    light = colors.get("light", "muted")
+    dark = colors.get("dark", "ink")
+    shadow = colors.get("shadow", "ink")
+
+    for index, (cx, cy, rx, ry) in enumerate(rocks):
+        if rx <= 0 or ry <= 0:
+            raise ValueError("前景石块的半径要大于 0")
+        pen.ellipse(cx, cy + ry * 0.95, rx * 1.02, ry * 0.26,
+                    fill=shadow, stroke_width=None, stroke=None, name=f"石影 {index + 1}")
+        pen.ellipse(cx, cy, rx, ry, fill=stone, stroke_width=None, stroke=None,
+                    name=f"石块 {index + 1}")
+        pen.ellipse(cx - rx * 0.22, cy - ry * 0.3, rx * 0.42, ry * 0.22,
+                    fill=light, stroke_width=None, stroke=None, name=f"石光 {index + 1}")
+        # 贴着底边的一条暗面，做出接触阴影，不往石头内部塞小椭圆
+        pen.ellipse(cx, cy + ry * 0.58, rx * 0.78, ry * 0.3,
+                    fill=dark, stroke_width=None, stroke=None, name=f"石底 {index + 1}")
+
+
 COMPONENTS = {
     "alpine_sky": {
         "name": "高山天空",
@@ -282,6 +317,15 @@ COMPONENTS = {
         },
         "build": build_alpine_peaks,
     },
+    "foreground_rocks": {
+        "name": "前景石块",
+        "description": "带投影、顶面亮部和底部暗部的石块，用来压住画面底部",
+        "params": {
+            "rocks": "[[中心x, 中心y, 半径x, 半径y], …]，必填",
+            "colors": "{stone, light, dark, shadow}，可选",
+        },
+        "build": build_foreground_rocks,
+    },
     "river_water": {
         "name": "河流",
         "description": "水面、横向波纹和几处水花，用来做前景的溪流",
@@ -300,6 +344,7 @@ COMPONENTS = {
             "area": "[x, y, 宽, 高]，必填",
             "rocks": "[[中心x, 中心y, 半径x, 半径y], …]，可选",
             "tone": "dark / mid，默认 dark",
+            "base": "是否铺一整块底色，默认 true；做前景石块时关掉",
             "colors": "{base, light, dark}，可选",
         },
         "build": build_rocky_ground,
