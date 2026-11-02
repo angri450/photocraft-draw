@@ -111,10 +111,18 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
 #stack { position: absolute; inset: 0; }
 #selectionBox { position: absolute; border: 1px dashed var(--muted); display: none; pointer-events: none; z-index: 2; }
 #marquee { position: absolute; inset: 0; cursor: crosshair; z-index: 3; touch-action: none; }
-#drawRect { position: absolute; border: 1px dashed var(--accent); background: rgba(74,158,255,.12); display: none; pointer-events: none; z-index: 4; }
+#drawRect {
+  position: absolute; border: 1px dashed var(--accent); background: rgba(74,158,255,.12);
+  display: none; pointer-events: auto; cursor: move; z-index: 4;
+}
+#drawRect .resize, .anno .resize {
+  position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px;
+  background: var(--warm); border: 2px solid #fff; border-radius: 2px;
+  cursor: nwse-resize; z-index: 7;
+}
 .anno {
   position: absolute; border: 2px solid var(--warm); background: rgba(224,122,95,.10);
-  cursor: pointer; z-index: 5; box-sizing: border-box;
+  cursor: move; z-index: 5; box-sizing: border-box;
 }
 .anno:hover { background: rgba(224,122,95,.18); }
 .anno .num {
@@ -231,7 +239,7 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
         <div id="wrap">
           <div id="stack"></div>
           <div id="selectionBox"></div>
-          <div id="drawRect"></div>
+          <div id="drawRect"><span class="resize"></span></div>
           <div id="marquee"></div>
           <div id="annos"></div>
           <div id="editor">
@@ -318,6 +326,7 @@ let history = [];
 let hIndex = -1;
 let toastTimer = null;
 let drawing = null;
+let boxDrag = null;
 let editorPos = null;
 let editorDrag = null;
 
@@ -508,6 +517,42 @@ function renderNotes() {
   });
 }
 
+function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+function updateMetaText(rect) {
+  edMeta.textContent = '区域 ' + rect.map(Math.round).join(', ') + '　宽高 ' + Math.round(rect[2]) + '×' + Math.round(rect[3]);
+}
+function showDraftBox(rect) {
+  drawRect.style.display = 'block';
+  drawRect.style.left = (rect[0] * scale) + 'px';
+  drawRect.style.top = (rect[1] * scale) + 'px';
+  drawRect.style.width = (rect[2] * scale) + 'px';
+  drawRect.style.height = (rect[3] * scale) + 'px';
+}
+function updateDraftMeta(rect) {
+  if (!editing) return;
+  editing.rect = rect.slice();
+  const candidates = layersInRect(rect);
+  editing.candidates = candidates;
+  const preferred = candidates.find(item => String(item.id) === String(editing.layer)) || candidates[0] || null;
+  if (preferred) {
+    editing.layer = preferred.id;
+    editing.layer_name = preferred.name;
+    editing.kind = preferred.kind;
+  }
+  updateMetaText(rect);
+  edVisible.textContent = '框内图层：' + (candidates.map(item => item.name).join('、') || '无')
+    + (hiddenTopNames().length ? '　隐藏：' + hiddenTopNames().join('、') : '');
+}
+function beginBoxDrag(event, kind, el, rect, target) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (target === 'draft') drawing = null;
+  boxDrag = {
+    kind, el, target, startX: event.clientX, startY: event.clientY,
+    startRect: rect.slice(), moved: false
+  };
+}
+
 function renderAnnos() {
   annos.innerHTML = '';
   annotations.forEach((item, index) => {
@@ -521,9 +566,20 @@ function renderAnnos() {
     const num = document.createElement('span');
     num.className = 'num';
     num.textContent = String(index + 1);
-    node.appendChild(num);
+    const handle = document.createElement('span');
+    handle.className = 'resize';
+    handle.title = '拖动缩放';
+    handle.addEventListener('mousedown', event => {
+      if (editing && editing.id !== item.id) { commitEditing(); return; }
+      beginBoxDrag(event, 'resize', node, item.rect, String(item.id));
+    });
+    node.addEventListener('mousedown', event => {
+      if (event.target.classList.contains('resize')) return;
+      if (editing && editing.id !== item.id) { commitEditing(); return; }
+      beginBoxDrag(event, 'move', node, item.rect, String(item.id));
+    });
+    node.append(num, handle);
     node.title = item.note || item.layer_name;
-    node.onclick = event => { event.stopPropagation(); openEditor(item); };
     annos.appendChild(node);
   });
 }
@@ -583,11 +639,16 @@ function openEditor(existing) {
     };
   }
   edTitle.textContent = existing ? ('第 ' + (annotations.findIndex(item => item.id === existing.id) + 1) + ' 条') : '新批注';
-  edMeta.textContent = '区域 ' + editing.rect.map(Math.round).join(', ') + '　宽高 ' + Math.round(editing.rect[2]) + '×' + Math.round(editing.rect[3]);
+  updateMetaText(editing.rect);
   edVisible.textContent = '框内图层：' + (candidates.map(item => item.name).join('、') || '无')
     + (hiddenTopNames().length ? '　隐藏：' + hiddenTopNames().join('、') : '');
   edNote.value = editing.note || '';
   document.getElementById('edDelete').style.display = existing ? 'inline-block' : 'none';
+  if (existing) {
+    drawRect.style.display = 'none';
+  } else {
+    showDraftBox(editing.rect);
+  }
   placeEditor(editing.rect);
   editor.classList.add('open');
   hint.style.display = 'none';
@@ -671,6 +732,8 @@ function commitEditing() {
 function closeEditor() {
   editing = null;
   editor.classList.remove('open');
+  drawRect.style.display = 'none';
+  drawing = null;
   hint.style.display = 'block';
   renderNotes();
 }
@@ -756,6 +819,7 @@ marquee.addEventListener('mousedown', event => {
 });
 
 window.addEventListener('mousemove', event => {
+  if (boxDrag) return;
   if (!drawing) return;
   const [x, y] = pointFromEvent(event);
   const rect = [
@@ -770,15 +834,82 @@ window.addEventListener('mousemove', event => {
 });
 
 window.addEventListener('mouseup', () => {
+  if (boxDrag) return;
   if (!drawing) return;
   const raw = drawing;
   drawing = null;
-  drawRect.style.display = 'none';
   const rect = raw.length >= 6 ? [raw[4], raw[5], raw[2], raw[3]] : [raw[0], raw[1], raw[2], raw[3]];
-  if (rect[2] < 4 || rect[3] < 4) { return; }
+  if (rect[2] < 4 || rect[3] < 4) {
+    drawRect.style.display = 'none';
+    return;
+  }
   drawing = rect;
   openEditor(null);
   drawing = null;
+});
+
+drawRect.addEventListener('mousedown', event => {
+  if (!editing) return;
+  if (event.target.classList.contains('resize')) return;
+  beginBoxDrag(event, 'move', drawRect, editing.rect, 'draft');
+});
+drawRect.querySelector('.resize').addEventListener('mousedown', event => {
+  if (!editing) return;
+  beginBoxDrag(event, 'resize', drawRect, editing.rect, 'draft');
+});
+
+window.addEventListener('mousemove', event => {
+  if (!boxDrag) return;
+  const moveX = event.clientX - boxDrag.startX;
+  const moveY = event.clientY - boxDrag.startY;
+  if (!boxDrag.moved && Math.abs(moveX) + Math.abs(moveY) < 3) return;
+  boxDrag.moved = true;
+  const r = boxDrag.startRect;
+  let next;
+  if (boxDrag.kind === 'move') {
+    next = [
+      clamp(r[0] + moveX / scale, 0, natW - r[2]),
+      clamp(r[1] + moveY / scale, 0, natH - r[3]),
+      r[2], r[3]
+    ];
+  } else {
+    next = [
+      r[0], r[1],
+      clamp(r[2] + moveX / scale, 6, natW - r[0]),
+      clamp(r[3] + moveY / scale, 6, natH - r[1])
+    ];
+  }
+  const el = boxDrag.el;
+  el.style.left = (next[0] * scale) + 'px';
+  el.style.top = (next[1] * scale) + 'px';
+  el.style.width = (next[2] * scale) + 'px';
+  el.style.height = (next[3] * scale) + 'px';
+  if (boxDrag.target === 'draft') {
+    updateDraftMeta(next);
+  } else {
+    const item = annotations.find(candidate => String(candidate.id) === boxDrag.target);
+    if (item) {
+      item.rect = next;
+      if (editing && String(editing.id) === boxDrag.target) {
+        editing.rect = next;
+        updateMetaText(next);
+      }
+    }
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  if (!boxDrag) return;
+  const drag = boxDrag;
+  boxDrag = null;
+  if (drag.moved) {
+    pushHistory();
+    renderAnnos();
+    renderNotes();
+  } else if (drag.target !== 'draft') {
+    const item = annotations.find(candidate => String(candidate.id) === drag.target);
+    if (item) openEditor(item);
+  }
 });
 
 document.querySelectorAll('.tab').forEach(tab => {
