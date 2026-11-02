@@ -183,11 +183,26 @@ with Engine(read_root=".", write_root="out") as engine:
 
 ## 组件目录
 
-| 编号 | 名称 | 必填参数 |
-|---|---|---|
-| indoor_backdrop | 室内背景 | wall |
-| arched_windows | 拱形窗户 | windows |
-| long_table | 长条餐桌 | table |
+一共 16 个，`photocraft-draw components` 打印完整参数。画法约定在 `docs/component-references.md`。
+
+| 分组 | 编号 | 名称 | 必填参数 |
+|---|---|---|---|
+| 底子 | indoor_backdrop | 室内背景 | wall |
+| 底子 | arched_windows | 拱形窗户 | windows |
+| 底子 | long_table | 长条餐桌 | table |
+| 人物 | seated_figure | 坐姿人物 | seat |
+| 人物 | leaning_figure | 前倾人物 | seat、elbow |
+| 人物 | figure_head | 人物头部 | center |
+| 人物 | figure_hands | 一组手 | hands |
+| 人物 | figure_row | 一排人物 | row、count |
+| 器物 | dinner_plate | 盘子 | center |
+| 器物 | bread_loaf | 面包 | center |
+| 器物 | wine_goblet | 酒杯 | center |
+| 器物 | table_cloth_folds | 桌布褶 | area |
+| 建筑 | coffered_ceiling | 藻井天顶 | ceiling |
+| 建筑 | side_drapery | 两侧帷幔 | draperies |
+| 建筑 | window_glow | 窗光 | window |
+| 建筑 | soft_vignette | 四角阴影 | frame |
 
 新增组件：在 `photocraft_draw/components/` 写 `build(params, pen)`，只画形状和文字，不建图层；图层由绘制方案负责。再到 `registry.py` 登记编号、名称、说明和参数。
 
