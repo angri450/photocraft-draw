@@ -277,6 +277,57 @@ COMPONENTS["custom_shape"] = {
     "build": build_custom_shape,
 }
 
+def build_ascii_art(params: dict, pen: Pen) -> None:
+    """字符画：把终端里的字符网格转成矩形。
+
+    每一行从左到右扫，连续的实心字符合并成一个矩形，空白字符跳过。
+    所以一条 40 列的字符画，每行大概出两到四段，不是一列一个矩形。
+
+    参数：
+        art    多行字符串，空格和点算空，其他字符算实心，必填
+        cell   一个字符占多少像素，默认 10
+        origin [x, y]，左上角起点，默认 [0, 0]
+        color  填充色，默认 line
+    """
+    art = params.get("art")
+    if not isinstance(art, str) or not art.strip():
+        raise ValueError("字符画需要 art：一段多行字符串")
+    cell = float(params.get("cell", 10))
+    if cell <= 0:
+        raise ValueError("字符画的 cell 要大于 0")
+    origin = params.get("origin") or [0, 0]
+    if not isinstance(origin, (list, tuple)) or len(origin) != 2:
+        raise ValueError("字符画的 origin 要写成 [x, y]")
+    color = params.get("color", "line")
+    empty = set(params.get("empty", " ."))
+
+    lines = art.strip("\n").split("\n")
+    ox, oy = float(origin[0]), float(origin[1])
+    for row, line in enumerate(lines):
+        col = 0
+        while col < len(line):
+            if line[col] in empty:
+                col += 1
+                continue
+            start = col
+            while col < len(line) and line[col] not in empty:
+                col += 1
+            pen.rect(ox + start * cell, oy + row * cell, (col - start) * cell, cell,
+                     fill=color, stroke_width=None, stroke=None, name=f"字符段 {row + 1}-{start + 1}")
+
+
+COMPONENTS["ascii_art"] = {
+    "name": "字符画",
+    "description": "把多行字符画转成矩形，连续字符合并成一段",
+    "params": {
+        "art": "多行字符串，必填",
+        "cell": "一个字符的像素大小，默认 10",
+        "origin": "[x, y]，左上角，默认 [0, 0]",
+        "color": "填充色，默认 line",
+    },
+    "build": build_ascii_art,
+}
+
 COMPONENTS["block_horse"] = {
     "name": "积木马",
     "description": "十个长方形和椭圆拼的马，身体、颈、头、四条腿、尾、耳、眼",
@@ -290,5 +341,5 @@ COMPONENTS["block_horse"] = {
     "build": build_block_horse,
 }
 
-__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape",
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
            "POSES", "HORSE_POSES", "ORDER", "COMPONENTS"]

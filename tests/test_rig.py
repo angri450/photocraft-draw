@@ -118,3 +118,21 @@ class PathTest(unittest.TestCase):
         from photocraft_draw.components import block
         with self.assertRaises(ValueError):
             block.build_custom_shape({}, pen())
+
+
+class AsciiTest(unittest.TestCase):
+    def test_merges_runs(self):
+        from photocraft_draw.components import block
+        target = pen()
+        block.build_ascii_art({"art": "####  ##\n##    ##", "cell": 10}, target)
+        self.assertEqual(len(target.commands), 4)
+
+    def test_empty_raises(self):
+        from photocraft_draw.components import block
+        with self.assertRaises(ValueError):
+            block.build_ascii_art({"art": "   "}, pen())
+
+    def test_bad_cell_raises(self):
+        from photocraft_draw.components import block
+        with self.assertRaises(ValueError):
+            block.build_ascii_art({"art": "##", "cell": 0}, pen())
