@@ -55,6 +55,13 @@ main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 #img { display: block; }
 #box { position: absolute; border: 2px solid #e07a5f; background: rgba(224,122,95,.12); display: none; cursor: move; }
 #box::after { content: "拖动"; position: absolute; top: -20px; left: 0; font-size: 11px; color: #fff; background: #e07a5f; padding: 1px 5px; border-radius: 3px; }
+.modal { position: fixed; inset: 0; background: rgba(8,12,17,.72); display: none; align-items: center; justify-content: center; z-index: 50; padding: 24px; }
+.modal.open { display: flex; }
+.modal-card { width: min(760px, 100%); max-height: 88vh; display: flex; flex-direction: column; background: #141a21; color: #e6edf3; border-radius: 10px; padding: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+.modal-card h3 { margin: 0 0 4px; font-size: 15px; }
+.modal-card p { margin: 0 0 10px; color: #8b98a5; font-size: 12px; }
+#jsonOut { flex: 1; min-height: 340px; resize: vertical; border: 1px solid #2b3540; background: #0d1117; color: #c9d4df; border-radius: 6px; padding: 10px; font: 12px/1.6 ui-monospace, "SFMono-Regular", Consolas, monospace; }
+.modal-card .buttons { padding: 10px 0 0; }
 </style>
 </head>
 <body>
@@ -105,6 +112,18 @@ main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     </div>
     <div id="stage"><div id="wrap"><img id="img" alt="画面"><div id="box"></div></div></div>
   </main>
+</div>
+<div id="modal" class="modal">
+  <div class="modal-card">
+    <h3>修改意见 JSON</h3>
+    <p>复制下面这段发回来。如果下载按钮没反应，直接用复制。</p>
+    <textarea id="jsonOut" readonly></textarea>
+    <div class="buttons">
+      <button id="modalCopy" class="primary">复制</button>
+      <button id="modalDownload">下载文件</button>
+      <button id="modalClose">关闭</button>
+    </div>
+  </div>
 </div>
 <script>
 const LAYERS = __LAYERS__;
@@ -247,11 +266,31 @@ function download() {
   URL.revokeObjectURL(link.href);
 }
 
-document.getElementById('export').onclick = download;
-document.getElementById('copy').onclick = async () => {
-  await navigator.clipboard.writeText(JSON.stringify(payload(), null, 2));
-  document.getElementById('copy').textContent = '已复制';
-  setTimeout(() => { document.getElementById('copy').textContent = '复制 JSON'; }, 1200);
+const modal = document.getElementById('modal');
+const jsonOut = document.getElementById('jsonOut');
+
+function openJson() {
+  jsonOut.value = JSON.stringify(payload(), null, 2);
+  modal.classList.add('open');
+  jsonOut.focus();
+  jsonOut.select();
+}
+
+document.getElementById('export').onclick = openJson;
+document.getElementById('copy').onclick = openJson;
+document.getElementById('modalClose').onclick = () => modal.classList.remove('open');
+document.getElementById('modalDownload').onclick = download;
+document.getElementById('modalCopy').onclick = async () => {
+  const text = jsonOut.value || JSON.stringify(payload(), null, 2);
+  jsonOut.value = text;
+  jsonOut.focus();
+  jsonOut.select();
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (error) {}
+  if (!ok) { try { ok = document.execCommand('copy'); } catch (error) {} }
+  const button = document.getElementById('modalCopy');
+  button.textContent = ok ? '已复制' : '请手动复制';
+  setTimeout(() => { button.textContent = '复制'; }, 1600);
 };
 
 document.getElementById('clear').onclick = () => {

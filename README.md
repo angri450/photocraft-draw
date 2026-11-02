@@ -153,7 +153,7 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
 
 ## 批注页
 
-`annotate` 会生成一个单文件网页，图片和图层树都内嵌，不依赖外链。`--serve` 会启动本地服务并打印链接，端口默认 8898。
+`annotate` 会生成一个单文件网页，图片和图层树都内嵌，不依赖外链。这个文件可以直接发布到 WorkBuddy 站点：在 CodeBuddy 里用 Artifact 工具上传，拿到公开链接，图层交互和 JSON 导出都能用。`--serve` 只是本地预览的备选，端口默认 8898。
 
 网页上可以：
 
@@ -177,7 +177,7 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
 }
 ```
 
-把这份 JSON 发回来，我按图层编号和名称找到对应的组件参数，改完重新出图。
+把这份 JSON 发回来，我按图层编号和名称找到对应的组件参数，改完重新出图。网页上点「导出意见」会弹出一段完整 JSON，直接复制即可；下载按钮被浏览器拦下时也用复制。
 
 ## 写法约定
 

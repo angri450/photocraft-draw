@@ -150,7 +150,7 @@ def cmd_annotate(args) -> int:
     if not by_format["png"].exists() or not by_format["psd"].exists():
         _render(meta, commands, outputs, verbose=args.verbose)
     html = write_review(
-        by_format["png"], by_format["psd"], plan_path.stem,
+        by_format["png"], by_format["psd"], meta["name"],
         by_format["png"].with_suffix(".review.html"),
     )
     print(f"ok | 批注页 {html}")
