@@ -29,6 +29,18 @@ PALETTES = {
         "line": "#3c3a35",
         "accent": "#d9c089",
     },
+    "dawn": {
+        "name": "晨光",
+        "bg": "#2f4356",
+        "surface": "#efe4cf",
+        "ink": "#1d1a16",
+        "muted": "#7d8d97",
+        "deep": "#b2563c",
+        "mid": "#c8915a",
+        "soft": "#f4ebda",
+        "line": "#3e4c59",
+        "accent": "#f3c579",
+    },
     "dusk": {
         "name": "暮色",
         "bg": "#1b1524",
