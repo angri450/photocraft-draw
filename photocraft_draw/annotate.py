@@ -1090,6 +1090,11 @@ def render_layer_images(psd_path: Path, out_dir: Path) -> list[dict]:
     )
     image_dir = out_dir / "_layers"
     image_dir.mkdir(parents=True, exist_ok=True)
+    for old in image_dir.glob("*.png"):
+        try:
+            old.unlink()
+        except OSError:
+            pass
     rendered = []
     for target in tops:
         args = [str(cli), "run", str(psd_path)]
