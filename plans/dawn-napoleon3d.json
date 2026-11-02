@@ -171,11 +171,11 @@
           "params": {
             "center": [
               470,
-              822
+              806
             ],
-            "rx": 135,
-            "ry": 20,
-            "color": "ink",
+            "rx": 132,
+            "ry": 18,
+            "color": "bg",
             "name": "马影"
           }
         }
@@ -189,7 +189,7 @@
           "params": {
             "root": [
               470,
-              638
+              656
             ],
             "length": 300,
             "pose": "stand"
