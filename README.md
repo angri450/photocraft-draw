@@ -1,6 +1,6 @@
 # PhotoCraft-Draw
 
-用构图组件和绘制方案驱动 PhotoCraft 出图。一张画面先分图层，每层由若干构图组件拼成，组件只写参考坐标，脚本换算成画布坐标和绘制指令，引擎落成 PNG 和 PSD。PSD 里图层是图层组，文字是文字层，交付后还能改。
+这是一个白模设计器。用三维坐标把画面的结构摆对，压成 2.5 维的画面，再把结构翻译成生图提示词，交给模型补质感和光影。结构这一段由构图组件和绘制方案写成，脚本换算成画布坐标和绘制指令，引擎落成 PNG 和 PSD。PSD 里图层是图层组，文字是文字层，交付后还能改。
 
 ## 中文叫法
 
@@ -14,6 +14,9 @@
 | 绘制指令 | 发给引擎的一条条命令 |
 | 绘制服务 | 常驻进程，接收绘制指令并调用引擎 |
 | 执行摘要 | 引擎返回的简短结果 |
+| 白模 | 只有结构和位置、没有质感的画面，交给模型之前的中间稿 |
+| 三维坐标 | 每个部件带 x、y、z 的位置，z 决定谁挡谁 |
+| 画面稿 | 从绘制方案翻译出来的提示词，分中文和英文两版 |
 
 ## 七步工作流
 
@@ -24,6 +27,19 @@
 5. 做完一层就先 `check` 看指令数和参数，确认这一层没问题。
 6. 所有层按从后到前的顺序排好，`draw` 一次组装成图；程序会把每个顶层组提到最前，保证后画的压在前面。
 7. `annotate` 生成单文件批注页，你在网页上点图层、拖方框、写意见，导出 JSON 发回来，我按 JSON 改。
+
+## 检查与出图
+
+结构画完先验，验过了再译成提示词。
+
+```sh
+photocraft-draw verify plans/xxx.json --expect horse --envelope horse
+photocraft-draw colors plans/xxx.json
+photocraft-draw occlusion out/xxx.psd
+photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
+```
+
+`verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
 
 ## 目录
 
@@ -36,10 +52,18 @@ photocraft_draw/
   plan.py          绘制方案：读取、校验、按图层合成
   commandbook.py   命令目录：953 条指令的检索和调用
   catalog.json     命令目录数据，由 tools/build_catalog.py 生成
+  checker.py       结构检查：部件齐全、位置合规
+  envelope.py      包络检查：部件是不是落在人形或马形里
+  colorize.py      配色检查：相邻部件颜色太近就报
+  occlusion.py     遮挡分析：分层文件里谁挡住谁
+  brief.py         画面稿翻译：方案转中英文提示词
+  scatter.py       撒点填充
+  autoshade.py     自动色阶，实验代码，没接进主流程
   annotate.py      图层批注页
   cli.py           命令行入口
   components/      构图组件
 plans/             绘制方案
+docs/              画法约定、遮挡规则、组件参考
 tools/             命令目录生成工具
 tests/             单元测试
 out/               默认输出目录
@@ -73,7 +97,9 @@ python3 -m pip install -e .
 photocraft-draw doctor                      # 看引擎路径和版本
 photocraft-draw components --search 窗      # 搜构图组件
 photocraft-draw check plans/framework.json  # 校验方案，统计图层、组件和指令
+photocraft-draw verify plans/framework.json # 查结构和包络，不出图
 photocraft-draw draw plans/framework.json --out-dir out
+photocraft-draw brief plans/framework.json --out-zh 中文.txt --out-en 英文.txt
 photocraft-draw annotate plans/framework.json --out-dir out --serve
 ```
 
@@ -183,26 +209,47 @@ with Engine(read_root=".", write_root="out") as engine:
 
 ## 组件目录
 
-一共 16 个，`photocraft-draw components` 打印完整参数。画法约定在 `docs/component-references.md`。
+一共 37 个，`photocraft-draw components` 打印完整参数。画法约定在 `docs/component-references.md`，人物和马的比例配方在 `docs/figure-recipes.md`，遮挡规则在 `docs/occlusion-rules.md`。
 
 | 分组 | 编号 | 名称 | 必填参数 |
 |---|---|---|---|
-| 底子 | indoor_backdrop | 室内背景 | wall |
-| 底子 | arched_windows | 拱形窗户 | windows |
-| 底子 | long_table | 长条餐桌 | table |
-| 人物 | seated_figure | 坐姿人物 | seat |
-| 人物 | leaning_figure | 前倾人物 | seat、elbow |
-| 人物 | figure_head | 人物头部 | center |
-| 人物 | figure_hands | 一组手 | hands |
-| 人物 | figure_row | 一排人物 | row、count |
-| 器物 | dinner_plate | 盘子 | center |
-| 器物 | bread_loaf | 面包 | center |
-| 器物 | wine_goblet | 酒杯 | center |
-| 器物 | table_cloth_folds | 桌布褶 | area |
-| 建筑 | coffered_ceiling | 藻井天顶 | ceiling |
-| 建筑 | side_drapery | 两侧帷幔 | draperies |
-| 建筑 | window_glow | 窗光 | window |
-| 建筑 | soft_vignette | 四角阴影 | frame |
+| 室内底子 | indoor_backdrop | 室内背景 | wall |
+| 室内底子 | arched_windows | 拱形窗户 | windows |
+| 室内底子 | long_table | 长条餐桌 | table |
+| 建筑光影 | coffered_ceiling | 藻井天顶 | ceiling |
+| 建筑光影 | side_drapery | 两侧帷幔 | draperies |
+| 建筑光影 | window_glow | 窗光 | window |
+| 建筑光影 | soft_vignette | 四角阴影 | frame |
+| 桌上器物 | dinner_plate | 盘子 | center |
+| 桌上器物 | bread_loaf | 面包 | center |
+| 桌上器物 | wine_goblet | 酒杯 | center |
+| 桌上器物 | table_cloth_folds | 桌布褶 | area |
+| 平视人物 | seated_figure | 坐姿人物 | seat |
+| 平视人物 | leaning_figure | 前倾人物 | seat、elbow |
+| 平视人物 | figure_head | 人物头部 | center |
+| 平视人物 | figure_hands | 一组手 | hands |
+| 平视人物 | figure_row | 一排人物 | row、count |
+| 平视人物 | rider_placeholder | 骑手占位 | box |
+| 山景底子 | alpine_sky | 高山天空 | area |
+| 山景底子 | alpine_peaks | 雪山 | peaks |
+| 山景底子 | rocky_ground | 岩地 | area |
+| 山景底子 | river_water | 河流 | area |
+| 山景底子 | foreground_rocks | 前景石块 | rocks |
+| 白模人物 | figure_rig | 人物白模 | root、height |
+| 白模人物 | rig_person | 方块人 | root、height |
+| 白模人物 | block_figure | 积木人 | root、height |
+| 白模人物 | pixel_person | 像素人 | root、height |
+| 白模人物 | capsule_person | 胶囊人 | root、height |
+| 白模动物 | rig_horse | 关节马 | root、length |
+| 白模动物 | block_horse | 积木马 | root、length |
+| 白模动物 | capsule_horse | 胶囊马 | root、length |
+| 白模动物 | capsule_rider | 骑手 | root、length |
+| 三维场景 | box3d_scene | 三维盒子 | boxes |
+| 三维场景 | rider3d | 三维骑手 | root、length |
+| 通用形状 | custom_shape | 自定义路径 | subpaths |
+| 通用形状 | ascii_art | 字符画 | art |
+| 通用形状 | scatter_shape | 撒点填充 | box |
+| 通用形状 | soft_shadow | 地面投影 | center、rx、ry |
 
 新增组件：在 `photocraft_draw/components/` 写 `build(params, pen)`，只画形状和文字，不建图层；图层由绘制方案负责。再到 `registry.py` 登记编号、名称、说明和参数。
 
@@ -260,8 +307,9 @@ with Engine(read_root=".", write_root="out") as engine:
 
 ## 边界
 
-1. 现有三个构图组件，人物、面部、手势还没做。
+1. 引擎单边渲染上限 1024 像素，要更大的成品只能出图后再放大。
 2. 引擎是 early alpha，PSD 能否在 Adobe Photoshop 里正常打开没有验证过，只保证引擎自己能读、第三方 psd-tools 能解析。
 3. 引擎的渐变是近似，带滤镜的组会被栅格化，复杂画面要逐张看。
 4. 一张画面超过一百条指令，先想能不能拆组件或简化，不要硬堆。
-5. 批注页目前只导出意见，回改要人工或脚本按 JSON 执行，还没有一键回改。
+5. 颜色仍要人工定。按物体组自动重排色阶试过三版，都会把天空打散或把形状压平，`autoshade` 只作为实验代码留着。
+6. 批注页目前只导出意见，回改要人工或脚本按 JSON 执行，还没有一键回改。
