@@ -2,6 +2,7 @@
 """绘制服务：管理 photocraft-cli 的 serve 会话，只回执行摘要。"""
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -185,6 +186,103 @@ class Engine:
         message = self.call("doc.save", {"path": str(path), "format": fmt or path.suffix.lstrip(".")})
         if not message.get("ok"):
             raise EngineError(f"保存 {path} 失败：{message.get('error')}")
+        return message.get("result") or {}
+
+    def open_document(self, path: Path | str) -> dict:
+        """打开一个已有文档，路径必须在绘制服务的读取根里面。"""
+        target = Path(path).expanduser().resolve()
+        message = self.call("doc.open", {"path": str(target)})
+        if not message.get("ok"):
+            raise EngineError(f"打开 {target} 失败：{message.get('error')}")
+        result = message.get("result") or {}
+        return {
+            "name": result.get("name") or target.name,
+            "width": result.get("width"),
+            "height": result.get("height"),
+            "layers": result.get("layers"),
+            "warnings": result.get("warnings") or [],
+        }
+
+    def place(self, path: Path | str, x: float | None = None,
+              y: float | None = None, scale: float | None = None) -> dict:
+        """把一张图片置入当前文档，默认落在左上角、原始大小。"""
+        target = Path(path).expanduser().resolve()
+        params: dict = {"path": str(target)}
+        if x is not None:
+            params["x"] = x
+        if y is not None:
+            params["y"] = y
+        if scale is not None:
+            params["scale"] = scale
+        message = self.call("doc.place", params)
+        if not message.get("ok"):
+            raise EngineError(f"置入 {target} 失败：{message.get('error')}")
+        result = message.get("result") or {}
+        return {
+            "layer": result.get("layer"),
+            "bounds": result.get("bounds"),
+            "scale": result.get("scale"),
+            "smart_object": result.get("smartObject"),
+        }
+
+    def render(self, max_side: int | None = None) -> bytes:
+        """渲染当前文档，返回 PNG 字节；数据只留在本地，不进模型。"""
+        params: dict = {}
+        if max_side:
+            params["max_side"] = int(max_side)
+        message = self.call("doc.render", params)
+        if not message.get("ok"):
+            raise EngineError(f"渲染失败：{message.get('error')}")
+        encoded = (message.get("result") or {}).get("base64")
+        if not encoded:
+            raise EngineError("渲染没有返回图片数据")
+        return base64.b64decode(encoded)
+
+    def render_to(self, path: Path | str, max_side: int | None = None) -> dict:
+        """渲染后直接写文件，只回路径和字节数。"""
+        data = self.render(max_side=max_side)
+        target = Path(path).expanduser().resolve()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+        return {"path": str(target), "bytes": len(data)}
+
+    def inspect(self, brief: bool = True) -> dict:
+        """读当前文档的尺寸、层数和顶层名称，不把整棵图层树带回来。"""
+        message = self.call("doc.inspect", {"brief": bool(brief)})
+        if not message.get("ok"):
+            raise EngineError(f"读取文档失败：{message.get('error')}")
+        data = message.get("result") or {}
+
+        def count(nodes) -> int:
+            total = 0
+            for node in nodes or []:
+                total += 1 + count(node.get("children"))
+            return total
+
+        channels = data.get("channels") or {}
+        return {
+            "name": data.get("file") or data.get("name") or "",
+            "width": data.get("width"),
+            "height": data.get("height"),
+            "depth": data.get("depth"),
+            "mode": channels.get("composite"),
+            "layers": count(data.get("layers")),
+            "active": data.get("activeLayer"),
+            "top": [node.get("name") or node.get("kind") for node in data.get("layers") or []],
+        }
+
+    def jobs(self) -> list[dict]:
+        """列出后台任务，通常是空的。"""
+        message = self.call("jobs.list", {})
+        if not message.get("ok"):
+            raise EngineError(f"读取任务失败：{message.get('error')}")
+        return list((message.get("result") or {}).get("jobs") or [])
+
+    def cancel_job(self, job_id) -> dict:
+        """取消一个后台任务。"""
+        message = self.call("jobs.cancel", {"id": str(job_id)})
+        if not message.get("ok"):
+            raise EngineError(f"取消任务失败：{message.get('error')}")
         return message.get("result") or {}
 
     def close_document(self) -> None:

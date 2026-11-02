@@ -119,7 +119,7 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
     width, height = plan["canvas"]
     ref_width = plan.get("ref_width", 800)
     palette = resolve_palette(plan.get("palette"))
-    document_background = plan.get("document_background", "white")
+    document_background = plan.get("document_background", "transparent")
     base_layer = "Layer 1" if document_background == "transparent" else "Background"
     pen = Pen(int(width), int(height), ref_width=ref_width, palette=palette, base_layer=base_layer)
 
@@ -159,7 +159,8 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
         "name": plan.get("name") or "未命名",
         "width": int(width),
         "height": int(height),
-        "document_background": plan.get("document_background", "white"),        "layers": layer_count,
+        "document_background": plan.get("document_background", "transparent"),
+        "layers": layer_count,
         "components": component_count,
         "commands": len(pen.commands),
     }

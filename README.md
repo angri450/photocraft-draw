@@ -100,7 +100,6 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
   "canvas": [1600, 900],
   "ref_width": 800,
   "palette": "fresco",
-  "document_background": "transparent",
   "caption": "PHOTOCRAFT-DRAW 0.1",
   "layers": [
     {
@@ -118,7 +117,7 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 1. `canvas` 是最终像素，`ref_width` 是组件的参考宽度，组件坐标按参考宽度写，脚本按 `canvas宽 / ref_width` 统一放大。
 2. `palette` 可以是配色名，也可以直接写角色表；组件里的颜色写角色名（bg、ink、line 等），不写死色值。
 3. `background` 可选，写一个角色名，铺满整张画布；如果室内背景的墙已经铺满画布，就不用写，否则会多出一层颜色完全相同的底色。
-4. `document_background` 可选，默认 `white`；写 `transparent` 就不生成 `Background` 层，画完会自动清掉空图层。
+4. `document_background` 可选，默认 `transparent`，不生成 `Background` 层，画完会自动清掉空图层；要白底就写 `white`。
 5. `caption` 可选，画面左下角的一行字，会建成文字层，PSD 里可以改；`caption_color` 可选，默认 surface。
 6. `layers` 按顺序画，先写的在下面，后写的压在上面；每一层是一个图层组，层里的组件是子组。
 7. 也可以只写 `components`，每个组件单独成层，适合快速试验。
@@ -140,6 +139,46 @@ photocraft-draw commands --describe image.adjustments.curves
 ```sh
 photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast \
   --params '{"brightness": 5, "contrast": 5}' --png out/graded.png
+```
+
+## 文档层
+
+除了画图，绘制服务还有一组文档方法，已经收进 `DocumentBook`，也可以直接用 `Engine`：
+
+| 方法 | 作用 |
+|---|---|
+| doc.new | 新建文档，默认透明 |
+| doc.open | 打开已有 PSD 或图片 |
+| doc.place | 把一张图片置入当前文档，作为智能对象 |
+| doc.render | 渲染当前画面，返回 PNG |
+| doc.save | 保存成 PNG、PSD、JPG 等 |
+| doc.inspect | 读尺寸、层数、顶层名称和当前图层 |
+| engine.execute | 执行一条绘制指令 |
+| jobs.list / jobs.cancel | 看后台任务、取消任务 |
+
+命令行：
+
+```sh
+photocraft-draw doc inspect out/framework.psd
+photocraft-draw doc render out/framework.psd --png out/preview.png --max-side 1200
+photocraft-draw doc place out/framework.psd imgs/logo.png --x 40 --y 40 --scale 20 --out out/placed.psd
+photocraft-draw doc jobs
+photocraft-draw doc cancel <任务编号>
+```
+
+`doc.open` 和 `doc.place` 读的文件必须在绘制服务的读取根里，命令行默认用项目当前目录；`doc.save` 写在目标文件所在目录。`doc.render` 的 base64 不会进模型，命令行只回路径和字节数；`doc.inspect` 只回摘要，不拉整棵图层树。
+
+Python 里用 `DocumentBook`：
+
+```python
+from photocraft_draw.engine import Engine
+from photocraft_draw.documents import DocumentBook
+
+with Engine(read_root=".", write_root="out") as engine:
+    book = DocumentBook(engine)
+    book.open("out/framework.psd")
+    print(book.inspect())
+    book.render_to("out/preview.png", max_side=1200)
 ```
 
 ## 组件目录
@@ -165,7 +204,7 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
 5. 「批注」页集中列出所有意见，点一条跳回对应区域。
 6. 导出 `review.json`，或在页面里复制 JSON。
 
-框架方案用了 `document_background: transparent`，不会再生成 `Background`，图层树最底下就是室内背景。如果方案用默认白底，图层树最底下会有一个 `Background`，那是引擎新建文档时自带的底层像素层，不是构图组件；它也能用眼睛开关，自动识别批注图层时会跳过它。
+默认用透明文档，不生成 `Background`，图层树最底下就是室内背景。只有显式写 `document_background: white` 时，才会出现 `Background` 那个底层像素层；它不是构图组件，能用眼睛开关，自动识别批注图层时会跳过它。
 
 导出的格式是图层、区域、意见三层数据：
 

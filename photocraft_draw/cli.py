@@ -13,6 +13,7 @@ from .annotate import write_review
 from .commandbook import categories as command_categories
 from .commandbook import describe as describe_command
 from .commandbook import load_catalog, search as search_commands
+from .documents import DocumentBook
 from .engine import Engine, EngineError, engine_version, find_engine
 from .plan import compose_plan, load_plan
 from .registry import list_components
@@ -164,6 +165,61 @@ def cmd_annotate(args) -> int:
     return 0
 
 
+def cmd_doc_inspect(args) -> int:
+    path = Path(args.file).expanduser().resolve()
+    with Engine(read_root=path.parent, write_root=path.parent) as engine:
+        book = DocumentBook(engine)
+        opened = book.open(path)
+        info = book.inspect()
+    print(
+        f"ok | {opened['name']} | {opened['width']}x{opened['height']} | "
+        f"{opened['layers']} 层 | 顶层 {'、'.join(info['top'])}"
+    )
+    return 0
+
+
+def cmd_doc_render(args) -> int:
+    path = Path(args.file).expanduser().resolve()
+    out = Path(args.png).expanduser().resolve() if args.png else path.with_suffix(".preview.png")
+    with Engine(read_root=path.parent, write_root=path.parent) as engine:
+        book = DocumentBook(engine)
+        book.open(path)
+        saved = book.render_to(out, max_side=args.max_side)
+    print(f"ok | {saved['path']} | {saved['bytes']} 字节")
+    return 0
+
+
+def cmd_doc_place(args) -> int:
+    path = Path(args.file).expanduser().resolve()
+    image = Path(args.image).expanduser().resolve()
+    out = Path(args.out).expanduser().resolve() if args.out else path.with_name(
+        f"{path.stem}-placed{path.suffix}"
+    )
+    with Engine(read_root=Path.cwd(), write_root=path.parent) as engine:
+        book = DocumentBook(engine)
+        book.open(path)
+        placed = book.place(image, x=args.x, y=args.y, scale=args.scale)
+        book.save(out, out.suffix.lstrip("."))
+    print(f"ok | 置入 {image.name} | 图层 {placed['layer']} | {out}")
+    return 0
+
+
+def cmd_doc_jobs(args) -> int:
+    with Engine(read_root=Path.cwd(), write_root=Path.cwd()) as engine:
+        jobs = DocumentBook(engine).jobs()
+    print(f"ok | {len(jobs)} 个后台任务")
+    for job in jobs:
+        print(f"  {job.get('id')}  {job.get('kind', '')}  {job.get('status', '')}")
+    return 0
+
+
+def cmd_doc_cancel(args) -> int:
+    with Engine(read_root=Path.cwd(), write_root=Path.cwd()) as engine:
+        result = DocumentBook(engine).cancel(args.id)
+    print(f"ok | 取消 {result.get('cancelled', 0)} 个任务")
+    return 0
+
+
 def cmd_commands(args) -> int:
     if args.describe:
         item = describe_command(args.describe)
@@ -224,6 +280,35 @@ def build_parser() -> argparse.ArgumentParser:
     annotate.add_argument("--port", type=int, default=8898, help="网页端口，默认 8898")
     annotate.add_argument("--verbose", action="store_true", help="打印绘制过程")
     annotate.set_defaults(func=cmd_annotate)
+
+    doc = sub.add_parser("doc", help="文档层：打开、置入、渲染、检查、任务")
+    doc_sub = doc.add_subparsers(dest="doc_command", required=True)
+
+    doc_inspect = doc_sub.add_parser("inspect", help="打开文档并读尺寸、层数和顶层")
+    doc_inspect.add_argument("file")
+    doc_inspect.set_defaults(func=cmd_doc_inspect)
+
+    doc_render = doc_sub.add_parser("render", help="打开文档并渲染 PNG")
+    doc_render.add_argument("file")
+    doc_render.add_argument("--png", help="输出 PNG，默认 <文件名>.preview.png")
+    doc_render.add_argument("--max-side", type=int, default=None, help="最长边像素")
+    doc_render.set_defaults(func=cmd_doc_render)
+
+    doc_place = doc_sub.add_parser("place", help="打开文档、置入图片并另存")
+    doc_place.add_argument("file")
+    doc_place.add_argument("image")
+    doc_place.add_argument("--x", type=float, default=None)
+    doc_place.add_argument("--y", type=float, default=None)
+    doc_place.add_argument("--scale", type=float, default=None)
+    doc_place.add_argument("--out", help="输出文件，默认 <文件名>-placed.<扩展名>")
+    doc_place.set_defaults(func=cmd_doc_place)
+
+    doc_jobs = doc_sub.add_parser("jobs", help="列出后台任务")
+    doc_jobs.set_defaults(func=cmd_doc_jobs)
+
+    doc_cancel = doc_sub.add_parser("cancel", help="取消后台任务")
+    doc_cancel.add_argument("id")
+    doc_cancel.set_defaults(func=cmd_doc_cancel)
 
     commands = sub.add_parser("commands", help="查命令目录")
     commands.add_argument("--search", help="按关键字搜编号、名称、菜单和参数")

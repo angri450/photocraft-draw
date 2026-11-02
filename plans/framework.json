@@ -3,7 +3,6 @@
   "canvas": [1600, 900],
   "ref_width": 800,
   "palette": "fresco",
-  "document_background": "transparent",
   "caption": "PHOTOCRAFT-DRAW 0.1",
   "layers": [
     {

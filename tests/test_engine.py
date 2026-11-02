@@ -30,13 +30,28 @@ class EngineTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             with Engine(read_root=root, write_root=root) as engine:
-                engine.new_document(meta["width"], meta["height"], "测试")
+                engine.new_document(
+                    meta["width"], meta["height"], "测试",
+                    background=meta.get("document_background"),
+                )
                 for item in commands:
                     engine.execute(item["command"], item.get("params") or {})
+                info = engine.inspect()
+                self.assertEqual(info["width"], 320)
+                self.assertGreaterEqual(info["layers"], 1)
                 engine.save(root / "test.png", "png")
                 engine.save(root / "test.psd", "psd")
+                engine.render_to(root / "preview.png", max_side=100)
+                engine.open_document(root / "test.psd")
+                reopened = engine.inspect()
+                self.assertEqual(reopened["width"], 320)
+                placed = engine.place(root / "preview.png", scale=20)
+                self.assertIsNotNone(placed["layer"])
+                self.assertEqual(engine.jobs(), [])
+                self.assertEqual(engine.cancel_job("nope").get("cancelled", 0), 0)
             self.assertGreater((root / "test.png").stat().st_size, 0)
             self.assertGreater((root / "test.psd").stat().st_size, 0)
+            self.assertGreater((root / "preview.png").stat().st_size, 0)
 
 
 if __name__ == "__main__":
