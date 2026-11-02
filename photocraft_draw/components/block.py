@@ -493,3 +493,88 @@ COMPONENTS["rig_horse"] = {
 
 __all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
            "build_rig_horse", "POSES", "HORSE_POSES", "ORDER", "COMPONENTS"]
+
+
+# 人物比例照搬 Minecraft：头 8、身体 12、腿 12，总高 32
+PERSON_POSES = {
+    "stand": {"arm_l": 94, "arm_r": 86, "leg_l": 92, "leg_r": 88},
+    "walk": {"arm_l": 100, "arm_r": 80, "leg_l": 101, "leg_r": 79},
+    "run": {"arm_l": 116, "arm_r": 64, "leg_l": 114, "leg_r": 66},
+    "point": {"arm_l": 94, "arm_r": -38, "leg_l": 92, "leg_r": 88},
+    "sit": {"arm_l": 86, "arm_r": 94, "leg_l": 4, "leg_r": 14},
+}
+
+
+def build_rig_person(params: dict, pen: Pen) -> None:
+    """方块人：六个长方体，照 Minecraft 的比例。
+
+    头 8、身体 12、腿 12，总高 32。手臂和腿从肩、髋两个枢轴旋转，
+    躯干和头不转。全部是矩形，没有曲线。
+
+    参数：
+        root    [x, y]，肩部位置，必填
+        height  总身高像素，必填
+        pose    stand / walk / run / point / sit
+        body    身体颜色，默认 mid
+        skin    头和手的颜色，默认 soft
+        flip    是否左右翻转，默认 false
+    """
+    root = params.get("root")
+    if not isinstance(root, (list, tuple)) or len(root) != 2:
+        raise ValueError("方块人需要 root：[x, y]，肩部位置")
+    total = params.get("height")
+    if isinstance(total, bool) or not isinstance(total, (int, float)) or total <= 0:
+        raise ValueError("方块人需要 height，大于 0 的总身高像素")
+    pose = str(params.get("pose", "stand"))
+    if pose not in PERSON_POSES:
+        raise ValueError(f"方块人 pose 只能是 {'、'.join(PERSON_POSES)}，收到 {pose}")
+    body = params.get("body", "mid")
+    skin = params.get("skin", "soft")
+    flip = bool(params.get("flip", False))
+
+    sx, sy = float(root[0]), float(root[1])
+    u = float(total) / 32.0
+    angles = PERSON_POSES[pose]
+
+    head_w, head_h = 8 * u, 8 * u
+    torso_w, torso_h = 8 * u, 12 * u
+    arm_w, arm_h = 4 * u, 12 * u
+    leg_w, leg_h = 4 * u, 12 * u
+
+    # 头：方块压在肩上
+    pen.rect(sx - head_w / 2, sy - head_h, head_w, head_h,
+             fill=skin, stroke_width=None, stroke=None, name="头")
+    # 躯干：从肩往下 12
+    pen.rect(sx - torso_w / 2, sy, torso_w, torso_h,
+             fill=body, stroke_width=None, stroke=None, name="躯干")
+
+    # 手臂：从肩旋转
+    for side, key in ((-1, "arm_l"), (1, "arm_r")):
+        angle = angles[key] if not flip else angles["arm_r" if key == "arm_l" else "arm_l"]
+        _segment(pen, sx + side * torso_w / 2, sy + arm_w * 0.2,
+                 angle, arm_h, arm_w, body, "左臂" if side < 0 else "右臂", taper=1.0)
+
+    # 腿：从髋旋转
+    for side, key in ((-1, "leg_l"), (1, "leg_r")):
+        angle = angles[key] if not flip else angles["leg_r" if key == "leg_l" else "leg_l"]
+        _segment(pen, sx + side * torso_w * 0.25, sy + torso_h,
+                 angle, leg_h, leg_w, body, "左腿" if side < 0 else "右腿", taper=1.0)
+
+
+COMPONENTS["rig_person"] = {
+    "name": "方块人",
+    "description": "六个长方体的方块人，照 Minecraft 比例，手臂腿可摆动",
+    "params": {
+        "root": "[x, y]，肩部位置，必填",
+        "height": "总身高像素，必填",
+        "pose": "stand / walk / run / point / sit",
+        "body": "身体颜色，默认 mid",
+        "skin": "头部颜色，默认 soft",
+        "flip": "是否左右翻转，默认 false",
+    },
+    "build": build_rig_person,
+}
+
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
+           "build_rig_horse", "build_rig_person", "POSES", "HORSE_POSES", "PERSON_POSES",
+           "ORDER", "COMPONENTS"]

@@ -1,0 +1,75 @@
+{
+  "name": "方块人四姿态",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "stand",
+      "components": [
+        {
+          "component": "rig_person",
+          "params": {
+            "root": [
+              100,
+              400
+            ],
+            "height": 430,
+            "pose": "stand"
+          }
+        }
+      ]
+    },
+    {
+      "name": "walk",
+      "components": [
+        {
+          "component": "rig_person",
+          "params": {
+            "root": [
+              280,
+              400
+            ],
+            "height": 430,
+            "pose": "walk"
+          }
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "components": [
+        {
+          "component": "rig_person",
+          "params": {
+            "root": [
+              460,
+              400
+            ],
+            "height": 430,
+            "pose": "run"
+          }
+        }
+      ]
+    },
+    {
+      "name": "point",
+      "components": [
+        {
+          "component": "rig_person",
+          "params": {
+            "root": [
+              640,
+              400
+            ],
+            "height": 430,
+            "pose": "point"
+          }
+        }
+      ]
+    }
+  ]
+}
