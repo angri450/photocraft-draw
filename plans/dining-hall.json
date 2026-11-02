@@ -1,0 +1,300 @@
+{
+  "name": "空餐厅",
+  "canvas": [
+    1600,
+    900
+  ],
+  "ref_width": 800,
+  "palette": "fresco",
+  "layers": [
+    {
+      "name": "室内背景",
+      "components": [
+        {
+          "component": "indoor_backdrop",
+          "params": {
+            "wall": [
+              0,
+              0,
+              800,
+              450
+            ],
+            "floor": [
+              0,
+              352,
+              800,
+              98
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "建筑结构",
+      "components": [
+        {
+          "component": "coffered_ceiling",
+          "params": {
+            "ceiling": [
+              0,
+              0,
+              800,
+              112
+            ],
+            "vanish": [
+              400,
+              186
+            ],
+            "columns": 6,
+            "rows": 4
+          }
+        },
+        {
+          "component": "side_drapery",
+          "params": {
+            "draperies": [
+              [
+                6,
+                96,
+                54,
+                256
+              ],
+              [
+                740,
+                96,
+                54,
+                256
+              ]
+            ],
+            "cast_shadow": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "拱形窗户",
+      "components": [
+        {
+          "component": "arched_windows",
+          "params": {
+            "windows": [
+              [
+                166,
+                132,
+                76,
+                120
+              ],
+              [
+                350,
+                108,
+                100,
+                156
+              ],
+              [
+                558,
+                132,
+                76,
+                120
+              ]
+            ],
+            "mullions": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "长条餐桌",
+      "components": [
+        {
+          "component": "long_table",
+          "params": {
+            "table": [
+              120,
+              278,
+              560,
+              42
+            ],
+            "front": 40
+          }
+        }
+      ]
+    },
+    {
+      "name": "桌面器物",
+      "components": [
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              196.5,
+              292
+            ],
+            "height": 30
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              253.5,
+              296
+            ],
+            "size": 26
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              304.0,
+              290
+            ],
+            "size": 15
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              424.4,
+              292
+            ],
+            "height": 34
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              377.2,
+              296
+            ],
+            "size": 28
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              474.9,
+              290
+            ],
+            "size": 16,
+            "cut": true
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              562.8,
+              292
+            ],
+            "height": 28
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              611.6,
+              296
+            ],
+            "size": 24
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              168.8,
+              310
+            ],
+            "size": 38
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              219.3,
+              316
+            ],
+            "height": 36
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              343.0,
+              312
+            ],
+            "size": 42
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              307.2,
+              306
+            ],
+            "size": 22
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              400.0,
+              318
+            ],
+            "height": 40
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              505.8,
+              310
+            ],
+            "size": 36
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              541.6,
+              305
+            ],
+            "size": 20,
+            "cut": true
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              595.3,
+              315
+            ],
+            "height": 32
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              647.4,
+              308
+            ],
+            "size": 30
+          }
+        }
+      ]
+    }
+  ]
+}
