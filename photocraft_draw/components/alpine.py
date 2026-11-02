@@ -187,6 +187,52 @@ def build_rocky_ground(params: dict, pen: Pen) -> None:
                     fill=dark, stroke_width=None, stroke=None, name=f"石影 {index + 1}")
 
 
+def build_river_water(params: dict, pen: Pen) -> None:
+    """河流：水面、横向波纹和几处水花。
+
+    参数：
+        area     [x, y, 宽, 高]，水面范围，必填
+        waves    横向波纹条数，0 到 12，默认 5
+        splashes [[中心x, 中心y, 半径x, 半径y], …]，水花位置，可选
+        colors   {water, light, foam, dark}，可选
+    """
+    x, y, w, h = _box(params.get("area"), "河流需要 area：[x, y, 宽, 高]")
+    waves = int(params.get("waves", 5))
+    if not 0 <= waves <= 12:
+        raise ValueError("河流的 waves 要在 0 到 12 之间")
+    colors = params.get("colors") or {}
+    water = colors.get("water", "bg")
+    light = colors.get("light", "soft")
+    foam = colors.get("foam", "surface")
+    dark = colors.get("dark", "ink")
+
+    pen.rect(x, y, w, h, fill=water, stroke_width=None, stroke=None, name="水面")
+    # 远处一条暗带，把水面和岸分开
+    pen.rect(x, y, w, max(1.5, h * 0.04), fill=dark, stroke_width=None, stroke=None,
+             name="水岸线")
+
+    for index in range(waves):
+        ratio = (index + 1) / (waves + 1)
+        band_y = y + h * ratio
+        inset = w * 0.04 * ((index % 3) - 1) * 0.5
+        pen.rect(x + inset, band_y, w * (0.2 + 0.1 * (index % 4)), max(1.5, h * 0.02),
+                 fill=light, stroke_width=None, stroke=None, name=f"波纹 {index + 1}")
+        pen.rect(x + w * (0.35 + 0.05 * ((index + 2) % 4)), band_y + h * 0.03,
+                 w * (0.15 + 0.05 * (index % 3)), max(1.5, h * 0.015),
+                 fill=light, stroke_width=None, stroke=None, name=f"波纹 {index + 1} 右")
+
+    for index, (cx, cy, rx, ry) in enumerate(_points(
+            params.get("splashes") or [], 4,
+            "每处水花要写 [中心x, 中心y, 半径x, 半径y]")):
+        # 贴着水面的白色泡沫，两层错开，避免排成一条
+        pen.ellipse(cx, cy, rx, ry * 0.42, fill=foam, stroke_width=None, stroke=None,
+                    name=f"水花 {index + 1}")
+        pen.ellipse(cx + rx * 0.45, cy + ry * 0.3, rx * 0.42, ry * 0.26,
+                    fill=foam, stroke_width=None, stroke=None, name=f"水花 {index + 1} 右")
+        pen.ellipse(cx - rx * 0.4, cy - ry * 0.2, rx * 0.3, ry * 0.2,
+                    fill=foam, stroke_width=None, stroke=None, name=f"水花 {index + 1} 左")
+
+
 COMPONENTS = {
     "alpine_sky": {
         "name": "高山天空",
@@ -210,6 +256,17 @@ COMPONENTS = {
         },
         "build": build_alpine_peaks,
     },
+    "river_water": {
+        "name": "河流",
+        "description": "水面、横向波纹和几处水花，用来做前景的溪流",
+        "params": {
+            "area": "[x, y, 宽, 高]，必填",
+            "waves": "波纹条数，0 到 12，默认 5",
+            "splashes": "[[中心x, 中心y, 半径x, 半径y], …]，可选",
+            "colors": "{water, light, foam, dark}，可选",
+        },
+        "build": build_river_water,
+    },
     "rocky_ground": {
         "name": "岩地",
         "description": "地面底色、亮部和暗部，可摆几块石头做前景",
@@ -224,4 +281,5 @@ COMPONENTS = {
 }
 
 
-__all__ = ["build_alpine_sky", "build_alpine_peaks", "build_rocky_ground", "COMPONENTS"]
+__all__ = ["build_alpine_sky", "build_alpine_peaks", "build_rocky_ground",
+           "build_river_water", "COMPONENTS"]

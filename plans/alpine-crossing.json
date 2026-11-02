@@ -134,23 +134,43 @@
       ]
     },
     {
-      "name": "前景",
+      "name": "河流",
       "components": [
         {
-          "component": "rocky_ground",
+          "component": "river_water",
           "params": {
             "area": [
               0,
-              404,
+              380,
               800,
-              46
+              70
             ],
-            "tone": "dark",
-            "rocks": [],
+            "waves": 5,
+            "splashes": [
+              [
+                150,
+                412,
+                40,
+                13
+              ],
+              [
+                600,
+                420,
+                52,
+                15
+              ],
+              [
+                340,
+                428,
+                30,
+                11
+              ]
+            ],
             "colors": {
-              "base": "ink",
-              "light": "muted",
-              "dark": "ink"
+              "water": "bg",
+              "light": "soft",
+              "foam": "soft",
+              "dark": "muted"
             }
           }
         }
