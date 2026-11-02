@@ -107,6 +107,13 @@ def cmd_doctor(args) -> int:
     return 0
 
 
+def cmd_occlusion(args) -> int:
+    from .occlusion import analyze, report
+
+    print(report(analyze(Path(args.psd), Path(args.tmp) if args.tmp else None)))
+    return 0
+
+
 def cmd_verify(args) -> int:
     from .checker import check_commands, report_text
 
@@ -306,6 +313,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="用构图组件和绘制方案驱动 PhotoCraft 出图",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    occlusion = sub.add_parser("occlusion", help="分析分层文件的遮挡关系")
+    occlusion.add_argument("psd", help="分层文件")
+    occlusion.add_argument("--tmp", help="临时目录")
+    occlusion.set_defaults(func=cmd_occlusion)
 
     verify = sub.add_parser("verify", help="只读指令检查结构，不出图")
     verify.add_argument("plan", help="绘制方案文件")
