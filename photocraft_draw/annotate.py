@@ -39,7 +39,7 @@ TEMPLATE = """<!doctype html>
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
-  margin: 0; overflow: hidden; background: var(--bg); color: var(--text);
+  margin: 0; overflow: hidden; overscroll-behavior: none; background: var(--bg); color: var(--text);
   font: 13px/1.5 -apple-system, "Segoe UI", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -52,7 +52,7 @@ button {
 button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button:disabled { opacity: .35; cursor: default; }
-#app { height: 100vh; display: flex; flex-direction: column; }
+#app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 header {
   flex: 0 0 56px; display: flex; align-items: center; gap: 18px; padding: 0 18px;
   background: var(--panel); border-bottom: 1px solid var(--line);
@@ -200,6 +200,33 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minma
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; border: 2px solid var(--panel); }
 ::-webkit-scrollbar-track { background: transparent; }
 @media (max-width: 1100px) { main { grid-template-columns: 250px minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  header { flex: 0 0 auto; flex-wrap: wrap; gap: 6px 10px; padding: 8px 10px; }
+  .brand { min-width: 0; flex: 1 1 100%; }
+  .brand h1 { font-size: 13px; }
+  .brand p { font-size: 10px; }
+  .logo { width: 26px; height: 26px; font-size: 11px; }
+  .spacer { display: none; }
+  .tools { width: 100%; gap: 4px; flex-wrap: wrap; }
+  .tools button { flex: 1 1 auto; padding: 7px 4px; font-size: 11px; min-width: 44px; }
+  .tools #zoomLabel { min-width: 38px; font-size: 11px; }
+  main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .workspace { order: 1; }
+  .side { order: 2; max-height: 30vh; border-right: none; border-top: 1px solid var(--line); }
+  #stage { padding: 6px; touch-action: none; }
+  #editor {
+    position: fixed; left: 8px !important; right: 8px; top: 8px !important;
+    width: auto; max-height: 76vh; overflow: auto;
+  }
+  #edNote { min-height: 54px; }
+  #hint { display: none; }
+  .row { height: 36px; }
+  .row .eye { width: 28px; height: 28px; flex-basis: 28px; font-size: 13px; }
+  .row .spacer-eye { flex-basis: 28px; }
+  .tabs { padding: 8px 10px 0; }
+  .tab { padding: 9px 8px; }
+  #drawRect .resize, .anno .resize { width: 18px; height: 18px; right: -9px; bottom: -9px; }
+}
 </style>
 </head>
 <body>
@@ -569,11 +596,11 @@ function renderAnnos() {
     const handle = document.createElement('span');
     handle.className = 'resize';
     handle.title = '拖动缩放';
-    handle.addEventListener('mousedown', event => {
+    handle.addEventListener('pointerdown', event => {
       if (editing && editing.id !== item.id) { commitEditing(); return; }
       beginBoxDrag(event, 'resize', node, item.rect, String(item.id));
     });
-    node.addEventListener('mousedown', event => {
+    node.addEventListener('pointerdown', event => {
       if (event.target.classList.contains('resize')) return;
       if (editing && editing.id !== item.id) { commitEditing(); return; }
       beginBoxDrag(event, 'move', node, item.rect, String(item.id));
@@ -681,7 +708,7 @@ function placeEditor(rect) {
 }
 
 const edHead = document.querySelector('.ed-head');
-edHead.addEventListener('mousedown', event => {
+edHead.addEventListener('pointerdown', event => {
   if (event.target.closest('button')) return;
   event.preventDefault();
   const left = parseFloat(editor.style.left) || 0;
@@ -689,7 +716,7 @@ edHead.addEventListener('mousedown', event => {
   editorDrag = { x: event.clientX, y: event.clientY, left, top };
   edHead.classList.add('dragging');
 });
-window.addEventListener('mousemove', event => {
+window.addEventListener('pointermove', event => {
   if (!editorDrag) return;
   const wrapW = natW * scale;
   const wrapH = natH * scale;
@@ -703,7 +730,7 @@ window.addEventListener('mousemove', event => {
   editor.style.top = top + 'px';
   editorPos = { left, top };
 });
-window.addEventListener('mouseup', () => {
+window.addEventListener('pointerup', () => {
   if (!editorDrag) return;
   editorDrag = null;
   edHead.classList.remove('dragging');
@@ -807,7 +834,7 @@ function pointFromEvent(event) {
   return [x, y];
 }
 
-marquee.addEventListener('mousedown', event => {
+marquee.addEventListener('pointerdown', event => {
   event.preventDefault();
   if (editing) commitEditing();
   drawing = null;
@@ -820,7 +847,7 @@ marquee.addEventListener('mousedown', event => {
   drawRect.style.height = '0px';
 });
 
-window.addEventListener('mousemove', event => {
+window.addEventListener('pointermove', event => {
   if (boxDrag) return;
   if (!drawing) return;
   const [x, y] = pointFromEvent(event);
@@ -835,7 +862,7 @@ window.addEventListener('mousemove', event => {
   drawRect.style.height = (rect[3] * scale) + 'px';
 });
 
-window.addEventListener('mouseup', () => {
+window.addEventListener('pointerup', () => {
   if (boxDrag) return;
   if (!drawing) return;
   const raw = drawing;
@@ -850,17 +877,17 @@ window.addEventListener('mouseup', () => {
   drawing = null;
 });
 
-drawRect.addEventListener('mousedown', event => {
+drawRect.addEventListener('pointerdown', event => {
   if (!editing) return;
   if (event.target.classList.contains('resize')) return;
   beginBoxDrag(event, 'move', drawRect, editing.rect, 'draft');
 });
-drawRect.querySelector('.resize').addEventListener('mousedown', event => {
+drawRect.querySelector('.resize').addEventListener('pointerdown', event => {
   if (!editing) return;
   beginBoxDrag(event, 'resize', drawRect, editing.rect, 'draft');
 });
 
-window.addEventListener('mousemove', event => {
+window.addEventListener('pointermove', event => {
   if (!boxDrag) return;
   const moveX = event.clientX - boxDrag.startX;
   const moveY = event.clientY - boxDrag.startY;
@@ -900,7 +927,7 @@ window.addEventListener('mousemove', event => {
   }
 });
 
-window.addEventListener('mouseup', () => {
+window.addEventListener('pointerup', () => {
   if (!boxDrag) return;
   const drag = boxDrag;
   boxDrag = null;
