@@ -28,19 +28,6 @@
 6. 所有层按从后到前的顺序排好，`draw` 一次组装成图；程序会把每个顶层组提到最前，保证后画的压在前面。
 7. `annotate` 生成单文件批注页，你在网页上点图层、拖方框、写意见，导出 JSON 发回来，我按 JSON 改。
 
-## 检查与出图
-
-结构画完先验，验过了再译成提示词。
-
-```sh
-photocraft-draw verify plans/xxx.json --expect horse --envelope horse
-photocraft-draw colors plans/xxx.json
-photocraft-draw occlusion out/xxx.psd
-photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
-```
-
-`verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
-
 ## 目录
 
 ```text
@@ -147,6 +134,19 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 5. `caption` 可选，画面左下角的一行字，会建成文字层，PSD 里可以改；`caption_color` 可选，默认 surface。
 6. `layers` 按顺序画，先写的在下面，后写的压在上面；每一层是一个图层组，层里的组件是子组。
 7. 也可以只写 `components`，每个组件单独成层，适合快速试验。
+
+## 检查与出图
+
+结构画完先验，验过了再译成提示词。
+
+```sh
+photocraft-draw verify plans/xxx.json --expect horse --envelope horse
+photocraft-draw colors plans/xxx.json
+photocraft-draw occlusion out/xxx.psd
+photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
+```
+
+`verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
 
 ## 命令目录
 
