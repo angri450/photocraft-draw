@@ -1,0 +1,796 @@
+{
+  "name": "最后的晚餐",
+  "canvas": [
+    1600,
+    900
+  ],
+  "ref_width": 800,
+  "palette": "fresco",
+  "layers": [
+    {
+      "name": "室内背景",
+      "components": [
+        {
+          "component": "indoor_backdrop",
+          "params": {
+            "wall": [
+              0,
+              0,
+              800,
+              450
+            ],
+            "floor": [
+              0,
+              348,
+              800,
+              102
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "建筑结构",
+      "components": [
+        {
+          "component": "coffered_ceiling",
+          "params": {
+            "ceiling": [
+              50,
+              10,
+              700,
+              100
+            ],
+            "vanish": [
+              400,
+              200
+            ],
+            "columns": 6,
+            "rows": 4
+          }
+        },
+        {
+          "component": "side_drapery",
+          "params": {
+            "draperies": [
+              [
+                6,
+                96,
+                52,
+                252
+              ],
+              [
+                742,
+                96,
+                52,
+                252
+              ]
+            ],
+            "cast_shadow": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "拱形窗户",
+      "components": [
+        {
+          "component": "arched_windows",
+          "params": {
+            "windows": [
+              [
+                168,
+                150,
+                72,
+                112
+              ],
+              [
+                352,
+                126,
+                96,
+                148
+              ],
+              [
+                560,
+                150,
+                72,
+                112
+              ]
+            ],
+            "mullions": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "窗光",
+      "components": [
+        {
+          "component": "window_glow",
+          "params": {
+            "window": [
+              352,
+              126,
+              96,
+              148
+            ],
+            "glow_steps": 3,
+            "colors": {
+              "glow": "bg",
+              "hot": "surface",
+              "halo": "bg"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "人物躯干",
+      "components": [
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              40,
+              182,
+              48,
+              100
+            ],
+            "pose": "side",
+            "robe": "muted",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              92,
+              182,
+              48,
+              100
+            ],
+            "pose": "front",
+            "robe": "deep",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              144,
+              190,
+              52,
+              92
+            ],
+            "pose": "side",
+            "robe": "mid",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              196,
+              182,
+              48,
+              100
+            ],
+            "pose": "grip",
+            "robe": "ink",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              248,
+              182,
+              48,
+              100
+            ],
+            "pose": "side",
+            "robe": "deep",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              300,
+              182,
+              48,
+              100
+            ],
+            "pose": "open",
+            "robe": "muted",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              374,
+              176,
+              52,
+              106
+            ],
+            "pose": "front",
+            "robe": "deep",
+            "trim": "accent"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              456,
+              182,
+              48,
+              100
+            ],
+            "pose": "open",
+            "robe": "mid",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              508,
+              182,
+              48,
+              100
+            ],
+            "pose": "side",
+            "robe": "deep",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              560,
+              182,
+              48,
+              100
+            ],
+            "pose": "point",
+            "robe": "muted",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              612,
+              182,
+              48,
+              100
+            ],
+            "pose": "grip",
+            "robe": "mid",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              664,
+              182,
+              48,
+              100
+            ],
+            "pose": "open",
+            "robe": "ink",
+            "trim": "soft"
+          }
+        },
+        {
+          "component": "seated_figure",
+          "params": {
+            "seat": [
+              716,
+              182,
+              48,
+              100
+            ],
+            "pose": "side",
+            "robe": "muted",
+            "trim": "soft"
+          }
+        }
+      ]
+    },
+    {
+      "name": "人物头部",
+      "components": [
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              64,
+              161
+            ],
+            "size": 40,
+            "turn": "right"
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              116,
+              161
+            ],
+            "size": 40,
+            "turn": "front",
+            "beard": true
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              172,
+              171
+            ],
+            "size": 42,
+            "turn": "right",
+            "beard": true
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              220,
+              161
+            ],
+            "size": 40,
+            "turn": "right",
+            "beard": true
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              272,
+              161
+            ],
+            "size": 41,
+            "turn": "right",
+            "beard": true
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              324,
+              161
+            ],
+            "size": 39,
+            "turn": "right"
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              400,
+              157
+            ],
+            "size": 46,
+            "turn": "front",
+            "beard": true
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              480,
+              161
+            ],
+            "size": 40,
+            "turn": "left"
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              532,
+              161
+            ],
+            "size": 40,
+            "turn": "left",
+            "beard": true
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              584,
+              161
+            ],
+            "size": 39,
+            "turn": "left"
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              636,
+              161
+            ],
+            "size": 40,
+            "turn": "left",
+            "beard": true
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              688,
+              161
+            ],
+            "size": 40,
+            "turn": "left"
+          }
+        },
+        {
+          "component": "figure_head",
+          "params": {
+            "center": [
+              740,
+              161
+            ],
+            "size": 40,
+            "turn": "left",
+            "beard": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "长条餐桌",
+      "components": [
+        {
+          "component": "long_table",
+          "params": {
+            "table": [
+              40,
+              292,
+              720,
+              26
+            ],
+            "front": 34
+          }
+        },
+        {
+          "component": "table_cloth_folds",
+          "params": {
+            "area": [
+              40,
+              318,
+              720,
+              34
+            ],
+            "folds": [
+              0.14,
+              0.36,
+              0.62,
+              0.84
+            ],
+            "colors": {
+              "light": "surface",
+              "fold": "line"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "桌面器物",
+      "components": [
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              106,
+              306
+            ],
+            "size": 24
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              200,
+              306
+            ],
+            "size": 24
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              292,
+              306
+            ],
+            "size": 24
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              400,
+              306
+            ],
+            "size": 24
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              504,
+              306
+            ],
+            "size": 24
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              596,
+              306
+            ],
+            "size": 24
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {
+            "center": [
+              690,
+              306
+            ],
+            "size": 24
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              150,
+              299
+            ],
+            "size": 12
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              244,
+              299
+            ],
+            "size": 12
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              344,
+              299
+            ],
+            "size": 12
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              456,
+              299
+            ],
+            "size": 12
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              548,
+              299
+            ],
+            "size": 12
+          }
+        },
+        {
+          "component": "bread_loaf",
+          "params": {
+            "center": [
+              642,
+              299
+            ],
+            "size": 12
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              130,
+              309
+            ],
+            "height": 20
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              266,
+              309
+            ],
+            "height": 20
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              366,
+              309
+            ],
+            "height": 20
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              434,
+              309
+            ],
+            "height": 20
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              570,
+              309
+            ],
+            "height": 20
+          }
+        },
+        {
+          "component": "wine_goblet",
+          "params": {
+            "center": [
+              660,
+              309
+            ],
+            "height": 20
+          }
+        }
+      ]
+    },
+    {
+      "name": "手部",
+      "components": [
+        {
+          "component": "figure_hands",
+          "params": {
+            "hands": [
+              [
+                62,
+                300,
+                "rest"
+              ],
+              [
+                108,
+                300,
+                "open"
+              ],
+              [
+                160,
+                299,
+                "grip"
+              ],
+              [
+                222,
+                300,
+                "open"
+              ],
+              [
+                280,
+                300,
+                "rest"
+              ],
+              [
+                326,
+                300,
+                "point"
+              ],
+              [
+                384,
+                300,
+                "open"
+              ],
+              [
+                416,
+                300,
+                "open"
+              ],
+              [
+                500,
+                300,
+                "open"
+              ],
+              [
+                556,
+                300,
+                "point"
+              ],
+              [
+                640,
+                300,
+                "open"
+              ],
+              [
+                712,
+                300,
+                "rest"
+              ]
+            ],
+            "size": 14
+          }
+        }
+      ]
+    },
+    {
+      "name": "四角阴影",
+      "components": [
+        {
+          "component": "soft_vignette",
+          "params": {
+            "frame": [
+              0,
+              0,
+              800,
+              450
+            ],
+            "corners": true,
+            "corner_x": 80,
+            "corner_y": 48
+          }
+        }
+      ]
+    }
+  ]
+}
