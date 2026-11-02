@@ -23,7 +23,6 @@ TEMPLATE = """<!doctype html>
   --bg: #0f1419; --panel: #161c23; --panel-2: #1d252e; --line: #28323c;
   --text: #e6edf3; --muted: #8b98a5; --accent: #4a9eff;
   --accent-soft: rgba(74,158,255,.14); --warm: #e07a5f; --stage: #0a0e12;
-  --ok: #3fb950;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
@@ -69,7 +68,7 @@ header {
 .spacer { flex: 1; }
 .tools { display: flex; align-items: center; gap: 6px; }
 .tools #zoomLabel { min-width: 48px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 280px minmax(0, 1fr); }
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
 .side { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .tabs { display: flex; gap: 4px; padding: 10px 12px 0; }
 .tab {
@@ -78,19 +77,33 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 280px minma
 }
 .tab.active { color: var(--text); border-bottom-color: var(--accent); background: var(--panel-2); }
 .tab .count { display: inline-block; min-width: 16px; padding: 0 4px; margin-left: 4px; border-radius: 8px; background: var(--warm); color: #fff; font-size: 10px; line-height: 16px; }
+#notePane, #layerPane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#notePane { padding: 10px 12px 14px; overflow: auto; }
+#notePane label { color: var(--muted); font-size: 11px; margin: 4px 0; }
+#globalNote {
+  width: 100%; min-height: 52px; border: 1px solid var(--line); background: var(--bg);
+  color: var(--text); border-radius: 7px; padding: 8px 10px; resize: vertical; margin-bottom: 10px;
+}
+#globalNote:focus { border-color: var(--accent); outline: none; }
+#notes { min-height: 0; }
+#layerPane { padding: 0; }
 .side .search { margin: 10px 12px 6px; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--text); outline: none; }
 .side .search:focus { border-color: var(--accent); }
-#layerPane, #notePane { flex: 1; min-height: 0; overflow: auto; padding: 6px 8px 16px; }
+#list { flex: 1; overflow: auto; padding: 6px 8px 16px; }
 .row {
-  display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px;
+  display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px 0 8px;
   border-radius: 6px; cursor: pointer; white-space: nowrap; user-select: none;
 }
 .row:hover, .row.hover { background: var(--panel-2); }
-.row.active { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 .row .twist { width: 12px; flex: 0 0 12px; color: var(--muted); font-size: 9px; text-align: center; }
 .row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .row .badge { flex: 0 0 auto; font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
-.row .dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: var(--warm); }
+.row .add {
+  flex: 0 0 auto; opacity: 0; border: 1px solid var(--line); background: var(--panel);
+  color: var(--muted); border-radius: 4px; padding: 0 5px; font-size: 12px; line-height: 16px;
+}
+.row:hover .add { opacity: 1; }
+.row .add:hover { color: var(--accent); border-color: var(--accent); }
 .workspace { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 #stage {
   flex: 1; min-height: 0; min-width: 0; background: var(--stage); overflow: auto;
@@ -103,66 +116,68 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 280px minma
   position: absolute; display: none; pointer-events: none; font-size: 10px; color: #fff;
   background: var(--accent); padding: 1px 6px; border-radius: 3px; white-space: nowrap;
 }
-#box {
-  position: absolute; border: 2px solid var(--warm); background: rgba(224,122,95,.10);
-  display: none; cursor: move; box-shadow: 0 0 0 1px rgba(0,0,0,.25);
-}
-#box::after {
-  content: "拖动"; position: absolute; top: -20px; left: -2px; font-size: 10px;
-  color: #fff; background: var(--warm); padding: 1px 6px; border-radius: 3px;
+#flash { position: absolute; border: 1px dashed var(--muted); display: none; pointer-events: none; }
+#moveBox { position: absolute; border: 2px dashed var(--accent); display: none; cursor: move; }
+#moveBox::after {
+  content: "拖动改位移"; position: absolute; top: -20px; left: -2px; font-size: 10px;
+  color: #fff; background: var(--accent); padding: 1px 6px; border-radius: 3px;
 }
 .pin {
-  position: absolute; width: 20px; height: 20px; border-radius: 50%;
+  position: absolute; width: 22px; height: 22px; border-radius: 50%;
   background: var(--warm); color: #fff; font-size: 11px; font-weight: 600;
   display: grid; place-items: center; transform: translate(-50%, -50%);
   cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.4); border: 2px solid rgba(255,255,255,.85);
-  z-index: 5;
+  z-index: 6;
 }
-.pin:hover { filter: brightness(1.1); }
-#hint {
-  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
-  color: var(--muted); font-size: 11px; background: rgba(10,14,18,.72);
-  padding: 4px 10px; border-radius: 12px; pointer-events: none;
+.pin:hover { filter: brightness(1.12); }
+.pin.active { outline: 2px solid var(--accent); outline-offset: 2px; }
+#editor {
+  position: absolute; width: 330px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 12px; box-shadow: 0 16px 50px rgba(0,0,0,.5);
+  display: none; z-index: 20;
 }
-#composer {
-  flex: 0 0 auto; background: var(--panel); border-top: 1px solid var(--line);
-  padding: 10px 18px 12px; display: none;
-}
-#composer.open { display: block; }
-.composer-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.composer-head strong { font-size: 13px; }
-.composer-head .badge { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
-.composer-head .grow { flex: 1; }
+#editor.open { display: block; }
+.ed-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ed-head strong { font-size: 13px; }
+.ed-head .badge { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-head .grow { flex: 1; }
 .chips { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
 .chip {
   padding: 3px 10px; border-radius: 12px; border: 1px solid var(--line);
   background: transparent; color: var(--muted); font-size: 12px;
 }
 .chip.active { background: var(--warm); border-color: var(--warm); color: #fff; }
-.composer textarea {
-  width: 100%; min-height: 48px; max-height: 120px; resize: vertical;
+#edNote {
+  width: 100%; min-height: 70px; max-height: 160px; resize: vertical;
   border: 1px solid var(--line); background: var(--bg); color: var(--text);
   border-radius: 7px; padding: 8px 10px; outline: none;
 }
-.composer textarea:focus { border-color: var(--accent); }
-.composer-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.composer-foot .muted { flex: 1; color: var(--muted); font-size: 11px; }
+#edNote:focus { border-color: var(--accent); }
+.ed-foot { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.ed-foot .muted { flex: 1; color: var(--muted); font-size: 11px; }
+#hint {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+  color: var(--muted); font-size: 11px; background: rgba(10,14,18,.72);
+  padding: 4px 10px; border-radius: 12px; pointer-events: none;
+}
+#toast {
+  position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%) translateY(8px);
+  background: var(--accent); color: #fff; padding: 6px 14px; border-radius: 14px;
+  font-size: 12px; opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .note-item {
   padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px;
   margin-bottom: 6px; cursor: pointer; background: var(--panel-2);
-}.note-item:hover { border-color: var(--accent); }
+}
+.note-item:hover { border-color: var(--accent); }
+.note-item.active { border-color: var(--warm); }
 .note-item .head { display: flex; align-items: center; gap: 6px; }
 .note-item .index { color: #fff; background: var(--warm); border-radius: 50%; width: 16px; height: 16px; font-size: 10px; display: grid; place-items: center; }
 .note-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-item .del { border: none; background: transparent; color: var(--muted); padding: 0 4px; }
 .note-item .body { color: var(--muted); font-size: 11px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .empty { color: var(--muted); text-align: center; padding: 30px 12px; font-size: 12px; }
-.global-label { display: block; margin: 6px 2px 4px; color: var(--muted); font-size: 11px; }
-.global-note {
-  width: 100%; min-height: 56px; border: 1px solid var(--line); background: var(--bg);
-  color: var(--text); border-radius: 7px; padding: 8px 10px; margin-bottom: 10px; resize: vertical;
-}
-.global-note:focus { border-color: var(--accent); outline: none; }
 .modal {
   position: fixed; inset: 0; background: rgba(6,9,12,.74); display: none;
   align-items: center; justify-content: center; z-index: 50; padding: 24px;
@@ -185,7 +200,7 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 280px minma
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; border: 2px solid var(--panel); }
 ::-webkit-scrollbar-track { background: transparent; }
-@media (max-width: 1100px) { main { grid-template-columns: 240px minmax(0, 1fr); } }
+@media (max-width: 1100px) { main { grid-template-columns: 250px minmax(0, 1fr); } }
 </style>
 </head>
 <body>
@@ -209,15 +224,17 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 280px minma
   <main>
     <aside class="side">
       <div class="tabs">
-        <button class="tab active" data-tab="layers">图层</button>
-        <button class="tab" data-tab="notes">意见 <span id="noteCount" class="count">0</span></button>
+        <button class="tab active" data-tab="notes">批注 <span id="noteCount" class="count">0</span></button>
+        <button class="tab" data-tab="layers">图层</button>
       </div>
-      <input id="search" class="search" placeholder="搜图层名">
-      <div id="layerPane"><div id="list"></div></div>
-      <div id="notePane" hidden>
-        <label class="global-label">整体意见</label>
-        <textarea id="globalNote" class="global-note" placeholder="整张图的意见"></textarea>
+      <div id="notePane">
+        <label>整体意见</label>
+        <textarea id="globalNote" placeholder="整张图的意见，可留空"></textarea>
         <div id="notes"></div>
+      </div>
+      <div id="layerPane" hidden>
+        <input id="search" class="search" placeholder="搜图层名">
+        <div id="list"></div>
       </div>
     </aside>
     <div class="workspace">
@@ -225,32 +242,35 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: 280px minma
         <div id="wrap">
           <img id="img" alt="画面">
           <div id="hover"></div><div id="hoverName"></div>
-          <div id="box"></div>
+          <div id="flash"></div>
+          <div id="moveBox"></div>
           <div id="pins"></div>
+          <div id="editor">
+            <div class="ed-head">
+              <strong id="edTitle">新批注</strong>
+              <span id="edLayer" class="badge"></span>
+              <span class="grow"></span>
+              <button id="edClose" title="关闭">×</button>
+            </div>
+            <div class="chips">
+              <button class="chip active" data-action="note">意见</button>
+              <button class="chip" data-action="move">移动</button>
+              <button class="chip" data-action="delete">删除</button>
+              <button class="chip" data-action="recolor">改色</button>
+              <button class="chip" data-action="retext">改字</button>
+            </div>
+            <textarea id="edNote" placeholder="写一句，Enter 保存，Shift+Enter 换行"></textarea>
+            <div class="ed-foot">
+              <span class="muted" id="edOffset"></span>
+              <button id="edDelete">删掉</button>
+              <button id="edCancel">取消</button>
+              <button id="edSave" class="primary">保存</button>
+            </div>
+          </div>
         </div>
-        <div id="hint">点画面选图层，拖方框移动</div>
+        <div id="hint">点画面任意位置写批注，Enter 保存</div>
+        <div id="toast"></div>
       </section>
-      <div id="composer">
-        <div class="composer-head">
-          <strong id="compName"></strong><span id="compKind" class="badge"></span>
-          <span class="grow"></span>
-          <button id="compClose" title="关闭">×</button>
-        </div>
-        <div class="chips">
-          <button class="chip active" data-action="move">移动</button>
-          <button class="chip" data-action="note">备注</button>
-          <button class="chip" data-action="hide">隐藏</button>
-          <button class="chip" data-action="delete">删除</button>
-          <button class="chip" data-action="recolor">改色</button>
-          <button class="chip" data-action="retext">改字</button>
-        </div>
-        <textarea id="compNote" placeholder="这个图层要怎么改？写清楚就行，不用管格式。"></textarea>
-        <div class="composer-foot">
-          <span class="muted" id="compOffset">没有位移</span>
-          <button id="compReset">复位位移</button>
-          <button id="compDone" class="primary">完成</button>
-        </div>
-      </div>
     </div>
   </main>
 </div>
@@ -279,28 +299,31 @@ const search = document.getElementById('search');
 const img = document.getElementById('img');
 const wrap = document.getElementById('wrap');
 const stage = document.getElementById('stage');
-const box = document.getElementById('box');
 const hover = document.getElementById('hover');
 const hoverName = document.getElementById('hoverName');
+const flash = document.getElementById('flash');
+const moveBox = document.getElementById('moveBox');
 const pins = document.getElementById('pins');
 const hint = document.getElementById('hint');
-const composer = document.getElementById('composer');
-const compName = document.getElementById('compName');
-const compKind = document.getElementById('compKind');
-const compNote = document.getElementById('compNote');
-const compOffset = document.getElementById('compOffset');
-const globalNote = document.getElementById('globalNote');
+const editor = document.getElementById('editor');
+const edTitle = document.getElementById('edTitle');
+const edLayer = document.getElementById('edLayer');
+const edNote = document.getElementById('edNote');
+const edOffset = document.getElementById('edOffset');
 const noteCount = document.getElementById('noteCount');
+const globalNote = document.getElementById('globalNote');
 const zoomLabel = document.getElementById('zoomLabel');
 const meta = document.getElementById('meta');
 const modal = document.getElementById('modal');
 const jsonOut = document.getElementById('jsonOut');
+const toast = document.getElementById('toast');
 const root = document.documentElement;
 
 const rows = LAYERS.map((layer, index) => ({ ...layer, index }));
 const collapsed = new Set();
-const edits = new Map();
-let selected = null;
+let annotations = [];
+let editing = null;
+let nextId = 1;
 let hovered = null;
 let natW = CANVAS[0] || 1600;
 let natH = CANVAS[1] || 900;
@@ -308,10 +331,10 @@ let scale = 1;
 let autoFit = true;
 let history = [];
 let hIndex = -1;
-let action = 'move';
+let toastTimer = null;
 
 const KIND = { Group: '组', Shape: '形状', Type: '文字', Pixel: '像素' };
-const ACTION = { move: '移动', note: '备注', hide: '隐藏', delete: '删除', recolor: '改色', retext: '改字' };
+const ACTION = { note: '意见', move: '移动', delete: '删除', recolor: '改色', retext: '改字' };
 
 let theme = 'dark';
 try {
@@ -344,9 +367,8 @@ function isHidden(index) {
   }
   return false;
 }
-function annotated(layer) {
-  const item = edits.get(layer.id);
-  return Boolean(item && (item.note || item.action !== 'move' || item.dx || item.dy));
+function noteCountOf(layerId) {
+  return annotations.filter(item => item.layer === layerId).length;
 }
 
 function renderList() {
@@ -356,8 +378,7 @@ function renderList() {
     if (!query && isHidden(index)) return;
     if (query && !layer.name.toLowerCase().includes(query)) return;
     const row = document.createElement('div');
-    row.className = 'row' + (selected && selected.id === layer.id ? ' active' : '')
-      + (hovered && hovered.id === layer.id ? ' hover' : '');
+    row.className = 'row' + (hovered && hovered.id === layer.id ? ' hover' : '');
     row.style.paddingLeft = (8 + layer.depth * 14) + 'px';
     row.dataset.id = layer.id;
     const twist = document.createElement('span');
@@ -375,16 +396,20 @@ function renderList() {
     name.textContent = layer.name;
     const badge = document.createElement('span');
     badge.className = 'badge';
-    badge.textContent = KIND[layer.kind] || layer.kind || '';
-    if (annotated(layer)) {
-      const dot = document.createElement('span');
-      dot.className = 'dot';
-      row.append(twist, name, dot, badge);
-    } else {
-      row.append(twist, name, badge);
-    }
-    row.title = layer.name + ' · ' + (KIND[layer.kind] || layer.kind);
-    row.onclick = () => selectLayer(layer);
+    const count = noteCountOf(layer.id);
+    badge.textContent = count ? (KIND[layer.kind] || layer.kind) + ' · ' + count : (KIND[layer.kind] || layer.kind);
+    const add = document.createElement('button');
+    add.className = 'add';
+    add.textContent = '+';
+    add.title = '给这层加一条批注';
+    add.onclick = event => {
+      event.stopPropagation();
+      if (!layer.bounds) return;
+      const [x, y, w, h] = layer.bounds;
+      openEditor(x + w / 2, y + h / 2, layer, null);
+    };
+    row.append(twist, name, badge, add);
+    row.onclick = () => { flashLayer(layer); };
     row.onmouseenter = () => setHover(layer);
     row.onmouseleave = () => setHover(null);
     list.appendChild(row);
@@ -392,16 +417,15 @@ function renderList() {
 }
 
 function renderNotes() {
-  const entries = Array.from(edits.values()).filter(item => item.note || item.action !== 'move' || item.dx || item.dy);
-  noteCount.textContent = String(entries.length);
+  noteCount.textContent = String(annotations.length);
   notesBox.innerHTML = '';
-  if (!entries.length) {
-    notesBox.innerHTML = '<div class="empty">还没有意见。<br>点画面上的元素，选个动作，写一句就行。</div>';
+  if (!annotations.length) {
+    notesBox.innerHTML = '<div class="empty">点画面上的任意位置，写一句，Enter 保存。<br>图层会自动识别，不用先选。</div>';
     return;
   }
-  entries.forEach((item, index) => {
+  annotations.forEach((item, index) => {
     const node = document.createElement('div');
-    node.className = 'note-item';
+    node.className = 'note-item' + (editing && editing.id === item.id ? ' active' : '');
     const head = document.createElement('div');
     head.className = 'head';
     const badge = document.createElement('span');
@@ -410,21 +434,21 @@ function renderNotes() {
     const name = document.createElement('span');
     name.className = 'name';
     name.textContent = item.name;
-    const actionLabel = document.createElement('span');
-    actionLabel.className = 'badge';
-    actionLabel.textContent = ACTION[item.action] || item.action;
+    const action = document.createElement('span');
+    action.className = 'badge';
+    action.textContent = ACTION[item.action] || item.action;
     const del = document.createElement('button');
     del.className = 'del';
     del.textContent = '×';
-    del.title = '删掉这条意见';
+    del.title = '删掉这条';
     del.onclick = event => {
       event.stopPropagation();
       pushHistory();
-      edits.delete(item.layer);
-      if (selected && selected.id === item.layer) fillComposer();
+      annotations = annotations.filter(other => other.id !== item.id);
+      if (editing && editing.id === item.id) closeEditor();
       renderAll();
     };
-    head.append(badge, name, actionLabel, del);
+    head.append(badge, name, action, del);
     node.appendChild(head);
     if (item.note) {
       const body = document.createElement('div');
@@ -432,39 +456,23 @@ function renderNotes() {
       body.textContent = item.note;
       node.appendChild(body);
     }
-    node.onclick = () => {
-      const layer = rows.find(row => row.id === item.layer);
-      if (layer) { selectLayer(layer); revealLayer(layer); }
-    };
+    node.onclick = () => openEditor(item.x, item.y, null, item);
     notesBox.appendChild(node);
   });
 }
 
 function renderPins() {
   pins.innerHTML = '';
-  const entries = Array.from(edits.values()).filter(item => item.note || item.action !== 'move' || item.dx || item.dy);
-  entries.forEach((item, index) => {
-    const layer = rows.find(row => row.id === item.layer);
-    if (!layer || !layer.bounds) return;
-    const [x, y, w] = layer.bounds;
+  annotations.forEach((item, index) => {
     const pin = document.createElement('div');
-    pin.className = 'pin';
+    pin.className = 'pin' + (editing && editing.id === item.id ? ' active' : '');
     pin.textContent = String(index + 1);
-    pin.style.left = ((x + w + (item.dx || 0)) * scale) + 'px';
-    pin.style.top = ((y + (item.dy || 0)) * scale) + 'px';
-    pin.title = item.name;
-    pin.onclick = event => { event.stopPropagation(); selectLayer(layer); };
+    pin.style.left = ((item.x + (item.dx || 0)) * scale) + 'px';
+    pin.style.top = ((item.y + (item.dy || 0)) * scale) + 'px';
+    pin.title = item.note || item.name;
+    pin.onclick = event => { event.stopPropagation(); openEditor(item.x, item.y, null, item); };
     pins.appendChild(pin);
   });
-}
-
-function editOf(layer) {
-  let item = edits.get(layer.id);
-  if (!item) {
-    item = { layer: layer.id, name: layer.name, kind: layer.kind, action: 'move', dx: 0, dy: 0, note: '' };
-    edits.set(layer.id, item);
-  }
-  return item;
 }
 
 function setHover(layer) {
@@ -484,59 +492,126 @@ function setHover(layer) {
     hoverName.style.left = (x * scale) + 'px';
     hoverName.style.top = Math.max(0, y * scale - 20) + 'px';
   }
-  document.querySelectorAll('.row').forEach(row => {
-    row.classList.toggle('hover', Boolean(layer) && row.dataset.id === String(layer.id));
-  });
 }
 
-function selectLayer(layer) {
-  selected = layer;
-  action = 'move';
-  const item = editOf(layer);
-  action = item.action || 'move';
-  compName.textContent = layer.name;
-  compKind.textContent = KIND[layer.kind] || layer.kind || '';
-  compNote.value = item.note || '';
-  document.querySelectorAll('.chip').forEach(chip => chip.classList.toggle('active', chip.dataset.action === action));
-  updateOffset();
-  composer.classList.add('open');
+function flashLayer(layer) {
+  if (!layer || !layer.bounds) return;
+  const [x, y, w, h] = layer.bounds;
+  flash.style.display = 'block';
+  flash.style.left = (x * scale) + 'px';
+  flash.style.top = (y * scale) + 'px';
+  flash.style.width = Math.max(1, w * scale) + 'px';
+  flash.style.height = Math.max(1, h * scale) + 'px';
+  clearTimeout(flash._timer);
+  flash._timer = setTimeout(() => { flash.style.display = 'none'; }, 1400);
+}
+
+function openEditor(px, py, layer, existing) {
+  if (editing) commitEditing();
+  editing = existing ? { ...existing } : {
+    id: null, layer: layer ? layer.id : null, name: layer ? layer.name : '画面',
+    kind: layer ? layer.kind : '', x: px, y: py, action: 'note', dx: 0, dy: 0, note: ''
+  };
+  edTitle.textContent = existing ? ('第 ' + (annotations.findIndex(item => item.id === existing.id) + 1) + ' 条') : '新批注';
+  edLayer.textContent = editing.name + (editing.kind ? ' · ' + (KIND[editing.kind] || editing.kind) : '');
+  edNote.value = editing.note || '';
+  edDelete.style.display = existing ? 'inline-block' : 'none';
+  setAction(editing.action || 'note');
+  moveEditor(px, py);
+  editor.classList.add('open');
   hint.style.display = 'none';
-  placeBox();
-  renderList();
-  if (autoFit) requestAnimationFrame(fitView); else applyScale();
-  revealLayer(layer);
+  setTimeout(() => edNote.focus(), 0);
+  renderNotes();
+  renderPins();
 }
 
-function revealLayer(layer) {
-  const row = document.querySelector('.row[data-id="' + layer.id + '"]');
-  if (row) row.scrollIntoView({ block: 'nearest' });
+function moveEditor(px, py) {
+  const width = 330;
+  const height = 230;
+  const wrapW = natW * scale;
+  const wrapH = natH * scale;
+  let left = px * scale + 16;
+  let top = py * scale + 16;
+  if (left + width > wrapW - 8) left = px * scale - width - 16;
+  if (top + height > wrapH - 8) top = py * scale - height - 16;
+  left = Math.max(8, Math.min(left, Math.max(8, wrapW - width - 8)));
+  top = Math.max(8, Math.min(top, Math.max(8, wrapH - height - 8)));
+  editor.style.left = left + 'px';
+  editor.style.top = top + 'px';
 }
 
-function deselect() {
-  selected = null;
-  box.style.display = 'none';
-  composer.classList.remove('open');
-  hint.style.display = 'block';
-  setHover(null);
-  renderList();
-  if (autoFit) requestAnimationFrame(fitView); else applyScale();
+function setAction(action) {
+  if (!editing) return;
+  editing.action = action;
+  document.querySelectorAll('.chip').forEach(chip => chip.classList.toggle('active', chip.dataset.action === action));
+  if (action === 'move' && editing.layer) {
+    const layer = rows.find(item => item.id === editing.layer);
+    if (layer && layer.bounds) {
+      const [x, y, w, h] = layer.bounds;
+      moveBox.style.display = 'block';
+      moveBox.style.left = ((x + (editing.dx || 0)) * scale) + 'px';
+      moveBox.style.top = ((y + (editing.dy || 0)) * scale) + 'px';
+      moveBox.style.width = Math.max(2, w * scale) + 'px';
+      moveBox.style.height = Math.max(2, h * scale) + 'px';
+    } else {
+      moveBox.style.display = 'none';
+    }
+  } else {
+    moveBox.style.display = 'none';
+  }
+  updateOffset();
 }
 
 function updateOffset() {
-  if (!selected) { compOffset.textContent = '没有位移'; return; }
-  const item = edits.get(selected.id) || { dx: 0, dy: 0 };
-  compOffset.textContent = item.dx || item.dy ? ('位移 ' + (item.dx || 0) + ', ' + (item.dy || 0)) : '没有位移';
+  if (!editing) { edOffset.textContent = ''; return; }
+  edOffset.textContent = editing.dx || editing.dy ? ('位移 ' + (editing.dx || 0) + ', ' + (editing.dy || 0)) : '';
 }
 
-function placeBox() {
-  if (!selected || !selected.bounds) { box.style.display = 'none'; return; }
-  const item = edits.get(selected.id) || { dx: 0, dy: 0 };
-  const [x, y, w, h] = selected.bounds;
-  box.style.display = 'block';
-  box.style.left = ((x + (item.dx || 0)) * scale) + 'px';
-  box.style.top = ((y + (item.dy || 0)) * scale) + 'px';
-  box.style.width = Math.max(2, w * scale) + 'px';
-  box.style.height = Math.max(2, h * scale) + 'px';
+function commitEditing() {
+  if (!editing) return false;
+  const note = edNote.value.trim();
+  if (!note && editing.action === 'note') { closeEditor(); return false; }
+  editing.note = note;
+  if (editing.id == null) {
+    editing.id = nextId++;
+    annotations.push(editing);
+  } else {
+    const index = annotations.findIndex(item => item.id === editing.id);
+    if (index >= 0) annotations[index] = editing;
+  }
+  pushHistory();
+  closeEditor();
+  renderAll();
+  return true;
+}
+
+function saveEditor() {
+  if (commitEditing()) showToast('已记录');
+}
+
+function closeEditor() {
+  editing = null;
+  editor.classList.remove('open');
+  moveBox.style.display = 'none';
+  hint.style.display = 'block';
+  renderNotes();
+  renderPins();
+}
+
+function deleteEditing() {
+  if (!editing || editing.id == null) { closeEditor(); return; }
+  pushHistory();
+  annotations = annotations.filter(item => item.id !== editing.id);
+  closeEditor();
+  renderAll();
+  showToast('已删除');
+}
+
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1100);
 }
 
 function fitView() {
@@ -554,9 +629,12 @@ function applyScale() {
   wrap.style.width = (natW * scale) + 'px';
   wrap.style.height = (natH * scale) + 'px';
   zoomLabel.textContent = Math.round(scale * 100) + '%';
-  placeBox();
   renderPins();
   if (hovered) setHover(hovered);
+  if (editing) {
+    moveEditor(editing.x, editing.y);
+    setAction(editing.action);
+  }
 }
 
 function zoomBy(factor) {
@@ -589,86 +667,53 @@ img.addEventListener('mousemove', event => {
 img.addEventListener('mouseleave', () => { if (!drag) setHover(null); });
 img.addEventListener('click', event => {
   const rect = img.getBoundingClientRect();
-  const layer = hitTest((event.clientX - rect.left) / scale, (event.clientY - rect.top) / scale);
-  if (layer) selectLayer(layer); else deselect();
+  const px = (event.clientX - rect.left) / scale;
+  const py = (event.clientY - rect.top) / scale;
+  openEditor(px, py, hitTest(px, py), null);
 });
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.onclick = () => {
     document.querySelectorAll('.tab').forEach(item => item.classList.toggle('active', item === tab));
     const showNotes = tab.dataset.tab === 'notes';
-    document.getElementById('layerPane').hidden = showNotes;
     document.getElementById('notePane').hidden = !showNotes;
-    search.style.display = showNotes ? 'none' : 'block';
+    document.getElementById('layerPane').hidden = showNotes;
   };
 });
 
 document.querySelectorAll('.chip').forEach(chip => {
-  chip.onclick = () => {
-    if (!selected) return;
-    pushHistory();
-    action = chip.dataset.action;
-    const item = editOf(selected);
-    item.action = action;
-    document.querySelectorAll('.chip').forEach(other => other.classList.toggle('active', other === chip));
-    renderAll();
-  };
+  chip.onclick = () => setAction(chip.dataset.action);
 });
 
-compNote.addEventListener('input', () => {
-  if (!selected) return;
-  editOf(selected).note = compNote.value;
-  renderNotes();
-  renderPins();
-  renderList();
-});
-
-document.getElementById('compDone').onclick = () => { pushHistory(); deselect(); };
-document.getElementById('compClose').onclick = () => deselect();
-document.getElementById('compReset').onclick = () => {
-  if (!selected) return;
-  pushHistory();
-  const item = editOf(selected);
-  item.dx = 0;
-  item.dy = 0;
-  updateOffset();
-  placeBox();
-  renderPins();
-};
-
-let drag = null;
-box.addEventListener('mousedown', event => {
-  if (!selected || !selected.bounds) return;
-  event.preventDefault();
-  event.stopPropagation();
-  const item = editOf(selected);
-  item.action = 'move';
-  action = 'move';
-  document.querySelectorAll('.chip').forEach(chip => chip.classList.toggle('active', chip.dataset.action === 'move'));
-  drag = { x: event.clientX, y: event.clientY, dx: item.dx || 0, dy: item.dy || 0, moved: false };
-});
-window.addEventListener('mousemove', event => {
-  if (!drag || !selected) return;
-  const item = editOf(selected);
-  const dx = Math.round(drag.dx + (event.clientX - drag.x) / scale);
-  const dy = Math.round(drag.dy + (event.clientY - drag.y) / scale);
-  if (dx !== item.dx || dy !== item.dy) {
-    drag.moved = true;
-    item.dx = dx;
-    item.dy = dy;
-    updateOffset();
-    placeBox();
-    renderPins();
-    renderNotes();
-    renderList();
+edNote.addEventListener('keydown', event => {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    saveEditor();
   }
 });
-window.addEventListener('mouseup', () => {
-  if (drag && drag.moved) pushHistory();
-  drag = null;
-});
+document.getElementById('edSave').onclick = saveEditor;
+document.getElementById('edCancel').onclick = closeEditor;
+document.getElementById('edClose').onclick = closeEditor;
+document.getElementById('edDelete').onclick = deleteEditing;
 
-function snapshot() { return JSON.stringify(Array.from(edits.entries())); }
+let drag = null;
+moveBox.addEventListener('mousedown', event => {
+  if (!editing || editing.action !== 'move') return;
+  event.preventDefault();
+  event.stopPropagation();
+  drag = { x: event.clientX, y: event.clientY, dx: editing.dx || 0, dy: editing.dy || 0 };
+});
+window.addEventListener('mousemove', event => {
+  if (!drag || !editing) return;
+  editing.dx = Math.round(drag.dx + (event.clientX - drag.x) / scale);
+  editing.dy = Math.round(drag.dy + (event.clientY - drag.y) / scale);
+  updateOffset();
+  setAction('move');
+  renderPins();
+});
+window.addEventListener('mouseup', () => { drag = null; });
+
+function snapshot() { return JSON.stringify(annotations); }
 function pushHistory() {
   const current = snapshot();
   if (history[hIndex] === current) return;
@@ -679,15 +724,9 @@ function pushHistory() {
   updateHistoryButtons();
 }
 function restore(snap) {
-  edits.clear();
-  JSON.parse(snap).forEach(([id, item]) => edits.set(id, item));
+  annotations = JSON.parse(snap);
+  closeEditor();
   renderAll();
-  if (selected) {
-    const item = edits.get(selected.id);
-    compNote.value = item ? item.note : '';
-    updateOffset();
-    placeBox();
-  }
 }
 function undo() { if (hIndex > 0) { hIndex -= 1; restore(history[hIndex]); updateHistoryButtons(); } }
 function redo() { if (hIndex < history.length - 1) { hIndex += 1; restore(history[hIndex]); updateHistoryButtons(); } }
@@ -705,7 +744,11 @@ function payload() {
     plan: PLAN_NAME,
     image: IMAGE_NAME,
     canvas: CANVAS,
-    edits: Array.from(edits.values()).filter(item => item.note || item.action !== 'move' || item.dx || item.dy),
+    annotations: annotations.map((item, index) => ({
+      id: item.id, index: index + 1, layer: item.layer, layer_name: item.name,
+      kind: item.kind, x: Math.round(item.x), y: Math.round(item.y),
+      action: item.action, dx: item.dx || 0, dy: item.dy || 0, note: item.note || ''
+    })),
     global: globalNote.value
   };
 }
@@ -745,11 +788,12 @@ document.getElementById('fit').onclick = fitView;
 document.getElementById('zoomIn').onclick = () => zoomBy(1.2);
 document.getElementById('zoomOut').onclick = () => zoomBy(1 / 1.2);
 search.oninput = renderList;
+globalNote.addEventListener('input', () => {});
 
 window.addEventListener('keydown', event => {
   if (event.key === 'Escape') {
     if (modal.classList.contains('open')) modal.classList.remove('open');
-    else if (selected) deselect();
+    else if (editing) closeEditor();
     return;
   }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
@@ -757,23 +801,10 @@ window.addEventListener('keydown', event => {
     if (event.shiftKey) redo(); else undo();
     return;
   }
-  if (!selected || !composer.classList.contains('open')) return;
-  if (event.target === compNote) return;
-  const step = event.shiftKey ? 10 : 1;
-  const item = edits.get(selected.id);
-  if (!item) return;
-  if (event.key === 'ArrowLeft') { item.dx = (item.dx || 0) - step; }
-  else if (event.key === 'ArrowRight') { item.dx = (item.dx || 0) + step; }
-  else if (event.key === 'ArrowUp') { item.dy = (item.dy || 0) - step; }
-  else if (event.key === 'ArrowDown') { item.dy = (item.dy || 0) + step; }
-  else return;
-  event.preventDefault();
-  item.action = 'move';
-  updateOffset();
-  placeBox();
-  renderPins();
-  renderNotes();
-  renderList();
+  if (editing && document.activeElement === edNote) return;
+  if (event.key === 'Delete' && editing && editing.id != null) {
+    deleteEditing();
+  }
 });
 
 window.addEventListener('resize', () => { if (autoFit) fitView(); else applyScale(); });
