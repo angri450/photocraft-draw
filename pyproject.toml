@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "用构图组件和绘制方案驱动 PhotoCraft 出图"
 requires-python = ">=3.10"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 
 [project.scripts]
 photocraft-draw = "photocraft_draw.cli:main"
