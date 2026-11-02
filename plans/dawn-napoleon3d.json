@@ -74,8 +74,8 @@
             ],
             "snow": false,
             "colors": {
-              "far": "muted",
-              "near": "muted"
+              "far": "soft",
+              "near": "soft"
             }
           }
         }
@@ -131,7 +131,7 @@
             "tone": "mid",
             "colors": {
               "base": "line",
-              "light": "muted",
+              "light": "line",
               "dark": "ink"
             }
           }

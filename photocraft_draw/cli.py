@@ -107,6 +107,21 @@ def cmd_doctor(args) -> int:
     return 0
 
 
+def cmd_colors(args) -> int:
+    from .colorize import check_colors, parts_from_commands, report
+    from .palette import resolve_palette
+
+    plan = load_plan(args.plan)
+    commands, meta = compose_plan(plan)
+    result = check_colors(parts_from_commands(commands), resolve_palette(plan.get("palette")),
+                          min_gap=args.gap)
+    print(report(result))
+    if args.verbose:
+        for item in result["colors"]:
+            print(f"  {item['name']}  {item['hex']}  亮度 {item['luma']}")
+    return 0 if result["ok"] else 1
+
+
 def cmd_occlusion(args) -> int:
     from .occlusion import analyze, report
 
@@ -313,6 +328,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="用构图组件和绘制方案驱动 PhotoCraft 出图",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    colors = sub.add_parser("colors", help="检查相邻部件的颜色冲突")
+    colors.add_argument("plan", help="绘制方案文件")
+    colors.add_argument("--gap", type=float, default=0.08, help="相邻部件的最小亮度差")
+    colors.add_argument("--verbose", action="store_true", help="列出每个部件的颜色和亮度")
+    colors.set_defaults(func=cmd_colors)
 
     occlusion = sub.add_parser("occlusion", help="分析分层文件的遮挡关系")
     occlusion.add_argument("psd", help="分层文件")
