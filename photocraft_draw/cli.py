@@ -107,6 +107,41 @@ def cmd_doctor(args) -> int:
     return 0
 
 
+def cmd_shade(args) -> int:
+    from .autoshade import auto_shade, parts_from_commands, report
+    from .palette import resolve_palette
+    from .engine import Engine
+
+    plan = load_plan(args.plan)
+    commands, meta = compose_plan(plan)
+    palette = resolve_palette(plan.get("palette"))
+    parts = parts_from_commands(commands)
+    shaded = auto_shade(parts, palette)
+
+    # 按出现顺序把新颜色写回形状指令
+    index = 0
+    for command in commands:
+        if command.get("command") != "shape.create":
+            continue
+        if index >= len(shaded):
+            break
+        command["params"]["fill"] = shaded[index]["hex"]
+        index += 1
+    print(report(shaded))
+
+    if args.out:
+        from pathlib import Path as _Path
+        output = _Path(args.out).resolve()
+        with Engine(read_root=_Path.cwd(), write_root=output.parent) as engine:
+            engine.new_document(meta["width"], meta["height"], meta["name"],
+                                background=meta.get("document_background"))
+            for command in commands:
+                engine.execute(command["command"], command.get("params") or {})
+            engine.save(output)
+        print(f"已出图 {output}")
+    return 0
+
+
 def cmd_colors(args) -> int:
     from .colorize import check_colors, parts_from_commands, report
     from .palette import resolve_palette
@@ -328,6 +363,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="用构图组件和绘制方案驱动 PhotoCraft 出图",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    shade = sub.add_parser("shade", help="按相邻关系自动分配色阶并出图")
+    shade.add_argument("plan", help="绘制方案文件")
+    shade.add_argument("--out", help="输出 PNG 路径")
+    shade.set_defaults(func=cmd_shade)
 
     colors = sub.add_parser("colors", help="检查相邻部件的颜色冲突")
     colors.add_argument("plan", help="绘制方案文件")
