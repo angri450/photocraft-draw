@@ -959,14 +959,14 @@ def build_capsule_rider(params: dict, pen: Pen) -> None:
         capsule(tx, ty, ex, ey, u * 0.055, "line", f"尾 {index + 1}")
         tx, ty = ex, ey
 
-    # 2. 骑手的腿：先画，后面马身会盖住大腿根
+    # 2. 远侧腿：先画，等会儿被马身盖掉大半，只露蹄子
     hip_x, hip_y = sx - u * 0.3, sy - u * 0.14
-    knee_x = hip_x + u * 0.1
-    knee_y = hip_y + u * 0.12
-    capsule(hip_x, hip_y, knee_x, knee_y, u * 0.095, rider, "骑手大腿")
-    capsule(knee_x, knee_y, knee_x, knee_y + u * 0.34, u * 0.08, rider, "骑手小腿")
-    capsule(knee_x, knee_y + u * 0.34, knee_x, knee_y + u * 0.41,
-            u * 0.085, "ink", "骑手靴")
+    far_x = hip_x - u * 0.08
+    capsule(far_x, hip_y, far_x - u * 0.04, hip_y + u * 0.16, u * 0.09, rider, "远侧大腿")
+    capsule(far_x - u * 0.04, hip_y + u * 0.16, far_x - u * 0.04, hip_y + u * 0.4,
+            u * 0.07, rider, "远侧小腿")
+    capsule(far_x - u * 0.04, hip_y + u * 0.4, far_x - u * 0.04, hip_y + u * 0.46,
+            u * 0.075, "ink", "远侧靴")
 
     # 3. 马身：盖住大腿根，露出的只有膝盖以下
     pen.rounded_rect(sx - u * 0.56, sy - u * 0.13, u * 0.58, u * 0.26, radius=u * 0.11,
@@ -979,6 +979,14 @@ def build_capsule_rider(params: dict, pen: Pen) -> None:
     capsule(nx, ny, nx + u * 0.22, ny + u * 0.08, u * 0.135, horse, "马头")
     capsule(sx + u * 0.03, sy - u * 0.13, sx + u * 0.14, sy - u * 0.31, u * 0.045, "line", "鬃毛下")
     capsule(sx + u * 0.14, sy - u * 0.31, sx + u * 0.24, sy - u * 0.42, u * 0.04, "line", "鬃毛上")
+
+    # 3.5 近侧腿：后画，压在马身上，整条可见
+    near_x = hip_x + u * 0.1
+    capsule(near_x, hip_y, near_x + u * 0.03, hip_y + u * 0.16, u * 0.095, rider, "近侧大腿")
+    capsule(near_x + u * 0.03, hip_y + u * 0.16, near_x + u * 0.03, hip_y + u * 0.46,
+            u * 0.08, rider, "近侧小腿")
+    capsule(near_x + u * 0.03, hip_y + u * 0.46, near_x + u * 0.03, hip_y + u * 0.52,
+            u * 0.085, "ink", "近侧靴")
 
     # 4. 骑手：躯干压在马上
     body_w, body_h = u * 0.24, u * 0.36
