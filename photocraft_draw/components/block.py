@@ -379,6 +379,19 @@ def _segment(pen: Pen, x: float, y: float, angle: float, length: float,
     return x2, y2
 
 
+def _profile(pen: Pen, x: float, y: float, angle: float, points,
+             color: str, name: str) -> None:
+    """在一个沿角度旋转的局部坐标系里画多边形。
+
+    points 每项是 (u, v)：u 沿朝向，v 垂直于朝向。
+    """
+    a = _math.radians(angle)
+    dx, dy = _math.cos(a), _math.sin(a)
+    nx, ny = -dy, dx
+    knots = [[x + dx * u + nx * v, y + dy * u + ny * v] for u, v in points]
+    pen.path([{"closed": True, "knots": knots}], fill=color, name=name)
+
+
 def build_rig_horse(params: dict, pen: Pen) -> None:
     """关节马：每段骨头是一个可旋转的四边形，腿不会直挺挺。
 
@@ -410,17 +423,36 @@ def build_rig_horse(params: dict, pen: Pen) -> None:
     nx, ny = _segment(pen, sx + u * 0.03, sy - u * 0.05, -62, u * 0.17, u * 0.18,
                       body_color, "颈下段", taper=0.84)
     nx, ny = _segment(pen, nx, ny, -48, u * 0.2, u * 0.145, body_color, "颈上段", taper=0.76)
-    # 头：接在颈顶，往前
-    _segment(pen, nx, ny, 32, u * 0.27, u * 0.115, body_color, "头", taper=0.46)
+    # 头：后脑高、鼻口窄、下颌斜，用五个点收出马脸
+    head_len = u * 0.3
+    head_w = u * 0.14
+    _profile(pen, nx, ny, 32, [
+        (0, -head_w * 0.5), (head_len * 0.62, -head_w * 0.46),
+        (head_len, -head_w * 0.18), (head_len, head_w * 0.14),
+        (head_len * 0.5, head_w * 0.46), (0, head_w * 0.5),
+    ], body_color, "头")
+    # 耳：头后上方一个小三角
+    _profile(pen, nx, ny, 32, [
+        (u * 0.04, -head_w * 0.5), (u * 0.1, -head_w * 0.88), (u * 0.13, -head_w * 0.5),
+    ], body_color, "耳")
     # 臀：躯干后端加一块圆的肌肉，直角变成弧
-    pen.ellipse(sx - u * 0.5, sy - u * 0.02, u * 0.135, u * 0.125,
+    pen.ellipse(sx - u * 0.48, sy - u * 0.01, u * 0.15, u * 0.13,
                 fill=body_color, stroke_width=None, stroke=None, name="臀")
     # 胸：前端加一块，肩膀不是切平的
     pen.ellipse(sx + u * 0.01, sy + u * 0.01, u * 0.115, u * 0.115,
                 fill=body_color, stroke_width=None, stroke=None, name="胸")
-    # 鬃毛：顺着两段颈各画一条
-    _segment(pen, sx + u * 0.01, sy - u * 0.1, -64, u * 0.17, u * 0.04, dark, "鬃毛下", taper=0.7)
-    _segment(pen, sx + u * 0.02, sy - u * 0.2, -48, u * 0.18, u * 0.035, dark, "鬃毛上", taper=0.5)
+    # 鬃毛：贴着颈背三小撮，基点沿法线推到颈的外侧
+    for index, (ang, ln) in enumerate(((-62, 0.11), (-54, 0.1), (-46, 0.08))):
+        t = index / 2.0
+        cx = sx + u * (0.03 + 0.16 * t)
+        cy = sy - u * (0.05 + 0.2 * t)
+        a = _math.radians(ang)
+        nx, ny = _math.sin(a), -_math.cos(a)
+        bx = cx + nx * u * 0.07
+        by = cy + ny * u * 0.07
+        _profile(pen, bx, by, ang, [
+            (0, 0), (-ln * u * 0.35, -u * 0.055), (ln * u * 0.55, -u * 0.03),
+        ], dark, f"鬃毛 {index + 1}")
 
     # 尾巴：三段往下后甩
     tx, ty = sx - u * 0.53, sy - u * 0.1
@@ -439,7 +471,7 @@ def build_rig_horse(params: dict, pen: Pen) -> None:
                             HORSE_LEG_WIDTH * u * (1.0 if index < 2 else 1.3),
                             body_color if index < 2 else dark,
                             f"腿 {key} 段 {index + 1}",
-                            taper=0.78 if index < 2 else 0.9)
+                            taper=0.78 if index < 2 else 1.0)
 
 
 COMPONENTS["rig_horse"] = {
