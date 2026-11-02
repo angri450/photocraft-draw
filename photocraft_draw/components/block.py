@@ -349,8 +349,8 @@ import math as _math
 
 # 马的四条腿：每条腿三段，角度是绝对角度（0 向右，90 向下）
 HORSE_LEGS = {
-    "fl": {"root": (0.02, 0.10), "stand": (86, 90, 72), "walk": (70, 100, 62), "gallop": (55, 118, 40)},
-    "fr": {"root": (-0.06, 0.10), "stand": (92, 94, 76), "walk": (98, 84, 86), "gallop": (40, 128, 30)},
+    "fl": {"root": (0.02, 0.10), "stand": (86, 90, 72), "walk": (70, 100, 62), "gallop": (62, 112, 46)},
+    "fr": {"root": (-0.06, 0.10), "stand": (92, 94, 76), "walk": (98, 84, 86), "gallop": (28, 132, 24)},
     "bl": {"root": (-0.46, 0.10), "stand": (94, 88, 74), "walk": (108, 78, 80), "gallop": (120, 70, 60)},
     "br": {"root": (-0.38, 0.10), "stand": (90, 86, 70), "walk": (84, 94, 70), "gallop": (110, 78, 52)},
 }
@@ -427,36 +427,40 @@ def build_rig_horse(params: dict, pen: Pen) -> None:
     head_len = u * 0.3
     head_w = u * 0.14
     _profile(pen, nx, ny, 32, [
-        (0, -head_w * 0.5), (head_len * 0.62, -head_w * 0.46),
+        (0, -head_w * 0.3), (head_len * 0.62, -head_w * 0.46),
         (head_len, -head_w * 0.18), (head_len, head_w * 0.14),
-        (head_len * 0.5, head_w * 0.46), (0, head_w * 0.5),
+        (head_len * 0.5, head_w * 0.46), (0, head_w * 0.62),
     ], body_color, "头")
     # 耳：头后上方一个小三角
     _profile(pen, nx, ny, 32, [
         (u * 0.04, -head_w * 0.5), (u * 0.1, -head_w * 0.88), (u * 0.13, -head_w * 0.5),
     ], body_color, "耳")
     # 臀：躯干后端加一块圆的肌肉，直角变成弧
-    pen.ellipse(sx - u * 0.48, sy - u * 0.01, u * 0.15, u * 0.13,
+    pen.ellipse(sx - u * 0.46, sy - u * 0.015, u * 0.16, u * 0.135,
                 fill=body_color, stroke_width=None, stroke=None, name="臀")
     # 胸：前端加一块，肩膀不是切平的
-    pen.ellipse(sx + u * 0.01, sy + u * 0.01, u * 0.115, u * 0.115,
+    pen.ellipse(sx + u * 0.01, sy + u * 0.015, u * 0.13, u * 0.125,
                 fill=body_color, stroke_width=None, stroke=None, name="胸")
-    # 鬃毛：贴着颈背三小撮，基点沿法线推到颈的外侧
-    for index, (ang, ln) in enumerate(((-62, 0.11), (-54, 0.1), (-46, 0.08))):
-        t = index / 2.0
-        cx = sx + u * (0.03 + 0.16 * t)
-        cy = sy - u * (0.05 + 0.2 * t)
+    # 鬃毛：一条连续的锯齿带，沿颈背从颈根到颈顶
+    mane = []
+    for index in range(7):
+        t = index / 6.0
+        ang = -62 + 16 * t
+        cx = sx + u * (0.03 + 0.17 * t)
+        cy = sy - u * (0.05 + 0.21 * t)
         a = _math.radians(ang)
         nx, ny = _math.sin(a), -_math.cos(a)
-        bx = cx + nx * u * 0.07
-        by = cy + ny * u * 0.07
-        _profile(pen, bx, by, ang, [
-            (0, 0), (-ln * u * 0.35, -u * 0.055), (ln * u * 0.55, -u * 0.03),
-        ], dark, f"鬃毛 {index + 1}")
+        base_x = cx + nx * u * 0.075
+        base_y = cy + ny * u * 0.075
+        if index % 2 == 0:
+            mane.append([base_x, base_y])
+        else:
+            mane.append([base_x + nx * u * 0.055, base_y + ny * u * 0.055])
+    pen.path([{"closed": True, "knots": mane}], fill=dark, name="鬃毛")
 
     # 尾巴：三段往下后甩
-    tx, ty = sx - u * 0.53, sy - u * 0.1
-    for index, angle in enumerate((118, 132, 146)):
+    tx, ty = sx - u * 0.46, sy - u * 0.06
+    for index, angle in enumerate((120, 134, 148, 160)):
         tx, ty = _segment(pen, tx, ty, angle, u * 0.14, u * 0.06,
                           dark, f"尾 {index + 1}", taper=0.55)
 
