@@ -972,7 +972,7 @@ def build_capsule_rider(params: dict, pen: Pen) -> None:
     capsule(sx + u * 0.14, sy - u * 0.31, sx + u * 0.24, sy - u * 0.42, u * 0.04, "line", "鬃毛上")
 
     # 4. 骑手：臀部坐在马背上
-    hip_x, hip_y = sx - u * 0.16, sy - u * 0.14
+    hip_x, hip_y = sx - u * 0.3, sy - u * 0.14
     body_w, body_h = u * 0.24, u * 0.36
     pen.rounded_rect(hip_x - body_w / 2, hip_y - body_h, body_w, body_h, radius=u * 0.07,
                      fill=rider, stroke_width=None, stroke=None, name="躯干")
@@ -987,13 +987,13 @@ def build_capsule_rider(params: dict, pen: Pen) -> None:
     capsule(hip_x - u * 0.1, hip_y - body_h + u * 0.04, hip_x - u * 0.3, hip_y - u * 0.16,
             u * 0.12, rider, "斗篷")
 
-    # 5. 骑手的腿：大腿向前，小腿垂下，踩在马镫上
-    knee_x = hip_x + u * 0.14
-    knee_y = hip_y + u * 0.16
-    capsule(hip_x, hip_y + u * 0.02, knee_x, knee_y, u * 0.1, rider, "骑手大腿")
-    capsule(knee_x, knee_y, knee_x - u * 0.03, knee_y + u * 0.24, u * 0.085, rider, "骑手小腿")
-    capsule(knee_x - u * 0.03, knee_y + u * 0.24, knee_x - u * 0.03, knee_y + u * 0.31,
-            u * 0.09, "ink", "骑手靴")
+    # 5. 骑手的腿：大腿贴着马身向前，小腿垂直垂下，不穿过马身
+    knee_x = hip_x + u * 0.1
+    knee_y = hip_y + u * 0.12
+    capsule(hip_x, hip_y + u * 0.02, knee_x, knee_y, u * 0.095, rider, "骑手大腿")
+    capsule(knee_x, knee_y, knee_x, knee_y + u * 0.2, u * 0.08, rider, "骑手小腿")
+    capsule(knee_x, knee_y + u * 0.2, knee_x, knee_y + u * 0.27,
+            u * 0.085, "ink", "骑手靴")
 
     # 6. 前腿：最前
     leg("fl", (0, 1, 2))
