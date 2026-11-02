@@ -406,18 +406,26 @@ def build_rig_horse(params: dict, pen: Pen) -> None:
 
     # 躯干：从肩往后一段斜的厚矩形
     _segment(pen, sx, sy, 180, u * 0.55, u * 0.25, body_color, "躯干", taper=0.86)
-    # 颈：从肩往上偏前
-    nx, ny = _segment(pen, sx + u * 0.02, sy - u * 0.06, -52, u * 0.34, u * 0.17,
-                      body_color, "颈", taper=0.72)
+    # 颈分两段，下段陡、上段缓，侧面才有一条弧，不是直筒
+    nx, ny = _segment(pen, sx + u * 0.03, sy - u * 0.05, -62, u * 0.17, u * 0.18,
+                      body_color, "颈下段", taper=0.84)
+    nx, ny = _segment(pen, nx, ny, -48, u * 0.2, u * 0.145, body_color, "颈上段", taper=0.76)
     # 头：接在颈顶，往前
-    _segment(pen, nx, ny, 4, u * 0.28, u * 0.12, body_color, "头", taper=0.52)
-    # 鬃毛：颈背一条深色
-    _segment(pen, sx + u * 0.01, sy - u * 0.11, -58, u * 0.32, u * 0.04, dark, "鬃毛", taper=0.5)
+    _segment(pen, nx, ny, 32, u * 0.27, u * 0.115, body_color, "头", taper=0.46)
+    # 臀：躯干后端加一块圆的肌肉，直角变成弧
+    pen.ellipse(sx - u * 0.5, sy - u * 0.02, u * 0.135, u * 0.125,
+                fill=body_color, stroke_width=None, stroke=None, name="臀")
+    # 胸：前端加一块，肩膀不是切平的
+    pen.ellipse(sx + u * 0.01, sy + u * 0.01, u * 0.115, u * 0.115,
+                fill=body_color, stroke_width=None, stroke=None, name="胸")
+    # 鬃毛：顺着两段颈各画一条
+    _segment(pen, sx + u * 0.01, sy - u * 0.1, -64, u * 0.17, u * 0.04, dark, "鬃毛下", taper=0.7)
+    _segment(pen, sx + u * 0.02, sy - u * 0.2, -48, u * 0.18, u * 0.035, dark, "鬃毛上", taper=0.5)
 
     # 尾巴：三段往下后甩
     tx, ty = sx - u * 0.53, sy - u * 0.1
     for index, angle in enumerate((118, 132, 146)):
-        tx, ty = _segment(pen, tx, ty, angle, u * 0.11, u * 0.055,
+        tx, ty = _segment(pen, tx, ty, angle, u * 0.14, u * 0.06,
                           dark, f"尾 {index + 1}", taper=0.55)
 
     # 四条腿，每条三段

@@ -15,7 +15,7 @@
           "params": {
             "root": [
               520,
-              320
+              300
             ],
             "length": 300,
             "pose": "stand"
@@ -31,7 +31,7 @@
           "params": {
             "root": [
               520,
-              660
+              610
             ],
             "length": 300,
             "pose": "walk"
@@ -47,7 +47,7 @@
           "params": {
             "root": [
               520,
-              1000
+              920
             ],
             "length": 300,
             "pose": "gallop"
