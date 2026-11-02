@@ -153,31 +153,34 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
 
 ## 批注页
 
-`annotate` 会生成一个单文件网页，图片和图层树都内嵌，不依赖外链。这个文件可以直接发布到 WorkBuddy 站点：在 CodeBuddy 里用 Artifact 工具上传，拿到公开链接，图层交互和 JSON 导出都能用。`--serve` 只是本地预览的备选，端口默认 8898。
+`annotate` 会为每个顶层图层单独导出一张透明 PNG，只有这一层可见；网页按顺序叠放这些图，等于一个简易 Photoshop。页面是单文件，图层图和图层树都内嵌，可以直接发布到 WorkBuddy 站点：在 CodeBuddy 里用 Artifact 工具上传，拿到公开链接。`--serve` 只是本地预览的备选，端口默认 8898。
 
 网页上可以：
 
-1. 点图层看它在图上的范围。
-2. 拖动橙色方框记录位移。
-3. 选动作：移动、隐藏、显示、删除、改色、改字、只写意见。
-4. 写单层备注和整体意见。
+1. 左边图层树点选图层，前面的眼睛开关控制显隐，关掉别的层就只看这一层。
+2. 在图上拖动框选区域，框选会挂到当前选中的图层上，图层名和编号自动带进意见。
+3. 选动作、写说明，Enter 保存；每条意见在图上画一个编号框。
+4. 「批注」页集中列出所有意见和整体意见，点一条跳回对应区域。
 5. 导出 `review.json`，或在页面里复制 JSON。
 
-导出的格式：
+导出的格式是图层、区域、动作三层数据：
 
 ```json
 {
-  "plan": "framework",
+  "plan": "框架示例",
   "image": "framework.png",
   "canvas": [1600, 900],
-  "edits": [
-    {"layer": 12, "name": "盘子 3", "kind": "Shape", "action": "move", "dx": 10, "dy": -4, "note": "往右挪一点"}
+  "annotations": [
+    {"id": 1, "index": 1, "layer": 12, "layer_name": "盘子 3", "kind": "Shape",
+     "rect": [925, 626, 44, 20], "action": "move", "note": "往右挪 20 像素"}
   ],
   "global": "整体偏暗"
 }
 ```
 
-把这份 JSON 发回来，我按图层编号和名称找到对应的组件参数，改完重新出图。网页上点「导出意见」会弹出一段完整 JSON，直接复制即可；下载按钮被浏览器拦下时也用复制。
+`layer` 是 PSD 图层编号，`layer_name` 是对应的名称，`rect` 是 `[x, y, 宽, 高]` 的图像像素。拿到 JSON 后按名称找到构图组件参数，改绘制方案再重新出图。
+
+按顶层图层出透明图要跑几次引擎，5 个顶层大约 2.3 秒，结果缓存在 `out/_layers/`。
 
 ## 写法约定
 
