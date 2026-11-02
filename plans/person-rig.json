@@ -62,7 +62,7 @@
           "component": "rig_person",
           "params": {
             "root": [
-              640,
+              590,
               400
             ],
             "height": 430,

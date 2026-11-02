@@ -107,6 +107,19 @@ def cmd_doctor(args) -> int:
     return 0
 
 
+def cmd_verify(args) -> int:
+    from .checker import check_commands, report_text
+
+    plan = load_plan(args.plan)
+    commands, meta = compose_plan(plan)
+    result = check_commands(commands, (meta["width"], meta["height"]), expect=args.expect)
+    print(report_text(result))
+    if args.verbose:
+        for item in result["items"]:
+            print(f"  {item['name']}  {item['bbox']}")
+    return 0 if result["ok"] else 1
+
+
 def cmd_brief(args) -> int:
     from .brief import build_brief
 
@@ -269,6 +282,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="用构图组件和绘制方案驱动 PhotoCraft 出图",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    verify = sub.add_parser("verify", help="只读指令检查结构，不出图")
+    verify.add_argument("plan", help="绘制方案文件")
+    verify.add_argument("--expect", choices=["person", "horse"], help="按人物或马的规则检查")
+    verify.add_argument("--verbose", action="store_true", help="列出每个部件的包围盒")
+    verify.set_defaults(func=cmd_verify)
 
     brief = sub.add_parser("brief", help="把绘制方案翻译成生图提示词")
     brief.add_argument("plan", help="绘制方案文件")
