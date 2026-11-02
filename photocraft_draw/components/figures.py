@@ -122,19 +122,19 @@ def build_seated_figure(params: dict, pen: Pen) -> None:
 
     # 姿态：袖子只用窄椭圆，中心到边缘都在框里
     if pose == "open":
-        pen.ellipse(x + w * 0.16 + lean, y + h * 0.5, w * 0.09, h * 0.19,
+        pen.ellipse(x + w * 0.14 + lean, y + h * 0.68, w * 0.13, h * 0.27,
                     fill=shade, stroke_width=None, stroke=None, name="左袖")
-        pen.ellipse(x + w * 0.84 + lean, y + h * 0.5, w * 0.09, h * 0.19,
+        pen.ellipse(x + w * 0.86 + lean, y + h * 0.68, w * 0.13, h * 0.27,
                     fill=shade, stroke_width=None, stroke=None, name="右袖")
     elif pose == "point":
-        pen.ellipse(x + w * 0.17 + lean, y + h * 0.56, w * 0.08, h * 0.16,
+        pen.ellipse(x + w * 0.16 + lean, y + h * 0.6, w * 0.1, h * 0.22,
                     fill=shade, stroke_width=None, stroke=None, name="收起的左袖")
-        pen.ellipse(x + w * 0.7 + lean, y + h * 0.48, w * 0.2, h * 0.045,
+        pen.ellipse(x + w * 0.7 + lean, y + h * 0.92, w * 0.2, h * 0.045,
                     fill=shade, stroke_width=None, stroke=None, name="右前臂")
     elif pose == "grip":
-        pen.ellipse(cx - w * 0.18 + lean, y + h * 0.8, w * 0.17, h * 0.045,
+        pen.ellipse(cx - w * 0.18 + lean, y + h * 0.93, w * 0.17, h * 0.045,
                     fill=shade, stroke_width=None, stroke=None, name="左前臂")
-        pen.ellipse(cx + w * 0.18 + lean, y + h * 0.8, w * 0.17, h * 0.045,
+        pen.ellipse(cx + w * 0.18 + lean, y + h * 0.93, w * 0.17, h * 0.045,
                     fill=shade, stroke_width=None, stroke=None, name="右前臂")
     elif pose == "side":
         pen.ellipse(x + w * 0.16 + lean, y + h * 0.58, w * 0.1, h * 0.2,
@@ -247,7 +247,7 @@ def build_figure_head(params: dict, pen: Pen) -> None:
     for sign in (-1, 1):
         ex = cx + offset + sign * r * 0.19
         pen.line(ex - r * 0.07, cy - r * 0.06, ex + r * 0.07, cy - r * 0.05,
-                 width=1, color=shade, name="眼睑")
+                 width=1.6, color=shade, name="眼睑")
     # 鼻：一条侧影
     pen.line(cx + offset * 1.5, cy + r * 0.02,
              cx + offset * 1.5 + r * 0.04, cy + r * 0.16,
