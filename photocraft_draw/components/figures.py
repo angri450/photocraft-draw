@@ -360,14 +360,13 @@ def build_figure_row(params: dict, pen: Pen) -> None:
 def build_rider_placeholder(params: dict, pen: Pen) -> None:
     """骑手占位：一匹马加一个骑手，只标位置和遮挡，不画细节。
 
-    草稿要能看清主体在做什么，所以马画四条分开的腿，人画帽子、头、
-    躯干、两条手臂和两条垂下的腿，不许糊成一团。
+    先画斗篷和手臂，再画手，最后画马，保证手不会被盖住、马身是一整块。
 
     参数：
         box     [x, y, 宽, 高]，连人带马的外框，必填
         horse   马的颜色，默认 surface
         rider   人的主色，默认 deep
-        skin    头部颜色，默认 soft
+        skin    头部和手的颜色，默认 soft
         hat     帽子颜色，默认 ink
     """
     x, y, w, h = _box(params.get("box"), "骑手占位需要 box：[x, y, 宽, 高]")
@@ -379,57 +378,60 @@ def build_rider_placeholder(params: dict, pen: Pen) -> None:
     cx = x + w / 2
     body_y = y + h * 0.62
 
-    # 马身：胸和臀各加一块，别画成一个鸡蛋
-    pen.ellipse(cx, body_y, w * 0.3, h * 0.085,
+    # 斗篷先画，在人和马后面
+    pen.ellipse(cx - w * 0.16, y + h * 0.38, w * 0.085, h * 0.1,
+                fill=rider, stroke_width=None, stroke=None, name="斗篷")
+    pen.ellipse(cx - w * 0.22, y + h * 0.46, w * 0.055, h * 0.075,
+                fill=rider, stroke_width=None, stroke=None, name="斗篷下摆")
+
+    # 手臂
+    pen.line(cx - w * 0.05, y + h * 0.31, cx - w * 0.24, y + h * 0.17,
+             width=7, color=rider, name="举起的手臂")
+    pen.line(cx + w * 0.05, y + h * 0.33, cx + w * 0.22, y + h * 0.4,
+             width=7, color=rider, name="握缰绳的手臂")
+
+    # 手最后画，颜色和手臂不同，不会被斗篷吃掉
+    pen.ellipse(cx - w * 0.25, y + h * 0.16, w * 0.032, h * 0.019,
+                fill=skin, stroke_width=None, stroke=None, name="手")
+    pen.ellipse(cx + w * 0.23, y + h * 0.405, w * 0.028, h * 0.016,
+                fill=skin, stroke_width=None, stroke=None, name="握缰绳的手")
+
+    # 马身：一个整椭圆，胸臀同色加厚，不分割
+    pen.ellipse(cx, body_y, w * 0.32, h * 0.085,
                 fill=horse, stroke_width=None, stroke=None, name="马身")
-    pen.ellipse(cx + w * 0.22, body_y - h * 0.01, w * 0.11, h * 0.07,
+    pen.ellipse(cx + w * 0.2, body_y - h * 0.005, w * 0.13, h * 0.075,
                 fill=horse, stroke_width=None, stroke=None, name="马胸")
-    pen.ellipse(cx - w * 0.24, body_y - h * 0.01, w * 0.1, h * 0.065,
+    pen.ellipse(cx - w * 0.22, body_y - h * 0.005, w * 0.12, h * 0.07,
                 fill=horse, stroke_width=None, stroke=None, name="马臀")
-    pen.ellipse(cx + w * 0.29, body_y - h * 0.09, w * 0.07, h * 0.095,
+    pen.ellipse(cx + w * 0.3, body_y - h * 0.09, w * 0.07, h * 0.095,
                 fill=horse, stroke_width=None, stroke=None, name="马颈")
-    pen.ellipse(cx + w * 0.355, body_y - h * 0.16, w * 0.075, h * 0.04,
+    pen.ellipse(cx + w * 0.365, body_y - h * 0.16, w * 0.075, h * 0.04,
                 fill=horse, stroke_width=None, stroke=None, name="马头")
-    pen.line(cx + w * 0.33, body_y - h * 0.19, cx + w * 0.34, body_y - h * 0.21,
+    pen.line(cx + w * 0.34, body_y - h * 0.19, cx + w * 0.35, body_y - h * 0.21,
              width=4, color=horse, name="马耳")
 
-    # 四条腿分开画：两条后腿往后下方，两条前腿向前上方
+    pen.line(cx - w * 0.33, body_y - h * 0.05, cx - w * 0.41, body_y + h * 0.1,
+             width=7, color=horse, name="马尾")
+
+    # 四条腿分开画
     for index, (sx, sy, ex, ey) in enumerate((
             (-0.3, 0.05, -0.38, 0.26),
             (-0.2, 0.06, -0.26, 0.27),
-            (0.18, 0.04, 0.3, -0.04),
-            (0.26, 0.03, 0.4, -0.07))):
+            (0.18, 0.03, 0.33, 0.14),
+            (0.26, 0.02, 0.41, 0.11))):
         pen.line(cx + w * sx, body_y + h * sy, cx + w * ex, body_y + h * ey,
-                 width=8, color=horse, name=f"马腿 {index + 1}")
+                 width=8, color=hat, name=f"马腿 {index + 1}")
         pen.ellipse(cx + w * ex, body_y + h * ey, w * 0.025, h * 0.012,
                     fill=hat, stroke_width=None, stroke=None, name=f"马蹄 {index + 1}")
 
-    pen.line(cx - w * 0.32, body_y - h * 0.05, cx - w * 0.4, body_y + h * 0.1,
-             width=7, color=horse, name="马尾")
 
-    # 骑手：两条腿垂在马身两侧
-    pen.line(cx - w * 0.03, body_y - h * 0.05, cx - w * 0.1, body_y + h * 0.06,
-             width=7, color=rider, name="骑手左腿")
-    pen.line(cx + w * 0.05, body_y - h * 0.05, cx + w * 0.1, body_y + h * 0.06,
-             width=7, color=rider, name="骑手右腿")
-    # 躯干
+    # 骑手躯干、头和帽子，画在马身之后，确保压在最上面
     pen.rounded_rect(cx - w * 0.07, y + h * 0.3, w * 0.14, h * 0.18,
                      radius=w * 0.03, fill=rider, stroke_width=None, stroke=None, name="骑手躯干")
-    # 头和帽子
     pen.ellipse(cx, y + h * 0.25, w * 0.055, h * 0.045,
                 fill=skin, stroke_width=None, stroke=None, name="骑手头部")
     pen.ellipse(cx, y + h * 0.225, w * 0.075, h * 0.026,
                 fill=hat, stroke_width=None, stroke=None, name="双角帽")
-    # 举起的手臂、握缰绳的手臂
-    pen.line(cx - w * 0.05, y + h * 0.31, cx - w * 0.24, y + h * 0.17,
-             width=7, color=rider, name="举起的手臂")
-    pen.ellipse(cx - w * 0.25, y + h * 0.16, w * 0.025, h * 0.014,
-                fill=skin, stroke_width=None, stroke=None, name="手")
-    pen.line(cx + w * 0.05, y + h * 0.33, cx + w * 0.22, y + h * 0.4,
-             width=7, color=rider, name="握缰绳的手臂")
-    # 斗篷：身后一块斜着的色块
-    pen.ellipse(cx - w * 0.16, y + h * 0.38, w * 0.1, h * 0.12,
-                fill=rider, stroke_width=None, stroke=None, name="斗篷")
 
 
 COMPONENTS = {
