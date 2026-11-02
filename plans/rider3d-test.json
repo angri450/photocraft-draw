@@ -1,0 +1,27 @@
+{
+  "name": "三维骑手测试",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "dawn",
+  "layers": [
+    {
+      "name": "骑手",
+      "components": [
+        {
+          "component": "rider3d",
+          "params": {
+            "root": [
+              470,
+              620
+            ],
+            "length": 300,
+            "pose": "stand"
+          }
+        }
+      ]
+    }
+  ]
+}

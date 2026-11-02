@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from .components import (alpine, architecture, arched_windows, block, box3d, figures,
-                         indoor_backdrop, long_table, rig, tableware)
+                         indoor_backdrop, long_table, rider3d, rig, tableware)
 
 
 @dataclass(frozen=True)
@@ -110,6 +110,7 @@ _SPECS.update(alpine.COMPONENTS)
 _SPECS.update(rig.COMPONENTS)
 _SPECS.update(block.COMPONENTS)
 _SPECS.update(box3d.COMPONENTS)
+_SPECS.update(rider3d.COMPONENTS)
 
 REGISTRY: dict[str, Component] = {
     key: Component(
