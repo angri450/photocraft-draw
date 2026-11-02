@@ -1,0 +1,59 @@
+{
+  "name": "撒点人形",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "人",
+      "components": [
+        {
+          "component": "scatter_shape",
+          "params": {
+            "outline": "person",
+            "box": [
+              110,
+              100,
+              300,
+              660
+            ],
+            "mode": "grid",
+            "cell": 16,
+            "tones": [
+              "surface",
+              "muted",
+              "line"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "马",
+      "components": [
+        {
+          "component": "scatter_shape",
+          "params": {
+            "outline": "horse",
+            "box": [
+              480,
+              620,
+              360,
+              400
+            ],
+            "mode": "grid",
+            "cell": 14,
+            "tones": [
+              "surface",
+              "muted",
+              "line"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

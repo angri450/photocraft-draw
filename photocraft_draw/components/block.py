@@ -578,3 +578,155 @@ COMPONENTS["rig_person"] = {
 __all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
            "build_rig_horse", "build_rig_person", "POSES", "HORSE_POSES", "PERSON_POSES",
            "ORDER", "COMPONENTS"]
+
+
+def build_scatter_shape(params: dict, pen: Pen) -> None:
+    """撒点填充：在轮廓里随机撒方块，一条指令出一片。
+
+    参数：
+        outline  person / horse，用哪套轮廓
+        box      [x, y, 宽, 高]，轮廓落进这个框，必填
+        count    方块数量，默认 40
+        seed     随机种子，同一个种子出同一张图
+        size     方块边长占框宽的比例，[最小, 最大]，默认 [0.06, 0.16]
+        tones    三档颜色，默认 surface / muted / line
+    """
+    from ..scatter import scatter_blocks, scatter_grid
+
+    box = params.get("box")
+    if not isinstance(box, (list, tuple)) or len(box) != 4:
+        raise ValueError("撒点填充需要 box：[x, y, 宽, 高]")
+    outline = str(params.get("outline", "person"))
+    count = int(params.get("count", 40))
+    if count <= 0:
+        raise ValueError("撒点填充的 count 要大于 0")
+    size = params.get("size") or [0.06, 0.16]
+    if not isinstance(size, (list, tuple)) or len(size) != 2:
+        raise ValueError("size 要写成 [最小, 最大]")
+    tones = params.get("tones") or ["surface", "muted", "line"]
+    if not isinstance(tones, (list, tuple)) or len(tones) != 3:
+        raise ValueError("tones 要给三档颜色")
+
+    mode = str(params.get("mode", "grid"))
+    if mode == "grid":
+        blocks = scatter_grid(outline, box, cell=float(params.get("cell", 16)),
+                              fill=float(params.get("fill", 0.92)),
+                              jitter=float(params.get("jitter", 0.0)),
+                              seed=int(params.get("seed", 0)))
+    else:
+        blocks = scatter_blocks(outline, box, count=count,
+                                min_size=float(size[0]), max_size=float(size[1]),
+                                seed=int(params.get("seed", 0)))
+    for index, block in enumerate(blocks):
+        tone = block["tone"]
+        color = tones[0] if tone < 0.35 else (tones[1] if tone < 0.7 else tones[2])
+        x, y, w, h = block["rect"]
+        pen.rect(x, y, w, h, fill=color, stroke_width=None, stroke=None,
+                 name=f"方块 {index + 1}")
+
+
+COMPONENTS["scatter_shape"] = {
+    "name": "撒点填充",
+    "description": "在人形或马形轮廓里随机撒方块，一条指令出一片",
+    "params": {
+        "outline": "person / horse，默认 person",
+        "box": "[x, y, 宽, 高]，必填",
+        "count": "方块数量，只在 mode=random 时用",
+        "mode": "grid 铺格子 / random 随机撒，默认 grid",
+        "cell": "grid 模式的格子大小，默认 16",
+        "fill": "方块占格子的比例，默认 0.92",
+        "jitter": "每块随机偏移，0 到 0.5，默认 0",
+        "seed": "随机种子，同一个种子出同一张图",
+        "size": "[最小, 最大]，占框宽比例，默认 [0.06, 0.16]",
+        "tones": "三档颜色，默认 surface / muted / line",
+    },
+    "build": build_scatter_shape,
+}
+
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
+           "build_rig_horse", "build_rig_person", "build_scatter_shape",
+           "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]
+
+
+def build_pixel_person(params: dict, pen: Pen) -> None:
+    """像素人：按 Minecraft 比例把六个部位切成小方块。
+
+    轮廓由比例决定，不用手写曲线。每个部位切成 cell 大小的格子，
+    格子有概率跳过，形成斑驳感。
+
+    参数：
+        root    [x, y]，肩部位置，必填
+        height  总身高像素，必填
+        cell    一个格子的像素，默认 12
+        gap     格子之间留的缝，默认 1
+        skip    跳过格子的概率，0 到 0.9，默认 0
+        tones   三档颜色，默认 surface / muted / line
+        seed    随机种子
+    """
+    import random as _random
+
+    root = params.get("root")
+    if not isinstance(root, (list, tuple)) or len(root) != 2:
+        raise ValueError("像素人需要 root：[x, y]，肩部位置")
+    total = params.get("height")
+    if isinstance(total, bool) or not isinstance(total, (int, float)) or total <= 0:
+        raise ValueError("像素人需要 height，大于 0 的总身高像素")
+    cell = float(params.get("cell", 12))
+    if cell <= 0:
+        raise ValueError("像素人的 cell 要大于 0")
+    gap = float(params.get("gap", 1))
+    skip = float(params.get("skip", 0))
+    if not 0 <= skip < 1:
+        raise ValueError("skip 要在 0 到 1 之间")
+    tones = params.get("tones") or ["surface", "muted", "line"]
+    rng = _random.Random(int(params.get("seed", 0)))
+
+    sx, sy = float(root[0]), float(root[1])
+    u = float(total) / 32.0
+    # 每个部位：左上角、宽、高（单位是 Minecraft 像素）
+    blocks = {
+        "头": (sx - 4 * u, sy - 8 * u, 8 * u, 8 * u),
+        "躯干": (sx - 4 * u, sy, 8 * u, 12 * u),
+        "左臂": (sx - 6 * u, sy, 4 * u, 12 * u),
+        "右臂": (sx + 2 * u, sy, 4 * u, 12 * u),
+        "左腿": (sx - 2 * u, sy + 12 * u, 4 * u, 12 * u),
+        "右腿": (sx + 2 * u, sy + 12 * u, 4 * u, 12 * u),
+    }
+
+    index = 0
+    for name, (bx, by, bw, bh) in blocks.items():
+        cols = max(1, int(round(bw / cell)))
+        rows = max(1, int(round(bh / cell)))
+        cw = bw / cols
+        ch = bh / rows
+        for row in range(rows):
+            for col in range(cols):
+                if rng.random() < skip:
+                    continue
+                index += 1
+                # 颜色按上下分档，下面深
+                depth = (by + row * ch - (sy - 8 * u)) / (32 * u)
+                color = tones[0] if depth < 0.4 else (tones[1] if depth < 0.75 else tones[2])
+                pen.rect(bx + col * cw + gap / 2, by + row * ch + gap / 2,
+                         cw - gap, ch - gap, fill=color, stroke_width=None, stroke=None,
+                         name=f"{name} {row + 1}-{col + 1}")
+
+
+COMPONENTS["pixel_person"] = {
+    "name": "像素人",
+    "description": "按 Minecraft 比例切成一格一格的小方块，轮廓由比例定，不靠手画曲线",
+    "params": {
+        "root": "[x, y]，肩部位置，必填",
+        "height": "总身高像素，必填",
+        "cell": "格子大小，默认 12",
+        "gap": "格子缝隙，默认 1",
+        "skip": "跳过格子的概率，0 到 0.9，默认 0",
+        "tones": "三档颜色，默认 surface / muted / line",
+        "seed": "随机种子",
+    },
+    "build": build_pixel_person,
+}
+
+__all__ = ["build_block_figure", "build_block_horse", "build_custom_shape", "build_ascii_art",
+           "build_rig_horse", "build_rig_person", "build_scatter_shape", "build_pixel_person",
+           "POSES", "HORSE_POSES", "PERSON_POSES", "ORDER", "COMPONENTS"]

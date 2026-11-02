@@ -1,0 +1,35 @@
+{
+  "name": "像素人",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "人",
+      "components": [
+        {
+          "component": "pixel_person",
+          "params": {
+            "root": [
+              450,
+              300
+            ],
+            "height": 760,
+            "cell": 14,
+            "gap": 1.5,
+            "skip": 0.04,
+            "seed": 3,
+            "tones": [
+              "surface",
+              "muted",
+              "line"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
