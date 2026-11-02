@@ -1,0 +1,59 @@
+{
+  "name": "积木人三姿态",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "stand",
+      "components": [
+        {
+          "component": "block_figure",
+          "params": {
+            "root": [
+              140,
+              760
+            ],
+            "height": 400,
+            "pose": "stand"
+          }
+        }
+      ]
+    },
+    {
+      "name": "walk",
+      "components": [
+        {
+          "component": "block_figure",
+          "params": {
+            "root": [
+              390,
+              760
+            ],
+            "height": 400,
+            "pose": "walk"
+          }
+        }
+      ]
+    },
+    {
+      "name": "point",
+      "components": [
+        {
+          "component": "block_figure",
+          "params": {
+            "root": [
+              620,
+              760
+            ],
+            "height": 400,
+            "pose": "point"
+          }
+        }
+      ]
+    }
+  ]
+}

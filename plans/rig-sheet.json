@@ -1,0 +1,106 @@
+{
+  "name": "人物白模姿态表",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "姿态 stand",
+      "components": [
+        {
+          "component": "figure_rig",
+          "params": {
+            "root": [
+              120,
+              620
+            ],
+            "height": 420,
+            "pose": "stand",
+            "body": "surface",
+            "joint": "line",
+            "head": "surface"
+          }
+        }
+      ]
+    },
+    {
+      "name": "姿态 walk",
+      "components": [
+        {
+          "component": "figure_rig",
+          "params": {
+            "root": [
+              285,
+              620
+            ],
+            "height": 420,
+            "pose": "walk",
+            "body": "surface",
+            "joint": "line",
+            "head": "surface"
+          }
+        }
+      ]
+    },
+    {
+      "name": "姿态 point",
+      "components": [
+        {
+          "component": "figure_rig",
+          "params": {
+            "root": [
+              450,
+              620
+            ],
+            "height": 420,
+            "pose": "point",
+            "body": "surface",
+            "joint": "line",
+            "head": "surface"
+          }
+        }
+      ]
+    },
+    {
+      "name": "姿态 sit",
+      "components": [
+        {
+          "component": "figure_rig",
+          "params": {
+            "root": [
+              615,
+              620
+            ],
+            "height": 420,
+            "pose": "sit",
+            "body": "surface",
+            "joint": "line",
+            "head": "surface"
+          }
+        }
+      ]
+    },
+    {
+      "name": "姿态 ride",
+      "components": [
+        {
+          "component": "figure_rig",
+          "params": {
+            "root": [
+              780,
+              620
+            ],
+            "height": 420,
+            "pose": "ride",
+            "body": "surface",
+            "joint": "line",
+            "head": "surface"
+          }
+        }
+      ]
+    }
+  ]
+}

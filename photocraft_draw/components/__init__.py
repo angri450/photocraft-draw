@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """构图组件：每个组件负责画面的一部分。"""
 
-from . import alpine, architecture, arched_windows, indoor_backdrop, long_table, tableware
+from . import alpine, architecture, arched_windows, block, figures, indoor_backdrop, long_table, rig, tableware
 
 __all__ = [
     "indoor_backdrop",
@@ -10,4 +10,6 @@ __all__ = [
     "tableware",
     "architecture",
     "alpine",
+    "rig",
+    "block",
 ]

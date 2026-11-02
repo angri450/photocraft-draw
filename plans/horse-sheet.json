@@ -1,0 +1,43 @@
+{
+  "name": "积木马两姿态",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 800,
+  "palette": "alpine",
+  "layers": [
+    {
+      "name": "stand",
+      "components": [
+        {
+          "component": "block_horse",
+          "params": {
+            "root": [
+              200,
+              640
+            ],
+            "length": 260,
+            "pose": "stand"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rear",
+      "components": [
+        {
+          "component": "block_horse",
+          "params": {
+            "root": [
+              560,
+              640
+            ],
+            "length": 260,
+            "pose": "rear"
+          }
+        }
+      ]
+    }
+  ]
+}
