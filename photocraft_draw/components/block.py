@@ -959,7 +959,16 @@ def build_capsule_rider(params: dict, pen: Pen) -> None:
         capsule(tx, ty, ex, ey, u * 0.055, "line", f"尾 {index + 1}")
         tx, ty = ex, ey
 
-    # 2. 马身
+    # 2. 骑手的腿：先画，后面马身会盖住大腿根
+    hip_x, hip_y = sx - u * 0.3, sy - u * 0.14
+    knee_x = hip_x + u * 0.1
+    knee_y = hip_y + u * 0.12
+    capsule(hip_x, hip_y, knee_x, knee_y, u * 0.095, rider, "骑手大腿")
+    capsule(knee_x, knee_y, knee_x, knee_y + u * 0.34, u * 0.08, rider, "骑手小腿")
+    capsule(knee_x, knee_y + u * 0.34, knee_x, knee_y + u * 0.41,
+            u * 0.085, "ink", "骑手靴")
+
+    # 3. 马身：盖住大腿根，露出的只有膝盖以下
     pen.rounded_rect(sx - u * 0.56, sy - u * 0.13, u * 0.58, u * 0.26, radius=u * 0.11,
                      fill=horse, stroke_width=None, stroke=None, name="马身")
 
@@ -971,29 +980,20 @@ def build_capsule_rider(params: dict, pen: Pen) -> None:
     capsule(sx + u * 0.03, sy - u * 0.13, sx + u * 0.14, sy - u * 0.31, u * 0.045, "line", "鬃毛下")
     capsule(sx + u * 0.14, sy - u * 0.31, sx + u * 0.24, sy - u * 0.42, u * 0.04, "line", "鬃毛上")
 
-    # 4. 骑手：臀部坐在马背上
-    hip_x, hip_y = sx - u * 0.3, sy - u * 0.14
+    # 4. 骑手：躯干压在马上
     body_w, body_h = u * 0.24, u * 0.36
+    # 手臂先画，躯干后画，手臂根部被躯干盖住，不会在胸口留一条斜线
+    capsule(hip_x + u * 0.08, hip_y - body_h + u * 0.08, hip_x + u * 0.24, hip_y - body_h - u * 0.12,
+            u * 0.075, rider, "举起的手臂")
+    capsule(hip_x - u * 0.06, hip_y - body_h + u * 0.14, hip_x + u * 0.1, hip_y - u * 0.02,
+            u * 0.07, rider, "握缰绳的手臂")
     pen.rounded_rect(hip_x - body_w / 2, hip_y - body_h, body_w, body_h, radius=u * 0.07,
                      fill=rider, stroke_width=None, stroke=None, name="躯干")
     pen.ellipse(hip_x, hip_y - body_h - u * 0.11, u * 0.1, u * 0.11,
                 fill=skin, stroke_width=None, stroke=None, name="头")
-    # 举起的右臂、握缰绳的左臂
-    capsule(hip_x + u * 0.08, hip_y - body_h + u * 0.08, hip_x + u * 0.24, hip_y - body_h - u * 0.12,
-            u * 0.075, rider, "举起的手臂")
-    capsule(hip_x - u * 0.06, hip_y - body_h + u * 0.1, hip_x + u * 0.12, hip_y - u * 0.02,
-            u * 0.07, rider, "握缰绳的手臂")
     # 斗篷：身后一块
     capsule(hip_x - u * 0.1, hip_y - body_h + u * 0.04, hip_x - u * 0.3, hip_y - u * 0.16,
             u * 0.12, rider, "斗篷")
-
-    # 5. 骑手的腿：大腿贴着马身向前，小腿垂直垂下，不穿过马身
-    knee_x = hip_x + u * 0.1
-    knee_y = hip_y + u * 0.12
-    capsule(hip_x, hip_y + u * 0.02, knee_x, knee_y, u * 0.095, rider, "骑手大腿")
-    capsule(knee_x, knee_y, knee_x, knee_y + u * 0.2, u * 0.08, rider, "骑手小腿")
-    capsule(knee_x, knee_y + u * 0.2, knee_x, knee_y + u * 0.27,
-            u * 0.085, "ink", "骑手靴")
 
     # 6. 前腿：最前
     leg("fl", (0, 1, 2))
