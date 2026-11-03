@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "尾巴",
+      "depth": 4,
       "components": [
         {
           "component": "custom_shape",
@@ -69,6 +70,7 @@
     },
     {
       "name": "腿",
+      "depth": 3,
       "components": [
         {
           "component": "custom_shape",
@@ -166,6 +168,7 @@
     },
     {
       "name": "身体",
+      "depth": 2,
       "components": [
         {
           "component": "custom_shape",
@@ -220,6 +223,7 @@
     },
     {
       "name": "颈",
+      "depth": 1,
       "components": [
         {
           "component": "custom_shape",
@@ -266,6 +270,7 @@
     },
     {
       "name": "头",
+      "depth": 0,
       "components": [
         {
           "component": "custom_shape",

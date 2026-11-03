@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "stand",
+      "depth": 2,
       "components": [
         {
           "component": "capsule_person",
@@ -26,6 +27,7 @@
     },
     {
       "name": "walk",
+      "depth": 1,
       "components": [
         {
           "component": "capsule_person",
@@ -43,6 +45,7 @@
     },
     {
       "name": "point",
+      "depth": 0,
       "components": [
         {
           "component": "capsule_person",

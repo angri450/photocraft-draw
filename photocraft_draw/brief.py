@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 
-from .plan import load_plan
+from .plan import load_plan, ordered_layers
 
 FIELDS = (
     ("subject", "主体", "Subject"),
@@ -47,7 +47,7 @@ def _header(brief: dict, lang: str) -> str:
 
 def _entries(plan: dict) -> list[dict]:
     """把图层和角色按遮挡顺序排成一条，角色插在 before 指定的层之前。"""
-    layers = plan.get("layers") or []
+    layers = ordered_layers(plan)
     if not layers:
         raise ValueError("画面稿需要 layers，扁平 components 没有前后顺序")
     actors = plan.get("actors") or []

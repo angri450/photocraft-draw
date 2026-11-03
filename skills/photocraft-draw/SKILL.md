@@ -68,13 +68,14 @@ photocraft-draw colors plans/xxx.json
 photocraft-draw occlusion out/xxx.psd
 photocraft-draw contact out/xxx.psd --plan plans/xxx.json --map out/contact-map.png
 photocraft-draw depth out/xxx.psd --json out/depth.json
+photocraft-draw depth out/xxx.psd --plan plans/xxx.json
 ```
 
 - `verify`：部件齐不齐、有没有出画、头在不在躯干上方、马的腿是不是十二段。`--envelope` 配合人形或马形的椭圆包络再卡一遍。
 - `colors`：相邻部件同色或颜色太近就报。同一物体的部件（天空色带、山的脚腰顶）算一组，组内不报。
 - `occlusion`：分层文件里谁挡住谁、挡了多少像素，用来验证「该挡的挡住了」。
 - `contact`：交叠发生在哪个位置、方案的关节压住了哪些部件、有没有兵器从手上穿过去。带 `--plan` 才有关节归属和穿帮提示，带 `--map` 另出一张遮挡显露图。
-- `depth`：把层序翻译成深度表和三维坐标。z 越大离观众越远，坐标按引擎的投影斜度反算，重新投影一次位置不变。
+- `depth`：把层序翻译成深度表和三维坐标。z 越大离观众越远，坐标按引擎的投影斜度反算，重新投影一次位置不变。带 `--plan` 就用方案里声明的 `depth` 算 z，末尾多一段对照，逐层核对方案声明和成品层序。
 
 翻译：
 

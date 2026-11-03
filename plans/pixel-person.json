@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "人",
+      "depth": 0,
       "components": [
         {
           "component": "pixel_person",

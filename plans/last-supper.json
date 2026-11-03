@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "室内背景",
+      "depth": 9,
       "components": [
         {
           "component": "indoor_backdrop",
@@ -31,6 +32,7 @@
     },
     {
       "name": "建筑结构",
+      "depth": 8,
       "components": [
         {
           "component": "coffered_ceiling",
@@ -73,6 +75,7 @@
     },
     {
       "name": "拱形窗户",
+      "depth": 7,
       "components": [
         {
           "component": "arched_windows",
@@ -104,6 +107,7 @@
     },
     {
       "name": "窗光",
+      "depth": 6,
       "components": [
         {
           "component": "window_glow",
@@ -126,6 +130,7 @@
     },
     {
       "name": "人物躯干",
+      "depth": 5,
       "components": [
         {
           "component": "seated_figure",
@@ -313,6 +318,7 @@
     },
     {
       "name": "人物头部",
+      "depth": 4,
       "components": [
         {
           "component": "figure_head",
@@ -466,6 +472,7 @@
     },
     {
       "name": "长条餐桌",
+      "depth": 3,
       "components": [
         {
           "component": "long_table",
@@ -505,6 +512,7 @@
     },
     {
       "name": "桌面器物",
+      "depth": 2,
       "components": [
         {
           "component": "dinner_plate",
@@ -700,6 +708,7 @@
     },
     {
       "name": "手部",
+      "depth": 1,
       "components": [
         {
           "component": "figure_hands",
@@ -783,6 +792,7 @@
     },
     {
       "name": "四角阴影",
+      "depth": 0,
       "components": [
         {
           "component": "soft_vignette",

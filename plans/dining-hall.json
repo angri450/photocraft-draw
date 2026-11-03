@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "室内背景",
+      "depth": 4,
       "components": [
         {
           "component": "indoor_backdrop",
@@ -31,6 +32,7 @@
     },
     {
       "name": "建筑结构",
+      "depth": 3,
       "components": [
         {
           "component": "coffered_ceiling",
@@ -73,6 +75,7 @@
     },
     {
       "name": "拱形窗户",
+      "depth": 2,
       "components": [
         {
           "component": "arched_windows",
@@ -104,6 +107,7 @@
     },
     {
       "name": "长条餐桌",
+      "depth": 1,
       "components": [
         {
           "component": "long_table",
@@ -121,6 +125,7 @@
     },
     {
       "name": "桌面器物",
+      "depth": 0,
       "components": [
         {
           "component": "wine_goblet",

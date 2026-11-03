@@ -120,8 +120,16 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
   "layers": [
     {
       "name": "室内背景",
+      "depth": 1,
       "components": [
         {"component": "indoor_backdrop", "params": {"wall": [0, 0, 800, 450]}}
+      ]
+    },
+    {
+      "name": "长条餐桌",
+      "depth": 0,
+      "components": [
+        {"component": "long_table", "params": {"table": [50, 300, 700, 40]}}
       ]
     }
   ]
@@ -136,7 +144,8 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 4. `document_background` 可选，默认 `transparent`，不生成 `Background` 层，画完会自动清掉空图层；要白底就写 `white`。
 5. `caption` 可选，画面左下角的一行字，会建成文字层，PSD 里可以改；`caption_color` 可选，默认 surface。
 6. `layers` 按顺序画，先写的在下面，后写的压在上面；每一层是一个图层组，层里的组件是子组。
-7. 也可以只写 `components`，每个组件单独成层，适合快速试验。
+7. 每层可以写 `depth`，数字越大离观众越远。写了 `depth` 的层，层序由 `depth` 决定，数组顺序只用来分不出远近时的先后；`depth` 要么每层都写，要么都不写。
+8. 也可以只写 `components`，每个组件单独成层，适合快速试验。
 
 ## 检查与出图
 
@@ -148,10 +157,11 @@ photocraft-draw colors plans/xxx.json
 photocraft-draw occlusion out/xxx.psd
 photocraft-draw contact out/xxx.psd --plan plans/xxx.json --map out/contact-map.png
 photocraft-draw depth out/xxx.psd
+photocraft-draw depth out/xxx.psd --plan plans/xxx.json
 photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
 ```
 
-`verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`contact` 在遮挡之上再走一步，报交叠发生在哪个坐标、方案的关节压住哪些部件、有没有兵器从手或头上穿过去；`depth` 把层序翻译成深度表和三维坐标；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
+`verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`contact` 在遮挡之上再走一步，报交叠发生在哪个坐标、方案的关节压住哪些部件、有没有兵器从手或头上穿过去；`depth` 把层序翻译成深度表和三维坐标，带 `--plan` 就用方案里声明的 `depth` 算 z，再逐层对照方案和成品；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
 
 ## 命令目录
 

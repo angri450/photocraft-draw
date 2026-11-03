@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "天空",
+      "depth": 6,
       "components": [
         {
           "component": "alpine_sky",
@@ -29,6 +30,7 @@
     },
     {
       "name": "远山",
+      "depth": 5,
       "components": [
         {
           "component": "alpine_peaks",
@@ -84,6 +86,7 @@
     },
     {
       "name": "近山",
+      "depth": 4,
       "components": [
         {
           "component": "alpine_peaks",
@@ -121,6 +124,7 @@
     },
     {
       "name": "岩地",
+      "depth": 3,
       "components": [
         {
           "component": "rocky_ground",
@@ -196,6 +200,7 @@
     },
     {
       "name": "河流",
+      "depth": 2,
       "components": [
         {
           "component": "river_water",
@@ -225,6 +230,7 @@
       "name": "人物",
       "describe_zh": "拿破仑骑着前蹄扬起的战马，右手高举指向前方，红斗篷在身后展开",
       "describe_en": "Napoleon on a rearing warhorse, right arm raised pointing forward, crimson cloak billowing behind",
+      "depth": 1,
       "components": [
         {
           "component": "rider_placeholder",
@@ -244,6 +250,7 @@
     },
     {
       "name": "前景",
+      "depth": 0,
       "components": [
         {
           "component": "foreground_rocks",

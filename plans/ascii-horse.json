@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "字符画",
+      "depth": 0,
       "components": [
         {
           "component": "ascii_art",

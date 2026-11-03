@@ -7,6 +7,7 @@
   "layers": [
     {
       "name": "室内背景",
+      "depth": 2,
       "components": [
         {
           "component": "indoor_backdrop",
@@ -21,6 +22,7 @@
     },
     {
       "name": "拱形窗户",
+      "depth": 1,
       "components": [
         {
           "component": "arched_windows",
@@ -32,6 +34,7 @@
     },
     {
       "name": "长条餐桌",
+      "depth": 0,
       "components": [
         {
           "component": "long_table",

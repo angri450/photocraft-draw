@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "stand",
+      "depth": 2,
       "components": [
         {
           "component": "capsule_horse",
@@ -27,6 +28,7 @@
     },
     {
       "name": "walk",
+      "depth": 1,
       "components": [
         {
           "component": "capsule_horse",
@@ -45,6 +47,7 @@
     },
     {
       "name": "gallop",
+      "depth": 0,
       "components": [
         {
           "component": "capsule_horse",

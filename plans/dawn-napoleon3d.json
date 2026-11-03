@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "天空",
+      "depth": 7,
       "components": [
         {
           "component": "alpine_sky",
@@ -32,6 +33,7 @@
     },
     {
       "name": "远山",
+      "depth": 6,
       "components": [
         {
           "component": "alpine_peaks",
@@ -87,6 +89,7 @@
     },
     {
       "name": "近山",
+      "depth": 5,
       "components": [
         {
           "component": "alpine_peaks",
@@ -124,6 +127,7 @@
     },
     {
       "name": "岩地",
+      "depth": 4,
       "components": [
         {
           "component": "rocky_ground",
@@ -148,6 +152,7 @@
     },
     {
       "name": "河流",
+      "depth": 3,
       "components": [
         {
           "component": "river_water",
@@ -175,6 +180,7 @@
     },
     {
       "name": "马影",
+      "depth": 2,
       "components": [
         {
           "component": "soft_shadow",
@@ -195,6 +201,7 @@
     },
     {
       "name": "骑手",
+      "depth": 1,
       "components": [
         {
           "component": "rider3d",
@@ -213,6 +220,7 @@
     },
     {
       "name": "前景",
+      "depth": 0,
       "components": [
         {
           "component": "foreground_rocks",

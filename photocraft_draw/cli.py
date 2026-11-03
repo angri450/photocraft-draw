@@ -188,8 +188,9 @@ def cmd_contact(args) -> int:
 def cmd_depth(args) -> int:
     from .depth import analyze_depth, public, report_depth
 
+    plan = load_plan(args.plan) if args.plan else None
     result = analyze_depth(Path(args.psd), unit=args.unit, skew_x=args.skew_x,
-                            skew_y=args.skew_y, ref_width=args.ref_width)
+                            skew_y=args.skew_y, ref_width=args.ref_width, plan=plan)
     print(report_depth(result))
     if args.json:
         Path(args.json).write_text(
@@ -425,6 +426,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     depth = sub.add_parser("depth", help="反算分层文件的立体关系与三维坐标")
     depth.add_argument("psd", help="分层文件")
+    depth.add_argument("--plan", help="绘制方案文件，取方案里声明的 depth")
     depth.add_argument("--unit", type=float, default=1.0, help="每层深度差，默认 1.0")
     depth.add_argument("--skew-x", type=float, default=0.45, help="深度到横向偏移")
     depth.add_argument("--skew-y", type=float, default=0.28, help="深度到纵向偏移")

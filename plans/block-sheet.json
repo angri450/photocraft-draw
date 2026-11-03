@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "stand",
+      "depth": 2,
       "components": [
         {
           "component": "block_figure",
@@ -25,6 +26,7 @@
     },
     {
       "name": "walk",
+      "depth": 1,
       "components": [
         {
           "component": "block_figure",
@@ -41,6 +43,7 @@
     },
     {
       "name": "point",
+      "depth": 0,
       "components": [
         {
           "component": "block_figure",

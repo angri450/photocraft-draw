@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "盒子",
+      "depth": 0,
       "components": [
         {
           "component": "box3d_scene",

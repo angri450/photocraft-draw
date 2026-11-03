@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "骑手",
+      "depth": 0,
       "components": [
         {
           "component": "rider3d",

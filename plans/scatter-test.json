@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "人",
+      "depth": 1,
       "components": [
         {
           "component": "scatter_shape",
@@ -33,6 +34,7 @@
     },
     {
       "name": "马",
+      "depth": 0,
       "components": [
         {
           "component": "scatter_shape",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from .commands import Pen
@@ -10,6 +11,21 @@ from .palette import resolve_palette
 from .registry import get_component
 
 NUMBER = (int, float)
+
+
+def ordered_layers(plan: dict) -> list[dict]:
+    """按 depth 排层序，最远的层排在前面。
+
+    每层都写了 depth 时，层序由 depth 决定：depth 大的更远，先画。
+    depth 相同按方案里的先后排。一层没写 depth 就按方案里的顺序。
+    """
+    layers = plan.get("layers") or []
+    if not layers or not all(isinstance(layer, dict) and "depth" in layer
+                             for layer in layers):
+        return list(layers)
+    indexed = list(enumerate(layers))
+    indexed.sort(key=lambda item: (-float(item[1]["depth"]), item[0]))
+    return [layer for _, layer in indexed]
 
 
 def load_plan(path: str | Path) -> dict:
@@ -103,7 +119,20 @@ def validate_plan(plan: dict) -> list[str]:
                 name = layer.get("name")
                 if not isinstance(name, str) or not name.strip():
                     errors.append(f"{label}缺少 name")
+                if "depth" in layer:
+                    value = layer["depth"]
+                    if not isinstance(value, NUMBER) or isinstance(value, bool):
+                        errors.append(f"{label}的 depth 必须是数字")
+                    elif not math.isfinite(value):
+                        errors.append(f"{label}的 depth 必须是有限数字")
                 _validate_component_list(layer.get("components"), f"{label}的 components", errors)
+            depths = [index for index, layer in enumerate(layers)
+                      if isinstance(layer, dict) and "depth" in layer]
+            if depths and len(depths) != len(layers):
+                missing = [f"第 {index + 1} 层" for index, layer in enumerate(layers)
+                           if not (isinstance(layer, dict) and "depth" in layer)]
+                errors.append("depth 要么每层都写，要么都不写；没写 depth 的有："
+                              + "、".join(missing))
     else:
         _validate_component_list(plan.get("components"), "components", errors)
 
@@ -130,7 +159,7 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
 
     layers = plan.get("layers")
     if layers:
-        for layer in layers:
+        for layer in ordered_layers(plan):
             pen.stage(layer["name"])
             for item in layer["components"]:
                 component = get_component(item["component"])

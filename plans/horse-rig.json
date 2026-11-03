@@ -9,6 +9,7 @@
   "layers": [
     {
       "name": "stand",
+      "depth": 2,
       "components": [
         {
           "component": "rig_horse",
@@ -25,6 +26,7 @@
     },
     {
       "name": "walk",
+      "depth": 1,
       "components": [
         {
           "component": "rig_horse",
@@ -41,6 +43,7 @@
     },
     {
       "name": "gallop",
+      "depth": 0,
       "components": [
         {
           "component": "rig_horse",
