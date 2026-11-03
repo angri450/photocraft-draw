@@ -1,0 +1,286 @@
+# 组件目录
+
+这份是 `photocraft-draw components` 的完整输出快照，2026-11-02 从 photocraft-draw 0.1.0 导出。
+
+组件增减后重新生成：
+
+```sh
+photocraft-draw components > references/组件目录.txt
+```
+
+输出格式：组件名加中文说明，然后是必填参数和可选参数的列表。必填参数标「必填」，其余是可选。
+
+```text
+indoor_backdrop  室内背景
+  墙面、地面、天顶和两侧帷幔，给室内场景打底
+  - wall：[x, y, 宽, 高]，必填
+  - floor：[x, y, 宽, 高]，可选
+  - ceiling：[x, y, 宽, 高]，可选
+  - tapestries：[[x, y, 宽, 高], …]，可选
+  - colors：{wall, floor, ceiling, tapestry, fold}，可选
+arched_windows  拱形窗户
+  一组拱窗，带窗光、竖棂和横档
+  - windows：[[x, y, 宽, 高], …]，必填
+  - mullions：是否画窗棂，默认 true
+  - colors：{frame, glass, light}，可选
+long_table  长条餐桌
+  桌布、前垂、桌沿、成排盘子和面包
+  - table：[x, y, 宽, 高]，必填
+  - front：前垂高度，默认 38
+  - plates：[x, …]，可选
+  - plate_y：盘子纵向位置，可选
+  - cup_x：酒杯横向位置，可选
+  - colors：{cloth, front, edge, plate, bread}，可选
+coffered_ceiling  藻井天顶
+  顶棚底色、向灭点收窄的纵向透视线、横向梁和檐线
+  - ceiling：[x, y, 宽, 高]，顶棚可见范围，必填
+  - vanish：[x, y]，透视灭点，可选
+  - columns：横向格数，默认 6
+  - rows：纵深格数，默认 4
+  - back_ratio：后沿宽度比例，默认 0.42
+  - colors：{panel, rib, shadow}，可选
+side_drapery  两侧帷幔
+  墙面投影、挂杆、布面、顶褶、竖褶、束带和底边
+  - draperies：[[x, y, 宽, 高], …]，每块帷幔的位置，必填
+  - cast_shadow：是否在墙上画投影，默认 true
+  - colors：{cloth, fold, highlight, rod, shadow}，可选
+window_glow  窗光
+  窗周渐亮的光晕、人物背后的亮部和桌面上被照亮的一块
+  - window：[x, y, 宽, 高]，中间那扇窗，必填
+  - glow_steps：窗周光晕层数，1 到 4，默认 3
+  - halo：[中心x, 中心y, 半径x, 半径y]，人物背后亮部，可选
+  - pool：[中心x, 中心y, 半径x, 半径y]，桌面光斑，可选
+  - colors：{glow, hot, halo, pool}，可选
+soft_vignette  四角阴影
+  四角老化压暗和桌下柔和暗部，压在整幅画的最上层
+  - frame：[x, y, 宽, 高]，要压暗的画面范围，必填
+  - corners：是否压暗四角，默认 true
+  - corner_x：四角暗部横向半径，默认 frame 宽的 0.23
+  - corner_y：四角暗部纵向半径，默认 frame 高的 0.22
+  - under_shadow：[中心x, 中心y, 半径x, 半径y]，桌下暗部，可选
+  - colors：{deep, mid, far, shade_deep, shade_far}，可选
+dinner_plate  盘子
+  扁椭圆盘子，盘沿比盘面深一档，下面带一层软阴影
+  - center：[中心x, 中心y]，必填
+  - size：盘的宽，默认 26
+  - depth：纵向半径与横向半径之比，默认 0.24
+  - shadow：是否画盘下软阴影，默认 true
+  - colors：{rim, face, shadow}，可选
+bread_loaf  面包
+  小椭圆面包，顶上一块亮面，可选切面和割口
+  - center：[中心x, 中心y]，必填
+  - size：面包的宽，默认 14
+  - depth：高与宽之比，默认 0.52
+  - cut：是否画切面和两道割口，默认 false
+  - colors：{crust, crumb, score, shadow}，可选
+wine_goblet  酒杯
+  细颈圆杯身的酒杯，小杯口，带一点酒和杯身反光
+  - center：[中心x, 杯底中心y]，必填
+  - height：杯高，默认 20
+  - wine：是否画酒，默认 true
+  - glint：是否画杯身反光，默认 true
+  - colors：{glass, edge, light, wine, shadow}，可选
+table_cloth_folds  桌布褶
+  桌布前垂的浅色大块、顶部阴影、竖向褶和布边，叠在长条餐桌上
+  - area：[x, y, 宽, 高]，前垂区域，必填
+  - folds：折数，默认 3；也可以给占宽比例的数组
+  - fold_width：单条褶的宽，默认 10
+  - top_shade：是否画桌沿下的阴影，默认 true
+  - hem：是否画布边，默认 true
+  - colors：{cloth, fold, light}，可选
+seated_figure  坐姿人物
+  肩到桌沿的坐姿躯干，五种姿态：端坐、侧身、摊手、前指、扶桌
+  - seat：[x, y, 宽, 高]，肩线到桌沿，必填
+  - pose：front / side / open / point / grip，默认 front
+  - robe：袍子主色，默认 deep
+  - trim：内袍和亮边，默认 soft
+  - shade：暗褶颜色，默认 ink
+  - collar：领口肤色，默认 soft
+leaning_figure  前倾人物
+  身体压向桌面、手肘撑桌的人物，用来画犹大这类姿态
+  - seat：[x, y, 宽, 高]，肩线到桌沿，必填
+  - elbow：[手肘x, 手肘y]，撑桌落点，必填
+  - robe：袍子主色，默认 mid
+  - trim：亮边颜色，默认 soft
+  - shade：暗褶颜色，默认 ink
+figure_head  人物头部
+  脸、头发、胡须和五官，眼睛只画上眼睑，转头时五官整体偏移
+  - center：[中心x, 中心y]，必填
+  - size：头高，默认 42
+  - turn：left / front / right，默认 front
+  - beard：是否留胡须，默认 false
+  - hair：头发颜色，默认 ink
+  - skin：肤色，默认 soft
+  - shade：阴影颜色，默认 line
+figure_hands  一组手
+  按落点画多只手，四种姿态：摊开、握住、前指、垂下
+  - hands：[[x, y, 姿态], …]，必填
+  - size：手的大小，默认 14
+  - skin：肤色，默认 soft
+  - shade：阴影颜色，默认 line
+rider_placeholder  骑手占位
+  一匹马加一个骑手，只标位置和遮挡关系，草稿阶段代替写实人物
+  - box：[x, y, 宽, 高]，连人带马的外框，必填
+  - horse：马的颜色，默认 mid
+  - rider：人的主色，默认 deep
+  - skin：头部颜色，默认 soft
+figure_row  一排人物
+  按起点等距排开的一排坐姿人物，姿态循环使用
+  - row：[起点x, 肩线y, 单人宽, 单人高]，必填
+  - count：人数，必填
+  - gap：横向间距，默认单人宽的 1.12 倍
+  - poses：姿态列表，默认五种姿态循环
+  - robe：袍子主色，默认 deep
+  - trim：亮边颜色，默认 soft
+alpine_sky  高山天空
+  从深到浅的横向色带，可加几朵云，给雪山场景打底
+  - area：[x, y, 宽, 高]，必填
+  - bands：色带数，2 到 8，默认 6
+  - clouds：[[中心x, 中心y, 半径x, 半径y], …]，可选
+  - colors：{top, bottom, cloud}，可选
+alpine_peaks  雪山
+  几层椭圆堆出圆顶山形，带雪顶、山脊线和沟壑
+  - peaks：[[中心x, 山脚y, 半宽, 高], …]，必填，后写的压在前面
+  - snow：是否画雪顶，默认 true
+  - ridges：每座山的沟壑数，0 到 4，默认 2
+  - colors：{far, near, snow, edge}，可选
+foreground_rocks  前景石块
+  带投影、顶面亮部和底部暗部的石块，用来压住画面底部
+  - rocks：[[中心x, 中心y, 半径x, 半径y], …]，必填
+  - colors：{stone, light, dark, shadow}，可选
+river_water  河流
+  水面、横向波纹和几处水花，用来做前景的溪流
+  - area：[x, y, 宽, 高]，必填
+  - waves：波纹条数，0 到 12，默认 5
+  - splashes：[[中心x, 中心y, 半径x, 半径y], …]，可选
+  - colors：{water, light, foam, dark}，可选
+rocky_ground  岩地
+  地面底色、亮部和暗部，可摆几块石头做前景
+  - area：[x, y, 宽, 高]，必填
+  - rocks：[[中心x, 中心y, 半径x, 半径y], …]，可选
+  - tone：dark / mid，默认 dark
+  - base：是否铺一整块底色，默认 true；做前景石块时关掉
+  - colors：{base, light, dark}，可选
+figure_rig  人物白模
+  关节加骨段的人体模型，肩肘腕和髋膝踝都在，五种姿态可切
+  - root：[x, y]，髋部位置，必填
+  - height：身高像素，必填
+  - pose：stand / walk / point / sit / ride，也可以直接给关节表
+  - body：身体颜色，默认 surface
+  - joint：关节颜色，默认 line
+  - head：头部颜色，默认 surface
+  - flip：是否左右翻转，默认 false
+  - 关节表格式：{关节名: [x, y]}，14 个关节，原点在髋部，向上为负 y，数值按身高归一到 1.0
+  - 关节名：hip chest neck head shoulder_l shoulder_r elbow_l elbow_r hand_l hand_r knee_l knee_r foot_l foot_r
+  - 关节球实画直径约 45 像素，排多人时横向间距留 70 像素以上才不叠
+  - 关节天然同色，不适合走 colors 检查，改用 verify 配 occlusion
+block_figure  积木人
+  八个长方形和椭圆拼的人，头、躯干、两臂、两腿、两脚，五种姿态
+  - root：[x, y]，髋部位置，必填
+  - height：身高像素，必填
+  - pose：stand / walk / point / sit / ride，也可以直接给部件表
+  - body：身体颜色，默认 surface
+  - skin：头部颜色，默认同身体
+  - flip：是否左右翻转，默认 false
+custom_shape  自定义路径
+  直接给路径点，支持贝塞尔控制点，画任意形状
+  - subpaths：路径列表，每项 {closed, knots}，必填
+  - fill：填充色，默认 surface
+  - stroke：描边色，可选
+  - stroke_width：描边宽度，可选
+  - knots 每项写 [x, y]，或写 {anchor: [x, y], in: [x, y], out: [x, y]} 给贝塞尔控制点
+  - subpaths 必须是扁平列表，多一层嵌套会报 'list' object has no attribute 'get'
+  - 同一层里多个组件按列表顺序压盖，后面的盖住前面的，可拿底色形状叠出镂空
+  - 包围盒按锚点算，不按贝塞尔控制点算，verify 不报控制点出画
+ascii_art  字符画
+  把多行字符画转成矩形，连续字符合并成一段
+  - art：多行字符串，必填
+  - cell：一个字符的像素大小，默认 10
+  - origin：[x, y]，左上角，默认 [0, 0]
+  - color：填充色，默认 line
+block_horse  积木马
+  十个长方形和椭圆拼的马，身体、颈、头、四条腿、尾、耳、眼
+  - root：[x, y]，马身中心，必填
+  - length：体长像素，必填
+  - pose：stand / rear，默认 stand
+  - body：马身颜色，默认 muted
+  - dark：蹄、耳、眼的颜色，默认 line
+rig_horse  关节马
+  每段骨头可旋转的马，三段腿，站立走路奔跑三种步态
+  - root：[x, y]，肩部位置，必填
+  - length：肩高像素，必填
+  - pose：stand / walk / gallop，默认 stand
+  - body：马身颜色，默认 mid
+  - dark：蹄和鬃毛颜色，默认 line
+rig_person  方块人
+  六个长方体的方块人，照 Minecraft 比例，手臂腿可摆动
+  - root：[x, y]，肩部位置，必填
+  - height：总身高像素，必填
+  - pose：stand / walk / run / point / sit
+  - body：身体颜色，默认 mid
+  - skin：头部颜色，默认 soft
+  - flip：是否左右翻转，默认 false
+scatter_shape  撒点填充
+  在人形或马形轮廓里随机撒方块，一条指令出一片
+  - outline：person / horse，默认 person
+  - box：[x, y, 宽, 高]，必填
+  - count：方块数量，只在 mode=random 时用
+  - mode：grid 铺格子 / random 随机撒，默认 grid
+  - cell：grid 模式的格子大小，默认 16
+  - fill：方块占格子的比例，默认 0.92
+  - jitter：每块随机偏移，0 到 0.5，默认 0
+  - seed：随机种子，同一个种子出同一张图
+  - size：[最小, 最大]，占框宽比例，默认 [0.06, 0.16]
+  - tones：三档颜色，默认 surface / muted / line
+pixel_person  像素人
+  按 Minecraft 比例切成一格一格的小方块，轮廓由比例定，不靠手画曲线
+  - root：[x, y]，肩部位置，必填
+  - height：总身高像素，必填
+  - cell：格子大小，默认 12
+  - gap：格子缝隙，默认 1
+  - skip：跳过格子的概率，0 到 0.9，默认 0
+  - tones：三档颜色，默认 surface / muted / line
+  - seed：随机种子
+capsule_person  胶囊人
+  四肢用胶囊、躯干用圆角矩形、头用圆，关节处没有方角
+  - root：[x, y]，肩部位置，必填
+  - height：总身高像素，必填
+  - pose：stand / walk / run / point
+  - body：身体颜色，默认 surface
+capsule_horse  胶囊马
+  身体圆角矩形，颈腿尾巴都是胶囊，关节处圆润
+  - root：[x, y]，肩部位置，必填
+  - length：肩高像素，必填
+  - pose：stand / walk / gallop
+  - body：马身颜色，默认 muted
+  - dark：鬃毛和蹄的颜色，默认 line
+capsule_rider  骑手
+  马和人在一个组件里按前后关系画：后腿、马身、颈头、人、人的腿、前腿
+  - root：[x, y]，马肩位置，必填
+  - length：肩高像素，必填
+  - horse：马的颜色，默认 mid
+  - rider：人的颜色，默认 deep
+  - skin：头部颜色，默认 soft
+  - pose：stand / walk / gallop
+soft_shadow  地面投影
+  一个扁椭圆，放在主体脚下，把主体按在地上
+  - center：[x, y]，阴影中心，必填
+  - rx：横向半径，必填
+  - ry：纵向半径，必填
+  - color：颜色，默认 ink
+box3d_scene  三维盒子
+  按三维坐标摆盒子，按 z 从远到近投影，遮挡自动正确
+  - boxes：[[x, y, z, 宽, 高, 深], …]，必填；z 越大越远
+  - skew_x：z 的横向偏移，默认 0.45
+  - skew_y：z 的纵向偏移，默认 0.28
+  - colors：按索引循环的颜色
+  - single：默认颜色
+rider3d  三维骑手
+  马和人用三维坐标摆，按 z 从远到近投影，遮挡自动正确
+  - root：[x, y]，马肩位置，必填
+  - length：肩高像素，必填
+  - pose：stand / walk / gallop
+  - skew_x：z 的横向偏移，默认 0.42
+  - skew_y：z 的纵向偏移，默认 0.22
+
+```

@@ -164,6 +164,40 @@ def cmd_occlusion(args) -> int:
     return 0
 
 
+def cmd_contact(args) -> int:
+    from .contact import analyze, public, report, write_map
+
+    result = analyze(Path(args.psd), Path(args.plan) if args.plan else None,
+                      Path(args.tmp) if args.tmp else None)
+    print(report(result))
+    if args.map:
+        out = Path(args.map)
+        base = None
+        if not args.no_base:
+            from .contact import _render_composite
+            base = _render_composite(Path(args.psd).resolve(),
+                                     out.with_name(out.stem + "-base.png"))
+        print(f"显露图：{write_map(result, out, base)}")
+    if args.json:
+        Path(args.json).write_text(
+            json.dumps(public(result), ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"结构化结果：{args.json}")
+    return 0
+
+
+def cmd_depth(args) -> int:
+    from .depth import analyze_depth, public, report_depth
+
+    result = analyze_depth(Path(args.psd), unit=args.unit, skew_x=args.skew_x,
+                            skew_y=args.skew_y, ref_width=args.ref_width)
+    print(report_depth(result))
+    if args.json:
+        Path(args.json).write_text(
+            json.dumps(public(result), ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"结构化结果：{args.json}")
+    return 0
+
+
 def cmd_verify(args) -> int:
     from .checker import check_commands, report_text
 
@@ -379,6 +413,24 @@ def build_parser() -> argparse.ArgumentParser:
     occlusion.add_argument("psd", help="分层文件")
     occlusion.add_argument("--tmp", help="临时目录")
     occlusion.set_defaults(func=cmd_occlusion)
+
+    contact = sub.add_parser("contact", help="查接触位置、关节归属和穿帮提示")
+    contact.add_argument("psd", help="分层文件")
+    contact.add_argument("--plan", help="绘制方案文件，用来查关节归属")
+    contact.add_argument("--map", help="遮挡显露图输出路径")
+    contact.add_argument("--no-base", action="store_true", help="显露图不用合成图做底")
+    contact.add_argument("--json", help="结构化结果输出路径")
+    contact.add_argument("--tmp", help="临时目录")
+    contact.set_defaults(func=cmd_contact)
+
+    depth = sub.add_parser("depth", help="反算分层文件的立体关系与三维坐标")
+    depth.add_argument("psd", help="分层文件")
+    depth.add_argument("--unit", type=float, default=1.0, help="每层深度差，默认 1.0")
+    depth.add_argument("--skew-x", type=float, default=0.45, help="深度到横向偏移")
+    depth.add_argument("--skew-y", type=float, default=0.28, help="深度到纵向偏移")
+    depth.add_argument("--ref-width", type=float, help="参考画布宽度，默认跟画布同宽")
+    depth.add_argument("--json", help="结构化结果输出路径")
+    depth.set_defaults(func=cmd_depth)
 
     verify = sub.add_parser("verify", help="只读指令检查结构，不出图")
     verify.add_argument("plan", help="绘制方案文件")

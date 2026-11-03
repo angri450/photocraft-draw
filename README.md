@@ -43,6 +43,8 @@ photocraft_draw/
   envelope.py      包络检查：部件是不是落在人形或马形里
   colorize.py      配色检查：相邻部件颜色太近就报
   occlusion.py     遮挡分析：分层文件里谁挡住谁
+  contact.py       接触点与穿帮检查：交叠在哪、关节压住谁、兵器穿没穿过去
+  depth.py         立体关系：层序翻译成深度表和三维坐标
   brief.py         画面稿翻译：方案转中英文提示词
   scatter.py       撒点填充
   autoshade.py     自动色阶，实验代码，没接进主流程
@@ -51,6 +53,7 @@ photocraft_draw/
   components/      构图组件
 plans/             绘制方案
 docs/              画法约定、遮挡规则、组件参考
+skills/            skill 本体，供支持的客户端直接加载
 tools/             命令目录生成工具
 tests/             单元测试
 out/               默认输出目录
@@ -143,10 +146,12 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 photocraft-draw verify plans/xxx.json --expect horse --envelope horse
 photocraft-draw colors plans/xxx.json
 photocraft-draw occlusion out/xxx.psd
+photocraft-draw contact out/xxx.psd --plan plans/xxx.json --map out/contact-map.png
+photocraft-draw depth out/xxx.psd
 photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
 ```
 
-`verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
+`verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`contact` 在遮挡之上再走一步，报交叠发生在哪个坐标、方案的关节压住哪些部件、有没有兵器从手或头上穿过去；`depth` 把层序翻译成深度表和三维坐标；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
 
 ## 命令目录
 

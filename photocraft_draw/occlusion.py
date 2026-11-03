@@ -69,7 +69,7 @@ def analyze(psd_path: Path, tmp_dir: Path | None = None) -> dict:
 
 def report(result: dict) -> str:
     lines = [f"画布 {result['canvas'][0]}x{result['canvas'][1]} | {len(result['layers'])} 层"]
-    lines.append("从后到前：" + " → ".join(result["layers"]))
+    lines.append("从前到后：" + " → ".join(result["layers"]))
     if not result["pairs"]:
         lines.append("没有图层重叠")
         return "\n".join(lines)
