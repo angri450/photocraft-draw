@@ -146,6 +146,7 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 6. `layers` 按顺序画，先写的在下面，后写的压在上面；每一层是一个图层组，层里的组件是子组。
 7. 每层可以写 `depth`，数字越大离观众越远。写了 `depth` 的层，层序由 `depth` 决定，数组顺序只用来分不出远近时的先后；`depth` 要么每层都写，要么都不写。
 8. 也可以只写 `components`，每个组件单独成层，适合快速试验。
+9. 人物层可以写 `motion`，声明这一层往哪个方向使劲。`action` 取动作词表里的词，`angle` 是方向角（0 度朝右，90 度朝下，180 度朝左，270 度朝上），`opponents` 写交战对象。`angle` 要落在 `action` 要求的范围里，超出范围在校验阶段就报错。兵器层写 `holder` 指明归谁拿。
 
 ## 检查与出图
 
@@ -158,10 +159,13 @@ photocraft-draw occlusion out/xxx.psd
 photocraft-draw contact out/xxx.psd --plan plans/xxx.json --map out/contact-map.png
 photocraft-draw depth out/xxx.psd
 photocraft-draw depth out/xxx.psd --plan plans/xxx.json
+photocraft-draw motion plans/xxx.json
 photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
 ```
 
 `verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`contact` 在遮挡之上再走一步，报交叠发生在哪个坐标、方案的关节压住哪些部件、有没有兵器从手或头上穿过去；`depth` 把层序翻译成深度表和三维坐标，带 `--plan` 就用方案里声明的 `depth` 算 z，再逐层对照方案和成品；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
+
+`motion` 查每个角色往哪个方向使劲。它读绘制方案里的 `motion` 声明，核对意图向量、骨段方向和兵器主轴三者的关系：兵器和意图反向报拿反了，手离兵器太远报手没有握在兵器上，两个交战角色的意图向量夹角太小报对抗读不出来。这一层要在写方案的时候就过一遍，动作含糊的话遮挡关系照样能算对，画出来的东西不对。
 
 ## 命令目录
 

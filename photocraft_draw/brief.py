@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+from .motion import ACTION_EN, ACTION_TEXT
 from .plan import load_plan, ordered_layers
 
 FIELDS = (
@@ -24,14 +25,38 @@ FIELDS = (
 )
 
 
+def _motion_note(layer: dict, lang: str) -> str:
+    """把这一层的动作声明拼成一句话。
+
+    动作意图必须进画面稿。生图模型看不到方案里的关节表，只看得到稿子，
+    稿子里不写方向，模型就自己编，编出来的多半是两个人一起站着。
+    """
+    motion = layer.get("motion")
+    if not isinstance(motion, dict):
+        return ""
+    action = str(motion.get("action", ""))
+    if lang == "zh":
+        text = ACTION_TEXT.get(action, action)
+    else:
+        text = ACTION_EN.get(action, action)
+    angle = motion.get("angle")
+    if angle is None:
+        return text
+    return f"{text}（{float(angle):.0f} 度）" if lang == "zh" else f"{text} ({float(angle):.0f} degrees)"
+
+
 def _describe(layer: dict, lang: str) -> str:
     text = layer.get(f"describe_{lang}")
-    if text:
-        return str(text).strip()
-    name = layer.get("name", "")
-    names = [str(item.get("component", "")) for item in layer.get("components") or []]
-    joined = "、".join(names) if lang == "zh" else ", ".join(names)
-    return f"{name}（{joined}）" if lang == "zh" else f"{name} ({joined})"
+    if not text:
+        name = layer.get("name", "")
+        names = [str(item.get("component", "")) for item in layer.get("components") or []]
+        joined = "、".join(names) if lang == "zh" else ", ".join(names)
+        text = f"{name}（{joined}）" if lang == "zh" else f"{name} ({joined})"
+    text = str(text).strip()
+    note = _motion_note(layer, lang)
+    if not note:
+        return text
+    return f"{text}，{note}" if lang == "zh" else f"{text}, {note}"
 
 
 def _header(brief: dict, lang: str) -> str:

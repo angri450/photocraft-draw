@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 
 from .commands import Pen
+from .motion import ACTION_RULES
 from .palette import resolve_palette
 from .registry import get_component
 
@@ -63,6 +64,59 @@ def _validate_component_list(items, where: str, errors: list[str]) -> None:
             errors.append(f"{label}的 params 必须是对象")
 
 
+def _validate_motion(layer: dict, label: str, names: set, errors: list) -> None:
+    """校验一层的 motion 声明。
+
+    motion 写三样：action 动作词、angle 方向角、opponents 交战对象。
+    action 必须在词表里，angle 要落在动作词要求的扇区里，
+    opponents 里的层名要真实存在。
+    """
+    motion = layer.get("motion")
+    if motion is None:
+        return
+    if not isinstance(motion, dict):
+        errors.append(f"{label}的 motion 必须是对象")
+        return
+    action = motion.get("action")
+    if not isinstance(action, str) or not action:
+        errors.append(f"{label}的 motion 缺少 action")
+    elif action not in ACTION_RULES:
+        errors.append(f"{label}的 action「{action}」不在动作词表里，可用的是："
+                      + "、".join(ACTION_RULES))
+    angle = motion.get("angle")
+    if isinstance(angle, bool) or not isinstance(angle, (int, float)):
+        errors.append(f"{label}的 motion 缺少 angle，方向角要写数字")
+    elif not math.isfinite(float(angle)):
+        errors.append(f"{label}的 motion 里的 angle 必须是有限数字")
+    else:
+        if action in ACTION_RULES:
+            _, center, half = ACTION_RULES[action]
+            diff = abs(float(angle) % 360 - center % 360)
+            diff = min(diff, 360 - diff)
+            if diff > half:
+                errors.append(f"{label}的 motion 声明的 {float(angle):.1f} 度，"
+                              f"和动作词「{action}」要求的 {center:.0f} 度上下 "
+                              f"{half:.0f} 度对不上")
+    opponents = motion.get("opponents")
+    if opponents is not None:
+        if not isinstance(opponents, list):
+            errors.append(f"{label}的 opponents 必须是数组")
+        else:
+            for item in opponents:
+                if not isinstance(item, str) or item not in names:
+                    errors.append(f"{label}的 opponents 里的「{item}」不是方案里的层")
+
+
+def _validate_holder(layer: dict, label: str, names: set, errors: list) -> None:
+    """兵器层要写 holder，指明这层兵器归谁拿。"""
+    holder = layer.get("holder")
+    if holder is None:
+        return
+    if not isinstance(holder, str) or not holder:
+        errors.append(f"{label}的 holder 要写层名")
+    elif holder not in names:
+        errors.append(f"{label}的 holder「{holder}」不是方案里的层")
+
 def validate_plan(plan: dict) -> list[str]:
     errors: list[str] = []
     if not isinstance(plan, dict):
@@ -111,6 +165,8 @@ def validate_plan(plan: dict) -> list[str]:
         if not isinstance(layers, list) or not layers:
             errors.append("layers 必须是非空数组")
         else:
+            names = {str(layer.get("name", "")) for layer in layers
+                     if isinstance(layer, dict)}
             for index, layer in enumerate(layers):
                 label = f"第 {index + 1} 层"
                 if not isinstance(layer, dict):
@@ -126,6 +182,8 @@ def validate_plan(plan: dict) -> list[str]:
                     elif not math.isfinite(value):
                         errors.append(f"{label}的 depth 必须是有限数字")
                 _validate_component_list(layer.get("components"), f"{label}的 components", errors)
+                _validate_motion(layer, label, names, errors)
+                _validate_holder(layer, label, names, errors)
             depths = [index for index, layer in enumerate(layers)
                       if isinstance(layer, dict) and "depth" in layer]
             if depths and len(depths) != len(layers):
