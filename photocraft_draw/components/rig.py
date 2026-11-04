@@ -137,11 +137,17 @@ FACE_WORDS = ("front", "left", "right", "back")
 JOINT_NAMES = tuple(JOINT_SCALE) + ("head",)
 
 
-def _pose_table(value) -> dict[str, tuple[float, float]]:
+def pose_table_3d(value) -> dict[str, tuple[float, float, float]]:
+    """姿态表，三维。
+
+    每个点写两个数或者三个数。三个数的时候第三个数是深度 z，单位是像素，
+    正数离观众更远，作用在人物自己的身板平面上。两个数的老写法照旧能用，
+    z 当 0。
+    """
     if isinstance(value, str):
         if value not in POSES:
             raise ValueError(f"pose 只能是 {'、'.join(POSES)}，收到 {value}")
-        return POSES[value]
+        value = POSES[value]
     if isinstance(value, dict):
         missing = [name for name in JOINT_NAMES if name not in value]
         if missing:
@@ -149,11 +155,19 @@ def _pose_table(value) -> dict[str, tuple[float, float]]:
         table = {}
         for name in JOINT_NAMES:
             point = value[name]
-            if not isinstance(point, (list, tuple)) or len(point) != 2:
-                raise ValueError(f"关节 {name} 要写成 [x, y]")
-            table[name] = (float(point[0]), float(point[1]))
+            if not isinstance(value.get(name), (list, tuple)) or len(point) not in (2, 3):
+                raise ValueError(f"关节 {name} 要写成 [x, y] 或者 [x, y, z]")
+            numbers = [float(item) for item in point]
+            if len(numbers) == 2:
+                numbers.append(0.0)
+            table[name] = (numbers[0], numbers[1], numbers[2])
         return table
     raise ValueError("pose 给姿态名，或者直接给一张关节表")
+
+
+def _pose_table(value) -> dict[str, tuple[float, float]]:
+    """姿态表，二维。深度在这里丢掉，画平面上的图用不到。"""
+    return {name: (x, y) for name, (x, y, _) in pose_table_3d(value).items()}
 
 
 def _draw_face(pen: Pen, face: str, points: dict, height: float,
@@ -273,4 +287,4 @@ COMPONENTS = {
 }
 
 
-__all__ = ["build_figure_rig", "POSES", "BONES", "COMPONENTS"]
+__all__ = ["build_figure_rig", "pose_table_3d", "POSES", "BONES", "COMPONENTS"]

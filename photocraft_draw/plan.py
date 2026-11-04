@@ -125,6 +125,22 @@ def _validate_holder(layer: dict, label: str, names: set, errors: list) -> None:
     elif holder not in names:
         errors.append(f"{label}的 holder「{holder}」不是方案里的层")
 
+def _validate_layer_z(layer: dict, label: str, errors: list) -> None:
+    """一层的物理深度 z。写了就得是数字，单位是像素，正数朝观众。
+
+    画面的 depth 是遮挡顺序，管的是谁压谁。z 管的是这件东西在空间里
+    离观众多远。两件事分开，作者才能既把悟空的手画在棒上头，又让棒真的
+    处在悟空手的高度上。
+    """
+    if "z" not in layer:
+        return
+    value = layer.get("z")
+    if isinstance(value, bool) or not isinstance(value, NUMBER):
+        errors.append(f"{label}的 z 必须是数字，单位是像素，正数朝观众")
+    elif not math.isfinite(value):
+        errors.append(f"{label}的 z 必须是有限数字")
+
+
 def validate_plan(plan: dict) -> list[str]:
     errors: list[str] = []
     if not isinstance(plan, dict):
@@ -192,6 +208,7 @@ def validate_plan(plan: dict) -> list[str]:
                 _validate_component_list(layer.get("components"), f"{label}的 components", errors)
                 _validate_motion(layer, label, names, errors)
                 _validate_holder(layer, label, names, errors)
+                _validate_layer_z(layer, label, errors)
             depths = [index for index, layer in enumerate(layers)
                       if isinstance(layer, dict) and "depth" in layer]
             if depths and len(depths) != len(layers):

@@ -64,7 +64,22 @@ def _facing_note(layer: dict, lang: str) -> str:
     return ""
 
 
-def _describe(layer: dict, lang: str) -> str:
+def _stage_note(layer: dict, lang: str, staging: dict | None) -> str:
+    """把这一层的站位翻译成一句话。
+
+    站位必须进画面稿。生图模型看不见关节表，只看得到稿子。稿子里不写
+    人站在画面的哪一块、谁在上谁在下，模型就把两个人摆在同一条水平线
+    上并排站着，缠斗读不出来。
+    """
+    if not staging:
+        return ""
+    note = (staging.get("notes") or {}).get(str(layer.get("name", "")))
+    if not note:
+        return ""
+    return str(note.get(lang, ""))
+
+
+def _describe(layer: dict, lang: str, staging: dict | None = None) -> str:
     text = layer.get(f"describe_{lang}")
     if not text:
         name = layer.get("name", "")
@@ -72,7 +87,11 @@ def _describe(layer: dict, lang: str) -> str:
         joined = "、".join(names) if lang == "zh" else ", ".join(names)
         text = f"{name}（{joined}）" if lang == "zh" else f"{name} ({joined})"
     text = str(text).strip()
-    notes = [note for note in (_motion_note(layer, lang), _facing_note(layer, lang)) if note]
+    notes = [note for note in (_motion_note(layer, lang), _facing_note(layer, lang))
+             if note]
+    stage = _stage_note(layer, lang, staging)
+    if stage:
+        notes.append(stage)
     if not notes:
         return text
     joined = "，".join(notes) if lang == "zh" else ", ".join(notes)
@@ -90,7 +109,7 @@ def _header(brief: dict, lang: str) -> str:
     return lines
 
 
-def _entries(plan: dict) -> list[dict]:
+def _entries(plan: dict, staging: dict | None = None) -> list[dict]:
     """把图层和角色按遮挡顺序排成一条，角色插在 before 指定的层之前。"""
     layers = ordered_layers(plan)
     if not layers:
@@ -112,8 +131,8 @@ def _entries(plan: dict) -> list[dict]:
             used.add(actor_index)
         entries.append({
             "name": name,
-            "zh": _describe(layer, "zh"),
-            "en": _describe(layer, "en"),
+            "zh": _describe(layer, "zh", staging),
+            "en": _describe(layer, "en", staging),
             "actor": False,
         })
     for actor_index, actor in enumerate(actors):
@@ -130,8 +149,13 @@ def _entries(plan: dict) -> list[dict]:
 
 def build_brief(plan: dict) -> dict:
     """把方案翻译成中文稿和英文稿。"""
-    entries = _entries(plan)
+    from .views import staging_notes
+
+    staging = staging_notes(plan)
+    entries = _entries(plan, staging)
     names = [entry["name"] for entry in entries]
+    scene_zh = staging.get("scene_zh") or ""
+    scene_en = staging.get("scene_en") or ""
 
     brief_zh = plan.get("brief_zh") or {}
     brief_en = plan.get("brief_en") or {}
@@ -142,6 +166,8 @@ def build_brief(plan: dict) -> dict:
     zh_lines.append("画面从远到近分 %d 层，依次是：" % len(entries))
     for index, entry in enumerate(entries):
         zh_lines.append(f"{index + 1}. {entry['zh']}")
+    if scene_zh:
+        zh_lines.append("画面空间关系：%s。" % scene_zh)
     zh_lines.append(
         "遮挡关系：%s 各层从后往前叠，后一层挡住前一层；最前面的是%s。"
         % ("、".join(names), names[-1])
@@ -156,6 +182,8 @@ def build_brief(plan: dict) -> dict:
     en_lines.append(f"The scene is built in {len(entries)} depth layers, from far to near:")
     for index, entry in enumerate(entries):
         en_lines.append(f"{index + 1}. {entry['en']}")
+    if scene_en:
+        en_lines.append(f"Staging: {scene_en}. ")
     en_lines.append(
         "Occlusion: the layers stack back to front, each nearer layer covering the one behind it; "
         f"the closest is {entries[-1]['en']}. "

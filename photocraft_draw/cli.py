@@ -225,6 +225,12 @@ def cmd_facing(args) -> int:
     return 0
 
 
+def cmd_views(args) -> int:
+    from .views import run as run_views
+
+    return run_views(args.plan, args.out_dir, args.unit, args.json)
+
+
 def cmd_verify(args) -> int:
     from .checker import check_commands, report_text
 
@@ -467,6 +473,14 @@ def build_parser() -> argparse.ArgumentParser:
     facing.add_argument("plan", help="绘制方案文件")
     facing.add_argument("--json", help="结构化结果输出路径")
     facing.set_defaults(func=cmd_facing)
+
+    views = sub.add_parser("views", help="按正视图、左视图、俯视图出三张图")
+    views.add_argument("plan", help="绘制方案文件")
+    views.add_argument("--out-dir", default="out", help="输出目录，默认 out")
+    views.add_argument("--unit", type=float, default=40.0,
+                       help="图层 depth 每差 1 相当于多少像素，默认 40")
+    views.add_argument("--json", help="结构化结果输出路径")
+    views.set_defaults(func=cmd_views)
 
     verify = sub.add_parser("verify", help="只读指令检查结构，不出图")
     verify.add_argument("plan", help="绘制方案文件")
