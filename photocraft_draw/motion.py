@@ -341,7 +341,7 @@ def analyze_plan(plan: dict) -> dict:
                 gaps[key] = round(gap, 1)
             actor["arm_gaps"] = gaps
 
-        # 持械的判据是手离兵器多远，不是手臂朝哪。
+        # 持械的标准是手离兵器多远，不是手臂朝哪。
         # 举过头顶准备劈砍，手臂朝上、兵器朝下，这才是对的姿势。
         # 真正握不住的表现是手悬在兵器旁边，离得老远。
         ends = prop_paths.get(figure["layer"])
@@ -356,7 +356,7 @@ def analyze_plan(plan: dict) -> dict:
                 hold_gaps[key] = round(gap, 1)
             actor["hold_gaps"] = hold_gaps
             # 一只手握着就算握着，另一只手可以不碰兵器。
-            # 判据看两只手里离兵器更近的那只。
+            # 标准看两只手里离兵器更近的那只。
             nearest = min(hold_gaps.items(), key=lambda item: item[1])
             actor["hold_nearest"] = {"arm": nearest[0], "gap": nearest[1],
                                      "label": segments[nearest[0]]["label"]}

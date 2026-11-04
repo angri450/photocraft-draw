@@ -1,6 +1,6 @@
 # PhotoCraft-Draw
 
-这是一个白模设计器。用三维坐标把画面的结构摆对，压成 2.5 维的画面，再把结构翻译成生图提示词，交给模型补质感和光影。结构这一段由构图组件和绘制方案写成，脚本换算成画布坐标和绘制指令，引擎落成 PNG 和 PSD。PSD 里图层是图层组，文字是文字层，交付后还能改。
+这是一个白模设计器。用三维坐标把画面的结构摆对，压成 2.5 维的画面，再把结构翻译成生图提示词，交给模型补质感和光影。结构这一段由构图组件和绘制方案写成，脚本换算成画布坐标和绘制指令，引擎输出 PNG 和 PSD。PSD 里图层是图层组，文字是文字层，交付后还能改。
 
 ## 中文叫法
 
@@ -228,7 +228,7 @@ with Engine(read_root=".", write_root="out") as engine:
 
 ## 组件目录
 
-一共 37 个，`photocraft-draw components` 打印完整参数。画法约定在 `docs/component-references.md`，人物和马的比例配方在 `docs/figure-recipes.md`，遮挡规则在 `docs/occlusion-rules.md`。
+一共 37 个，`photocraft-draw components` 输出完整参数。画法约定在 `docs/component-references.md`，人物和马的比例配方在 `docs/figure-recipes.md`，遮挡规则在 `docs/occlusion-rules.md`。
 
 | 分组 | 编号 | 名称 | 必填参数 |
 |---|---|---|---|
