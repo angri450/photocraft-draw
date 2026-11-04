@@ -80,9 +80,9 @@ def build_plan(wukong_motion=None, erlang_motion=None,
     兵器给两个端点：(起点, 终点)。
     """
     wukong_weapon = wukong_weapon or ((410, 390), (537, 705))
-    erlang_weapon = erlang_weapon or ((490, 580), (360, 355))
+    erlang_weapon = erlang_weapon or ((490, 580), (640, 320.2))
     wukong_motion = wukong_motion or {"action": "press_down", "angle": 65}
-    erlang_motion = erlang_motion or {"action": "lift_up", "angle": 245}
+    erlang_motion = erlang_motion or {"action": "lift_up", "angle": 300}
     return {
         "name": "动作测试",
         "canvas": [900, 1200],
@@ -206,17 +206,32 @@ class TestHoldConsistency:
         assert max(gaps.values()) > 90.0
         assert max(wukong["hold_gaps"].values()) < 75.0
 
-    def test_hand_away_from_weapon_is_reported(self):
-        # 手甩到右边，兵器在左下，手离兵器老远
+    def test_one_hand_on_weapon_is_enough(self):
+        # 一只手握着兵器，另一只手甩到一边，不算没握住
+        pose = dict(WK_RAISED)
+        pose["elbow_l"] = (0.42, -0.28)
+        pose["hand_l"] = (0.64, -0.32)
+        plan = build_plan(wukong_pose=pose)
+        actors, _, _ = read(plan)
+        wukong = actors["wukong"]
+        assert not any(item["kind"] == "hand_off_weapon"
+                       for item in wukong["issues"])
+        assert wukong["hold_gaps"]["arm_l_fore"] > 75.0
+        assert wukong["hold_nearest"]["gap"] < 75.0
+
+    def test_both_hands_away_from_weapon_is_reported(self):
+        # 两只手都甩开，没有一只手碰到兵器
         pose = dict(WK_RAISED)
         pose["elbow_r"] = (0.40, -0.30)
         pose["hand_r"] = (0.62, -0.34)
+        pose["elbow_l"] = (0.42, -0.28)
+        pose["hand_l"] = (0.64, -0.32)
         plan = build_plan(wukong_pose=pose)
         actors, _, _ = read(plan)
         wukong = actors["wukong"]
         assert any(item["kind"] == "hand_off_weapon"
                    for item in wukong["issues"])
-        assert wukong["hold_gaps"]["arm_r_fore"] > 75.0
+        assert wukong["hold_nearest"]["gap"] > 75.0
 
     def test_hold_check_runs_without_motion_declaration(self):
         # 没写 motion 的角色，手离兵器太远照样要报
@@ -226,6 +241,44 @@ class TestHoldConsistency:
         assert actors["wukong"]["hold_gaps"]
         assert not any(item["kind"] == "hand_off_weapon"
                        for item in actors["wukong"]["issues"])
+
+
+class TestCrossingAngle:
+    def test_weapons_crossing_readably_has_no_issue(self):
+        plan = build_plan(
+            wukong_motion={"action": "press_down", "angle": 65,
+                           "opponents": ["erlang shen"]},
+            erlang_motion={"action": "lift_up", "angle": 300,
+                           "opponents": ["wukong"]},
+        )
+        _, _, result = read(plan)
+        duel = result["duels"][0]
+        assert duel["crossing"] >= 45.0
+        assert "crossing_issue" not in duel
+
+    def test_collinear_weapons_are_reported(self):
+        # 两件兵器的施力方向一样，画面上叠成一条线
+        plan = build_plan(
+            wukong_motion={"action": "press_down", "angle": 65,
+                           "opponents": ["erlang shen"]},
+            erlang_motion={"action": "lift_up", "angle": 68,
+                           "opponents": ["wukong"]},
+            erlang_weapon=((490, 580), (583.7, 811.8)),
+        )
+        _, _, result = read(plan)
+        duel = result["duels"][0]
+        assert duel["crossing"] < 45.0
+        assert "crossing_issue" in duel
+
+    def test_report_shows_crossing_angle(self):
+        plan = build_plan(
+            wukong_motion={"action": "press_down", "angle": 65,
+                           "opponents": ["erlang shen"]},
+            erlang_motion={"action": "lift_up", "angle": 300,
+                           "opponents": ["wukong"]},
+        )
+        text = report(analyze_plan(plan))
+        assert "兵器交叉角" in text
 
 
 class TestUndeclared:

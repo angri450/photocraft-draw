@@ -97,6 +97,9 @@ PROP_TOLERANCE = 50.0
 # 两个交战角色的意图向量夹角下界，低于这个数读作两人一起使劲
 DUEL_MIN = 60.0
 
+# 两件兵器在画面上的交叉角下界，低于这个数两件兵器叠成一条线
+CROSS_MIN = 45.0
+
 
 def _unit(vector):
     length = math.hypot(vector[0], vector[1])
@@ -352,12 +355,16 @@ def analyze_plan(plan: dict) -> dict:
                 gap = _point_to_segment(hand, ends[0], ends[1])
                 hold_gaps[key] = round(gap, 1)
             actor["hold_gaps"] = hold_gaps
-            off = [segments[key]["label"] for key, gap in hold_gaps.items()
-                   if gap > HOLD_TOLERANCE]
-            if off:
+            # 一只手握着就算握着，另一只手可以不碰兵器。
+            # 判据看两只手里离兵器更近的那只。
+            nearest = min(hold_gaps.items(), key=lambda item: item[1])
+            actor["hold_nearest"] = {"arm": nearest[0], "gap": nearest[1],
+                                     "label": segments[nearest[0]]["label"]}
+            if nearest[1] > HOLD_TOLERANCE:
                 actor["issues"].append({
                     "kind": "hand_off_weapon",
-                    "text": "手没有握在兵器上：%s" % "、".join(off),
+                    "text": "没有一只手握在兵器上：%s 离兵器 %.1f 像素" % (
+                        segments[nearest[0]]["label"], nearest[1]),
                     "detail": {key: gap for key, gap in hold_gaps.items()
                                 if gap > HOLD_TOLERANCE},
                 })
@@ -421,6 +428,21 @@ def analyze_plan(plan: dict) -> dict:
             if gap < DUEL_MIN:
                 entry["issue"] = ("%s 和 %s 的动作方向夹角只有 %.1f 度，两人朝同一侧使劲，"
                                   "对抗读不出来" % (actor["layer"], other["layer"], gap))
+            # 两件兵器在画面上的交叉角。引擎的投影对二维组件是恒等映射，
+            # 深度只决定谁压谁，所以这个角就是方案里写下的角。
+            first = next((item for item in prop_reports
+                          if item["holder"] == actor["layer"]), None)
+            second = next((item for item in prop_reports
+                           if item["holder"] == other["layer"]), None)
+            if first and second and "drive_angle" in first and "drive_angle" in second:
+                diff = abs(first["drive_angle"] - second["drive_angle"]) % 360.0
+                diff = min(diff, 360.0 - diff)
+                crossing = min(diff, 180.0 - diff)
+                entry["crossing"] = round(crossing, 1)
+                if crossing < CROSS_MIN:
+                    entry["crossing_issue"] = (
+                        "%s 和 %s 的兵器交叉角只有 %.1f 度，画面上叠成一条线，"
+                        "读不出交错" % (first["layer"], second["layer"], crossing))
             key = tuple(sorted(entry["actors"]))
             if key in seen_duels:
                 continue
@@ -447,6 +469,10 @@ def report(result: dict) -> str:
             continue
         lines.append("  %s：%s，方向 %.1f 度" % (
             actor["layer"], actor["action_text"], actor["angle"]))
+        nearest = actor.get("hold_nearest")
+        if nearest:
+            lines.append("     握兵器的手：%s，离兵器 %.1f 像素"
+                         % (nearest["label"], nearest["gap"]))
         for key, item in actor["segments"].items():
             parts = ["%.1f 度" % item["angle"]]
             if key in ARM_SEGMENTS:
@@ -456,8 +482,6 @@ def report(result: dict) -> str:
             hold = (actor.get("hold_gaps") or {}).get(key)
             if hold is not None:
                 parts.append("离兵器 %.1f 像素" % hold)
-                if hold > HOLD_TOLERANCE:
-                    parts.append("对不上")
             lines.append("     %s %s" % (item["label"], "，".join(parts)))
 
     if result["props"]:
@@ -480,8 +504,12 @@ def report(result: dict) -> str:
         for duel in result["duels"]:
             lines.append("  %s 与 %s：夹角 %.1f 度" % (
                 duel["actors"][0], duel["actors"][1], duel["gap"]))
+            if duel.get("crossing") is not None:
+                lines.append("     兵器交叉角 %.1f 度" % duel["crossing"])
             if duel.get("issue"):
                 lines.append("     " + duel["issue"])
+            if duel.get("crossing_issue"):
+                lines.append("     " + duel["crossing_issue"])
 
     issues = []
     for actor in result["actors"]:
@@ -493,6 +521,8 @@ def report(result: dict) -> str:
     for duel in result["duels"]:
         if duel.get("issue"):
             issues.append(duel["issue"])
+        if duel.get("crossing_issue"):
+            issues.append(duel["crossing_issue"])
 
     if issues:
         lines.append("")
