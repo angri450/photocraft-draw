@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 
 from .commands import Pen
+from .components.rig import FACE_WORDS
 from .motion import ACTION_RULES
 from .palette import resolve_palette
 from .registry import get_component
@@ -60,8 +61,15 @@ def _validate_component_list(items, where: str, errors: list[str]) -> None:
             get_component(key)
         except KeyError as error:
             errors.append(f"{label}：{error.args[0]}")
-        if not isinstance(item.get("params", {}), dict):
+        params = item.get("params", {})
+        if not isinstance(params, dict):
             errors.append(f"{label}的 params 必须是对象")
+            continue
+        if key == "figure_rig" and "face" in params:
+            face = params.get("face")
+            if not isinstance(face, str) or face not in FACE_WORDS:
+                errors.append(f"{label}的 face「{face}」不在朝向词表里，可用的是："
+                              + "、".join(FACE_WORDS))
 
 
 def _validate_motion(layer: dict, label: str, names: set, errors: list) -> None:

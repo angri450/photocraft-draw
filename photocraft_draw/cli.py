@@ -212,6 +212,19 @@ def cmd_motion(args) -> int:
     return 0
 
 
+def cmd_facing(args) -> int:
+    from .facing import analyze_plan, report
+
+    plan = load_plan(args.plan)
+    result = analyze_plan(plan)
+    print(report(result))
+    if args.json:
+        Path(args.json).write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"结构化结果：{args.json}")
+    return 0
+
+
 def cmd_verify(args) -> int:
     from .checker import check_commands, report_text
 
@@ -450,6 +463,10 @@ def build_parser() -> argparse.ArgumentParser:
     motion.add_argument("plan", help="绘制方案文件")
     motion.add_argument("--json", help="结构化结果输出路径")
     motion.set_defaults(func=cmd_motion)
+    facing = sub.add_parser("facing", help="检查角色给观众看的朝向")
+    facing.add_argument("plan", help="绘制方案文件")
+    facing.add_argument("--json", help="结构化结果输出路径")
+    facing.set_defaults(func=cmd_facing)
 
     verify = sub.add_parser("verify", help="只读指令检查结构，不出图")
     verify.add_argument("plan", help="绘制方案文件")

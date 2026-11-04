@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+from .facing import FACE_EN, FACE_TEXT
 from .motion import ACTION_EN, ACTION_TEXT
 from .plan import load_plan, ordered_layers
 
@@ -45,6 +46,24 @@ def _motion_note(layer: dict, lang: str) -> str:
     return f"{text}（{float(angle):.0f} 度）" if lang == "zh" else f"{text} ({float(angle):.0f} degrees)"
 
 
+def _facing_note(layer: dict, lang: str) -> str:
+    """把这一层的朝向声明拼成一句话。
+
+    朝向必须进画面稿。生图模型看不到关节表，只看得到稿子。稿子里不写
+    朝向，模型就自己编，编出来的多半是两人转身对着打，观众看见两个背影。
+    """
+    for item in layer.get("components") or []:
+        if item.get("component") != "figure_rig":
+            continue
+        face = (item.get("params") or {}).get("face")
+        if not isinstance(face, str):
+            continue
+        if lang == "zh":
+            return FACE_TEXT.get(face, "")
+        return FACE_EN.get(face, "")
+    return ""
+
+
 def _describe(layer: dict, lang: str) -> str:
     text = layer.get(f"describe_{lang}")
     if not text:
@@ -53,10 +72,11 @@ def _describe(layer: dict, lang: str) -> str:
         joined = "、".join(names) if lang == "zh" else ", ".join(names)
         text = f"{name}（{joined}）" if lang == "zh" else f"{name} ({joined})"
     text = str(text).strip()
-    note = _motion_note(layer, lang)
-    if not note:
+    notes = [note for note in (_motion_note(layer, lang), _facing_note(layer, lang)) if note]
+    if not notes:
         return text
-    return f"{text}，{note}" if lang == "zh" else f"{text}, {note}"
+    joined = "，".join(notes) if lang == "zh" else ", ".join(notes)
+    return f"{text}，{joined}" if lang == "zh" else f"{text}, {joined}"
 
 
 def _header(brief: dict, lang: str) -> str:

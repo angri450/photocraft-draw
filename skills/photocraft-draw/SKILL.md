@@ -20,6 +20,7 @@ description: 用三维坐标设计白模，压成 2.5 维画面，再把结构�
 | 查某个组件的完整参数 | [组件目录](references/组件目录.txt)，全量快照，不用跑命令 |
 | 遮挡关系定深度的办法 | [关于明确遮挡关系的意见](references/关于明确遮挡关系的意见.md) |
 | 先定人物动作状态的办法 | [关于确定动作状态的思维链](references/关于确定动作状态的思维链.md) |
+| 人物给观众看的朝向 | [关于确定演出朝向的思维链](references/关于确定演出朝向的思维链.md) |
 | 接触点与穿帮提示 | [接触点与穿帮检查](references/接触点与穿帮检查.md) |
 | 画人物、配色、场景构图规则 | [人物与场景画法](references/人物与场景画法.md) |
 | 画多格连环画、人物兵器 | [四格连环画白模做法](references/四格连环画白模做法.md) |
@@ -71,6 +72,7 @@ photocraft-draw contact out/xxx.psd --plan plans/xxx.json --map out/contact-map.
 photocraft-draw depth out/xxx.psd --json out/depth.json
 photocraft-draw depth out/xxx.psd --plan plans/xxx.json
 photocraft-draw motion plans/xxx.json
+photocraft-draw facing plans/xxx.json
 ```
 
 - `verify`：部件齐不齐、有没有出画、头在不在躯干上方、马的腿是不是十二段。`--envelope` 配合人形或马形的椭圆包络再卡一遍。
@@ -79,6 +81,7 @@ photocraft-draw motion plans/xxx.json
 - `contact`：交叠发生在哪个位置、方案的关节压住了哪些部件、有没有兵器从手上穿过去。带 `--plan` 才有关节归属和穿帮提示，带 `--map` 另出一张遮挡显露图。
 - `depth`：把层序翻译成深度表和三维坐标。z 越大离观众越远，坐标按引擎的投影斜度反算，重新投影一次位置不变。带 `--plan` 就用方案里声明的 `depth` 算 z，末尾多一段对照，逐层核对方案声明和成品层序。
 - `motion`：查每个角色往哪个方向使劲。读绘制方案，核对意图向量、骨段方向和兵器主轴三者的关系。两人朝同一侧使劲会报「对抗读不出来」，两件兵器在画面上叠成一条线会报「读不出交错」。动作这一层要在写方案的时候就过一遍，见 [关于确定动作状态的思维链](references/关于确定动作状态的思维链.md)。
+- `facing`：查每个角色给观众看的这一面。读绘制方案，量肩宽、头位、颈躯拧角、躯干倾角和肩线高差五样，核对声明的朝向和关节表对不对得上。项目规矩禁止背场，背对观众报出来由作者定夺。朝向跟动作状态是并列的两层，都要在写方案的时候就过一遍，见 [关于确定演出朝向的思维链](references/关于确定演出朝向的思维链.md)。
 
 翻译：
 
@@ -115,12 +118,12 @@ mcode-tools connector call connector__matrix__generate_image --args-file 出图�
 | `alpine_sky` / `alpine_peaks` / `rocky_ground` / `river_water` / `foreground_rocks` | 山、天、地、河、石 |
 | `soft_shadow` | 地面投影，把主体按在地上 |
 | `custom_shape` | 任意路径，贝塞尔曲线 |
-| `figure_rig` | 关节白模人，姿态可给内置名，也可直接给 14 关节表 |
+| `figure_rig` | 关节白模人，姿态可给内置名，也可直接给 14 关节表，face 参数定朝向 |
 | `ascii_art` | 字符画转矩形 |
 
 新组件在 `photocraft_draw/components/` 里实现 `build(params, pen)`，只画形状，不建图层，再到 `registry.py` 登记。
 
-实际有八个坑要绕开：
+实际有九个坑要绕开：
 
 1. **全局重着色会压平形状**。颜色和语义绑在一起，算法不知道马该是棕的。撞色只做局部微调，别整体重排。
 2. **同一个人的两条腿深度不同**。近侧腿挡马身，远侧腿被马身挡，不能一起算。
@@ -130,6 +133,7 @@ mcode-tools connector call connector__matrix__generate_image --args-file 出图�
 6. **`custom_shape` 的包围盒按锚点算，不按贝塞尔控制点算**。控制点甩到画布外，`verify` 不报，但渲染会画出去。自己按控制点范围再扫一遍。
 7. **同一层里的多个组件按列表顺序压盖**，后面的盖住前面的。可以拿底色形状叠出镂空，例如给兽头叠一个底色的嘴形。
 8. **兵器会从手背后穿过去**。兵器单独成层，画在角色层前面，只要路径蹭到手的关节圆盘，手就被盖住，看上去像握着，其实手在兵器后面。`contact` 的「夹手」和「疑似穿手」两条提示查的就是这个。
+9. **白模读不出正反面**。figure_rig 只画关节、骨段和头椭圆，正面和背面在几何上一模一样，头上也没有脸。方案里不写 face，生图模型就自己编，编出来的多半是两人转身互相砍。写上 face 参数，白模的头会点上五官，一眼看出脸朝哪边。
 
 ## 出图与回改循环
 

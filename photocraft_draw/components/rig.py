@@ -131,6 +131,9 @@ JOINT_SCALE = {
 }
 
 
+# 朝向词表：正面朝观众，侧身转向画面左或右，背对观众
+FACE_WORDS = ("front", "left", "right", "back")
+
 JOINT_NAMES = tuple(JOINT_SCALE) + ("head",)
 
 
@@ -153,6 +156,44 @@ def _pose_table(value) -> dict[str, tuple[float, float]]:
     raise ValueError("pose 给姿态名，或者直接给一张关节表")
 
 
+def _draw_face(pen: Pen, face: str, points: dict, height: float,
+                color: str) -> None:
+    """在头上点出五官位置，让白模一眼看出脸朝哪边。
+
+    白模只有关节和骨段，本来分不出正面和背面。脸上点上眼睛和鼻子，
+    朝向就写在画面上了。back 不画五官，只在头后画一道后脑线。
+    """
+    hx, hy = points["head"]
+    hr = 0.075 * height
+    cy = hy - hr * 0.35
+    if face == "back":
+        pen.line(hx - hr * 0.5, cy - hr * 0.45, hx + hr * 0.5, cy - hr * 0.45,
+                 width=max(1, hr * 0.18), color=color, name="后脑")
+        return
+    shift = 0.0
+    if face == "left":
+        shift = -hr * 0.34
+    elif face == "right":
+        shift = hr * 0.34
+    eye = hr * 0.15
+    for sign in (-1, 1):
+        pen.ellipse(hx + shift + sign * hr * 0.28, cy - hr * 0.08, eye, eye,
+                    fill=color, stroke_width=None, stroke=None, name="眼")
+    if face == "front":
+        pen.line(hx, cy + hr * 0.10, hx, cy + hr * 0.32,
+                 width=max(1, hr * 0.14), color=color, name="鼻")
+        pen.line(hx - hr * 0.20, cy + hr * 0.52, hx + hr * 0.20, cy + hr * 0.52,
+                 width=max(1, hr * 0.14), color=color, name="嘴")
+    else:
+        direction = -1 if face == "left" else 1
+        pen.line(hx + shift, cy + hr * 0.08,
+                 hx + shift + direction * hr * 0.30, cy + hr * 0.26,
+                 width=max(1, hr * 0.14), color=color, name="鼻")
+        pen.line(hx + shift - hr * 0.12, cy + hr * 0.50,
+                 hx + shift + hr * 0.12, cy + hr * 0.50,
+                 width=max(1, hr * 0.14), color=color, name="嘴")
+
+
 def build_figure_rig(params: dict, pen: Pen) -> None:
     """人物白模：关节加骨段，能看出肩肘腕和髋膝踝。
 
@@ -164,6 +205,7 @@ def build_figure_rig(params: dict, pen: Pen) -> None:
         joint   关节颜色，默认 line
         head    头部颜色，默认 surface
         flip    是否左右翻转，默认 false
+        face    朝向，front / left / right / back，默认不画
     """
     root = params.get("root")
     if not isinstance(root, (list, tuple)) or len(root) != 2:
@@ -179,6 +221,10 @@ def build_figure_rig(params: dict, pen: Pen) -> None:
     flip = bool(params.get("flip", False))
     if flip:
         table = {name: (-x, y) for name, (x, y) in table.items()}
+
+    face = params.get("face")
+    if face is not None and face not in FACE_WORDS:
+        raise ValueError("face 只能是 %s，收到 %s" % ("、".join(FACE_WORDS), face))
 
     ox, oy = float(root[0]), float(root[1])
     points = {name: (ox + x * height, oy + y * height) for name, (x, y) in table.items()}
@@ -202,6 +248,11 @@ def build_figure_rig(params: dict, pen: Pen) -> None:
     pen.ellipse(hx, hy - hr * 0.35, hr * 0.86, hr,
                 fill=head_color, stroke_width=None, stroke=None, name="头")
 
+    if face in ("front", "left", "right"):
+        _draw_face(pen, face, points, height, joint_color)
+    elif face == "back":
+        _draw_face(pen, "back", points, height, joint_color)
+
 
 COMPONENTS = {
     "figure_rig": {
@@ -215,6 +266,7 @@ COMPONENTS = {
             "joint": "关节颜色，默认 line",
             "head": "头部颜色，默认 surface",
             "flip": "是否左右翻转，默认 false",
+            "face": "朝向，front / left / right / back，默认不画",
         },
         "build": build_figure_rig,
     },

@@ -170,6 +170,7 @@ figure_rig  人物白模
   - joint：关节颜色，默认 line
   - head：头部颜色，默认 surface
   - flip：是否左右翻转，默认 false
+  - face：朝向，front / left / right / back，默认不画；写上以后白模的头会点上五官
   - 关节表格式：{关节名: [x, y]}，14 个关节，原点在髋部，向上为负 y，数值按身高归一到 1.0
   - 关节名：hip chest neck head shoulder_l shoulder_r elbow_l elbow_r hand_l hand_r knee_l knee_r foot_l foot_r
   - 关节球实画直径约 45 像素，排多人时横向间距留 70 像素以上才不叠
