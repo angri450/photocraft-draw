@@ -109,9 +109,22 @@ def _header(brief: dict, lang: str) -> str:
     return lines
 
 
+def _entry_depth(layer: dict) -> float:
+    """一层在画面稿里排第几。兵器分了段的，按最靠前的那一段算。
+
+    一件兵器可以拆成几段，每段一个深度。画面稿是给生图模型看的，
+    模型按清单的次序理解前后，所以这件兵器要按它最靠前的那一段排。
+    """
+    segments = layer.get("segments") or []
+    if segments:
+        return min(float(item.get("depth", 0.0)) for item in segments)
+    return float(layer.get("depth", 0.0))
+
+
 def _entries(plan: dict, staging: dict | None = None) -> list[dict]:
     """把图层和角色按遮挡顺序排成一条，角色插在 before 指定的层之前。"""
-    layers = ordered_layers(plan)
+    layers = sorted(ordered_layers(plan),
+                    key=lambda layer: -_entry_depth(layer))
     if not layers:
         raise ValueError("画面稿需要 layers，扁平 components 没有前后顺序")
     actors = plan.get("actors") or []

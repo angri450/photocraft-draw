@@ -291,6 +291,26 @@ class TestDepthFromZ:
             "wukong", "golden cudgel", "three-pointed blade", "erlang shen"]
 
 
+class TestBriefOrder:
+    def test_a_split_weapon_is_listed_at_its_nearest_piece(self):
+        from photocraft_draw.brief import build_brief
+
+        plan = duel(cudgel_z=-60.0)
+        plan["layers"][1]["segments"] = [
+            {"from": 0.0, "to": 0.4, "depth": 5.0, "z": 80},
+            {"from": 0.4, "to": 1.0, "depth": 1.5, "z": -60},
+        ]
+        plan["layers"][1]["depth"] = 5.0
+        names = [entry["name"] for entry in build_brief(plan)["layers"]]
+        assert names.index("golden cudgel") > names.index("erlang shen")
+
+    def test_a_plain_layer_keeps_its_own_depth(self):
+        from photocraft_draw.brief import build_brief
+
+        names = [entry["name"] for entry in build_brief(duel())["layers"]]
+        assert names.index("wukong") < names.index("erlang shen")
+
+
 class TestSplit:
     def test_axis_follows_the_declaration(self):
         components = [{
