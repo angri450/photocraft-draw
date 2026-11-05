@@ -53,8 +53,10 @@ def _pose_table(value) -> dict:
         table = {}
         for name in JOINT_NAMES:
             point = value[name]
-            if not isinstance(point, (list, tuple)) or len(point) != 2:
-                raise ValueError(f"关节 {name} 要写成 [x, y]")
+            # 关节表写两个数是位置，写三个数第三个是深度。接触查的是画面
+            # 平面上的事，深度用不上，只取头两个数。
+            if not isinstance(point, (list, tuple)) or len(point) not in (2, 3):
+                raise ValueError(f"关节 {name} 要写成 [x, y] 或者 [x, y, z]")
             table[name] = (float(point[0]), float(point[1]))
         return table
     raise ValueError("pose 给姿态名，或者直接给一张关节表")

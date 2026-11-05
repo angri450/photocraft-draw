@@ -26,12 +26,46 @@ SKEW_Y = 0.28
 
 
 def declared_depths(plan: dict) -> dict:
-    """方案里每层声明的 depth，层名对数值。"""
+    """方案里每层声明的 depth，层名对数值。
+
+    一件兵器按深度拆成几段以后，成品里的层名是「层名 段名」，深度写在段
+    上，这里要一并算进去，不然这几层的深度只能靠前后邻居插值猜出来。
+    """
     out = {}
     for layer in plan.get("layers") or []:
-        if not isinstance(layer, dict) or "depth" not in layer:
+        if not isinstance(layer, dict):
             continue
-        out[str(layer.get("name", ""))] = float(layer["depth"])
+        name = str(layer.get("name", ""))
+        if "depth" in layer:
+            out[name] = float(layer["depth"])
+        for segment in layer.get("segments") or []:
+            if not isinstance(segment, dict):
+                continue
+            label = segment.get("name")
+            depth = segment.get("depth")
+            if not label:
+                continue
+            if isinstance(depth, bool) or not isinstance(depth, (int, float)):
+                continue
+            out["%s %s" % (name, label)] = float(depth)
+    return out
+
+
+def piece_names(plan: dict) -> dict:
+    """按深度拆开的兵器，层名对拆出来的那几段。"""
+    out = {}
+    for layer in plan.get("layers") or []:
+        if not isinstance(layer, dict):
+            continue
+        segments = layer.get("segments") or []
+        if not segments:
+            continue
+        name = str(layer.get("name", ""))
+        pieces = ["%s %s" % (name, segment.get("name", ""))
+                  for segment in segments
+                  if isinstance(segment, dict) and segment.get("name")]
+        if pieces:
+            out[name] = pieces
     return out
 
 
@@ -151,7 +185,17 @@ def analyze_depth(psd_path: Path, unit: float = 1.0, skew_x: float = SKEW_X,
     else:
         zs = [round(index * unit, 4) for index in range(len(tops))]
     conflicts = depth_conflicts(names, declared) if declared else []
-    missing = [name for name in declared if name not in set(names)]
+    # 拆成几段的兵器在成品里是那几段，层名本身不在成品里，不算缺
+    pieces = piece_names(plan) if plan else {}
+    present = set(names)
+    missing = []
+    for name in declared:
+        if name in present:
+            continue
+        parts_of_layer = pieces.get(name)
+        if parts_of_layer and all(piece in present for piece in parts_of_layer):
+            continue
+        missing.append(name)
 
     layers = []
     parts = []

@@ -2,7 +2,8 @@
 """depth 字段测试：层序由 depth 决定，方案声明和成品层序要能对照。"""
 import unittest
 
-from photocraft_draw.depth import declared_depths, depth_conflicts, depth_values
+from photocraft_draw.depth import (declared_depths, depth_conflicts,
+                                 depth_values, piece_names)
 from photocraft_draw.plan import compose_plan, ordered_layers, validate_plan
 
 
@@ -124,3 +125,47 @@ class DepthValuesTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class SegmentDepthTest(unittest.TestCase):
+    """兵器拆成几段以后，每一段在成品里是单独一层，深度要认得出来。"""
+
+    def plan(self):
+        return plan_with([{
+            "name": "golden cudgel", "depth": 5.0,
+            "segments": [
+                {"from": 0.0, "to": 0.4, "depth": 5.0, "z": 80, "name": "棒尾"},
+                {"from": 0.4, "to": 1.0, "depth": 1.5, "z": -60, "name": "棒身"},
+            ],
+            "components": [],
+        }])
+
+    def test_each_piece_declares_its_depth(self):
+        declared = declared_depths(self.plan())
+        self.assertEqual(declared["golden cudgel 棒尾"], 5.0)
+        self.assertEqual(declared["golden cudgel 棒身"], 1.5)
+
+    def test_the_layer_itself_still_declares_its_depth(self):
+        declared = declared_depths(self.plan())
+        self.assertEqual(declared["golden cudgel"], 5.0)
+
+class PieceNameTest(unittest.TestCase):
+    """拆成几段的兵器，层名对拆出来的那几段。"""
+
+    def plan(self):
+        return plan_with([{
+            "name": "golden cudgel", "depth": 5.0,
+            "segments": [
+                {"from": 0.0, "to": 0.4, "depth": 5.0, "z": 80, "name": "棒尾"},
+                {"from": 0.4, "to": 1.0, "depth": 1.5, "z": -60, "name": "棒身"},
+            ],
+            "components": [],
+        }])
+
+    def test_the_pieces_are_named_after_the_layer(self):
+        pieces = piece_names(self.plan())
+        self.assertEqual(pieces["golden cudgel"],
+                         ["golden cudgel 棒尾", "golden cudgel 棒身"])
+
+    def test_a_layer_without_segments_has_no_pieces(self):
+        pieces = piece_names(plan_with([layer("hero", 1.0)]))
+        self.assertEqual(pieces, {})

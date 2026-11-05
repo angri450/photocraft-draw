@@ -109,3 +109,21 @@ class BoundsOverlapTest(unittest.TestCase):
     def test_missing_bounds(self):
         region = {"x": 50, "y": 50, "rx": 10, "ry": 10}
         self.assertFalse(contact._bounds_overlap(None, region))
+
+class PoseTableTest(unittest.TestCase):
+    """自定义姿态的关节表：两个数是位置，三个数第三个是深度。"""
+
+    def pose(self, values):
+        return {name: list(values) for name in contact.JOINT_NAMES}
+
+    def test_two_numbers_give_the_position(self):
+        table = contact._pose_table(self.pose([0.1, 0.2]))
+        self.assertEqual(table["hip"], (0.1, 0.2))
+
+    def test_three_numbers_keep_the_position(self):
+        table = contact._pose_table(self.pose([0.1, 0.2, 30.0]))
+        self.assertEqual(table["hip"], (0.1, 0.2))
+
+    def test_one_number_is_rejected(self):
+        with self.assertRaises(ValueError):
+            contact._pose_table(self.pose([0.1]))
