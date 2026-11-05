@@ -45,6 +45,11 @@ photocraft_draw/
   occlusion.py     遮挡分析：分层文件里谁挡住谁
   contact.py       接触点与穿帮检查：交叠在哪、关节压住谁、兵器穿没穿过去
   depth.py         立体关系：层序翻译成深度表和三维坐标
+  motion.py        动作检查：角色往哪个方向使劲
+  facing.py        朝向检查：角色给观众看的这一面
+  relations.py     兵器空间关系：距离、交叉、穿缝、地面投影
+  views.py         三视图：正视图、左视图、俯视图
+  split.py         兵器按深度分段
   brief.py         画面稿翻译：方案转中英文提示词
   scatter.py       撒点填充
   autoshade.py     自动色阶，实验代码，没接进主流程
@@ -147,6 +152,8 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 7. 每层可以写 `depth`，数字越大离观众越远。写了 `depth` 的层，层序由 `depth` 决定，数组顺序只用来分不出远近时的先后；`depth` 要么每层都写，要么都不写。
 8. 也可以只写 `components`，每个组件单独成层，适合快速试验。
 9. 人物层可以写 `motion`，声明这一层往哪个方向使劲。`action` 取动作词表里的词，`angle` 是方向角（0 度朝右，90 度朝下，180 度朝左，270 度朝上），`opponents` 写交战对象。`angle` 要落在 `action` 要求的范围里，超出范围在校验阶段就报错。兵器层写 `holder` 指明归谁拿。
+10. 兵器层可以写 `segments`，一件兵器按深度拆成几段。每段写主轴上的起止位置 `from` `to`、这一段在白模里的前后顺序 `depth`，还有物理深度 `z_from` `z_to`。一件直兵器在空间里的深度是沿着长度一条直线变的，写两个数才是真的斜坡。各段各写一个深度，俯视图上就成了一堆平行的横线，`relations` 会报「地面投影是折的」。段的位置比例由模型算，不要手填。
+11. 段上的 `depth` 要落在这一段 `z_from` `z_to` 换算出来的深度范围里。落在范围外说明前后顺序和空间位置打架了，校验阶段就报出来。
 
 ## 检查与出图
 
@@ -160,12 +167,21 @@ photocraft-draw contact out/xxx.psd --plan plans/xxx.json --map out/contact-map.
 photocraft-draw depth out/xxx.psd
 photocraft-draw depth out/xxx.psd --plan plans/xxx.json
 photocraft-draw motion plans/xxx.json
+photocraft-draw facing plans/xxx.json
+photocraft-draw views plans/xxx.json --out-dir out --json out/views.json
+photocraft-draw relations plans/xxx.json --json out/relations.json
 photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
 ```
 
 `verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`contact` 在遮挡之上再走一步，报交叠发生在哪个坐标、方案的关节压住哪些部件、有没有兵器从手或头上穿过去；`depth` 把层序翻译成深度表和三维坐标，带 `--plan` 就用方案里声明的 `depth` 算 z，再逐层对照方案和成品；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
 
 `motion` 查每个角色往哪个方向使劲。它读绘制方案里的 `motion` 声明，核对意图向量、骨段方向和兵器主轴三者的关系：兵器和意图反向报拿反了，手离兵器太远报手没有握在兵器上，两个交战角色的意图向量夹角太小报对抗读不出来，两件兵器的交叉角太小报画面上叠成一条线。这一层要在写方案的时候就过一遍，动作含糊的话遮挡关系照样能算对，画出来的东西不对。
+
+`facing` 查每个角色给观众看的这一面。量肩宽、头位、颈躯拧角、躯干倾角和肩线高差五样，核对声明的朝向和关节表对不对得上。项目规矩禁止背场，背对观众报出来由作者定夺。
+
+`views` 出正视图、左视图、俯视图三张图。正视图管左右和高度，左视图管谁在前谁在后，俯视图管两个兵器在平面上是不是真的交叉。三张图里人物和兵器按远近一起画，远的先画，近的后画，跟白模同一套次序。两件兵器在画面上交叉的地方，连着的那一条就是离观众更近的那一条。报告给每个角色站在画面哪一格、离地多少、两人高低差，给两件兵器的深度和它们在画平面上的交点，深度差超过 24 像素报「它们碰不到一起」。
+
+`relations` 算兵器和肢体在空间里的关系。拿线段算最近距离、算两件兵器在画面上交叉没有、算兵器有没有从持械者的胳膊和兵器之间的那个缝里穿过去。兵器压在胳膊上而深度在前头三十像素以上，报「从前面扫过去」，那是对的；深度卡在两者中间才报「缝里穿过去」，那是错。另外算每件兵器的地面投影，各段的深度连不成一条直线就报「地面投影是折的」。
 
 ## 命令目录
 
