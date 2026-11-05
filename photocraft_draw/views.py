@@ -89,6 +89,32 @@ def _depth_of(plan: dict) -> dict:
     return out
 
 
+def _segment_depths(segment: dict) -> dict:
+    """一段兵器的深度。写 z 是平的，写 z_from 和 z_to 是斜坡。
+
+    斜坡的意思是这一段的深度从 from 处的 z_from 变到 to 处的 z_to，
+    中间按比例算。一根直兵器在空间里的深度本来就是这么变的，一段写一个
+    数写不出来，俯视图上就成了一堆互相平行的横线。
+    """
+    z_from = segment.get("z_from")
+    z_to = segment.get("z_to")
+    if z_from is None and z_to is None:
+        z_from = segment.get("z", 0.0)
+        z_to = z_from
+    elif z_from is None:
+        z_from = segment.get("z", z_to)
+    elif z_to is None:
+        z_to = segment.get("z", z_from)
+    return {
+        "from": float(segment.get("from", 0.0)),
+        "to": float(segment.get("to", 1.0)),
+        "z": float(z_from),
+        "z_from": float(z_from),
+        "z_to": float(z_to),
+        "depth": float(segment.get("depth", 0.0)),
+    }
+
+
 def _segments_of(plan: dict, name: str) -> list:
     """一层里兵器按深度分的那几段。"""
     out = []
@@ -96,25 +122,29 @@ def _segments_of(plan: dict, name: str) -> list:
         if str(layer.get("name", "")) != name:
             continue
         for segment in layer.get("segments") or []:
-            out.append({
-                "from": float(segment.get("from", 0.0)),
-                "to": float(segment.get("to", 1.0)),
-                "z": float(segment.get("z", 0.0)),
-                "depth": float(segment.get("depth", 0.0)),
-            })
+            out.append(_segment_depths(segment))
         return out
     return out
 
 
 def prop_z_at(prop: dict, ratio: float) -> float:
-    """兵器主轴上某一点的深度。兵器分几段，每一段一个深度。"""
+    """兵器主轴上某一点的深度。一段兵器的深度可以是一段斜坡。"""
     segments = prop.get("segments") or []
+    chosen = None
     for segment in segments:
         if segment["from"] - 1e-9 <= ratio <= segment["to"] + 1e-9:
-            return segment["z"]
-    if segments:
-        return segments[0]["z"]
-    return prop["z"]
+            chosen = segment
+            break
+    if chosen is None:
+        if segments:
+            return segments[-1]["z_to"]
+        return prop["z"]
+    low = chosen["from"]
+    high = chosen["to"]
+    if high - low <= 1e-9:
+        return chosen["z_from"]
+    step = (ratio - low) / (high - low)
+    return chosen["z_from"] + (chosen["z_to"] - chosen["z_from"]) * step
 
 
 def _figure_layers(plan: dict):
@@ -233,7 +263,7 @@ def scene_3d(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
         prop_z = _layer_z(plan, prop["layer"], depths, near, unit)
         segments = _segments_of(plan, prop["layer"])
         if segments:
-            prop_z = segments[0]["z"]
+            prop_z = segments[0]["z_from"]
         hands = []
         if holder_figure:
             ends = prop["ends"]
@@ -547,15 +577,14 @@ def render_view(plan: dict, view: str, unit: float = DEFAULT_UNIT):
         if segments:
             length = math.dist(prop["ends"][0], prop["ends"][1]) or 1.0
             ux = (prop["ends"][1][0] - prop["ends"][0][0]) / length
-            uy = (prop["ends"][1][1] - prop["ends"][1][1] + prop["ends"][0][1]) / length
             uy = (prop["ends"][1][1] - prop["ends"][0][1]) / length
             for segment in segments:
                 a = project((prop["ends"][0][0] + ux * length * segment["from"],
                              prop["ends"][0][1] + uy * length * segment["from"],
-                             segment["z"]))
+                             segment["z_from"]))
                 b = project((prop["ends"][0][0] + ux * length * segment["to"],
                              prop["ends"][0][1] + uy * length * segment["to"],
-                             segment["z"]))
+                             segment["z_to"]))
                 pen.line(a[0], a[1], b[0], b[1],
                          width=max(2.0, prop["span"] * 0.025), color=color,
                          name="兵器 %s" % prop["shape"])

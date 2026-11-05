@@ -184,8 +184,31 @@ def _validate_holder(layer: dict, label: str, names: set, errors: list) -> None:
     elif holder not in names:
         errors.append(f"{label}的 holder「{holder}」不是方案里的层")
 
+def _segment_z_range(segment: dict):
+    """一段兵器的深度范围。写 z 是一个数，写 z_from 和 z_to 是一段斜坡。"""
+    z_from = segment.get("z_from")
+    z_to = segment.get("z_to")
+    if z_from is None and z_to is None:
+        z = segment.get("z")
+        if isinstance(z, (int, float)) and not isinstance(z, bool):
+            return float(z), float(z)
+        return None, None
+    values = []
+    for value in (z_from, z_to):
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            values.append(float(value))
+    if not values:
+        return None, None
+    return min(values), max(values)
+
+
 def _validate_segments(layer: dict, label: str, errors: list) -> None:
-    """一件兵器按深度分段。每一段写主轴上的起止位置、这一段的深度和物理深度。"""
+    """一件兵器按深度分段。每一段写主轴上的起止位置、这一段的深度和物理深度。
+
+    物理深度写一个 z 是平的，写 z_from 和 z_to 两个数就是一段斜坡，这一段
+    的深度从 from 处的 z_from 变到 to 处的 z_to。直兵器在空间里的深度本来
+    就是这么变的，每段写死一个数，俯视图上就成了一堆互相平行的横线。
+    """
     segments = layer.get("segments")
     if segments is None:
         return
@@ -220,6 +243,26 @@ def _validate_segments(layer: dict, label: str, errors: list) -> None:
                 errors.append(f"{name}的 z 必须是数字")
             elif not math.isfinite(z):
                 errors.append(f"{name}的 z 必须是有限数字")
+        z_from = segment.get("z_from")
+        z_to = segment.get("z_to")
+        if (z_from is None) != (z_to is None):
+            errors.append(f"{name}的 z_from 和 z_to 要么都写，要么都不写")
+        for key, value in (("z_from", z_from), ("z_to", z_to)):
+            if value is None:
+                continue
+            if isinstance(value, bool) or not isinstance(value, NUMBER):
+                errors.append(f"{name}的 {key} 必须是数字")
+            elif not math.isfinite(value):
+                errors.append(f"{name}的 {key} 必须是有限数字")
+
+
+def _z_text(low, high) -> str:
+    """一个单位的深度范围怎么写给人看。"""
+    if low is None:
+        return "没有写"
+    if abs(high - low) < 1e-9:
+        return "%.1f" % low
+    return "%.1f 到 %.1f" % (low, high)
 
 
 def _validate_depth_z(pairs: list, errors: list) -> None:
@@ -227,6 +270,11 @@ def _validate_depth_z(pairs: list, errors: list) -> None:
 
     depth 大的更远，z 大的也离观众更远。两个都写了，前后关系就得对得上，
     对不上说明作者写岔了，机器替不了这个决定，报告出来。
+
+    深度沿着长度有斜坡的段写的是一个 z 的范围，这一段的 depth 要落在这个
+    范围换算出来的深度范围里，落在线外面才叫写岔了。
+
+    pairs 里每一项是 (名字, depth, z 的下限, z 的上限)。
     """
     for index, first in enumerate(pairs):
         if first[1] is None or first[2] is None:
@@ -234,29 +282,49 @@ def _validate_depth_z(pairs: list, errors: list) -> None:
         for second in pairs[index + 1:]:
             if second[1] is None or second[2] is None:
                 continue
-            if first[1] == second[1] and first[2] == second[2]:
+            if (first[1] == second[1] and first[2] == second[2]
+                    and first[3] == second[3]):
                 continue
-            if (first[1] - second[1]) * (first[2] - second[2]) < 0:
-                errors.append(
-                    "%s的 depth %.1f 和 %s的 depth %.1f 的远近，跟各自的 z %.1f 和 %.1f "
-                    "对不上，深度和物理深度打架了"
-                    % (first[0], first[1], second[0], second[1],
-                       first[2], second[2]))
+            # 两段各自的深度范围不重叠的时候，远近关系才说得清楚
+            if first[2] > second[3]:
+                if first[1] <= second[1]:
+                    errors.append(
+                        "%s的 depth %.1f 和 %s的 depth %.1f 的远近，跟各自的 z %s 和 %s "
+                        "对不上，深度和物理深度打架了"
+                        % (first[0], first[1], second[0], second[1],
+                           _z_text(first[2], first[3]),
+                           _z_text(second[2], second[3])))
+            elif second[2] > first[3]:
+                if second[1] <= first[1]:
+                    errors.append(
+                        "%s的 depth %.1f 和 %s的 depth %.1f 的远近，跟各自的 z %s 和 %s "
+                        "对不上，深度和物理深度打架了"
+                        % (second[0], second[1], first[0], first[1],
+                           _z_text(second[2], second[3]),
+                           _z_text(first[2], first[3])))
 
     # 两样都写了，换算关系得是同一条直线。对不上说明写岔了。
-    anchors = [(depth, z) for _, depth, z in pairs
-               if depth is not None and z is not None]
+    anchors = [(depth, low) for _, depth, low, high in pairs
+               if depth is not None and low is not None and low == high]
     base, unit = _depth_scale(anchors)
     if base is None:
         return
-    for label, depth, z in pairs:
-        if depth is None or z is None:
+    for label, depth, low, high in pairs:
+        if depth is None or low is None:
             continue
-        expect = (z - base) / unit
-        if abs(expect - depth) > DEPTH_Z_TOLERANCE:
+        expect_low = (low - base) / unit
+        expect_high = (high - base) / unit
+        if expect_low - DEPTH_Z_TOLERANCE <= depth <= expect_high + DEPTH_Z_TOLERANCE:
+            continue
+        if abs(expect_high - expect_low) < 1e-9:
             errors.append(
                 "%s的 depth %.2f 跟它的 z %.1f 对不上，按这一场的换算该是 %.2f"
-                % (label, depth, z, expect))
+                % (label, depth, low, expect_low))
+        else:
+            errors.append(
+                "%s的 depth %.2f 跟它的 z %s 对不上，"
+                "按这一场的换算该在 %.2f 到 %.2f 之间"
+                % (label, depth, _z_text(low, high), expect_low, expect_high))
 
 
 def _validate_layer_z(layer: dict, label: str, errors: list) -> None:
@@ -357,21 +425,20 @@ def validate_plan(plan: dict) -> list[str]:
                     continue
                 depth = layer.get("depth")
                 z = layer.get("z")
+                layer_z = float(z) if isinstance(z, (int, float))                     and not isinstance(z, bool) else None
                 pairs.append((f"第 {index + 1} 层",
                               float(depth) if isinstance(depth, (int, float))
                               and not isinstance(depth, bool) else None,
-                              float(z) if isinstance(z, (int, float))
-                              and not isinstance(z, bool) else None))
+                              layer_z, layer_z))
                 for number, segment in enumerate(layer.get("segments") or []):
                     if not isinstance(segment, dict):
                         continue
                     seg_depth = segment.get("depth")
-                    seg_z = segment.get("z")
+                    seg_low, seg_high = _segment_z_range(segment)
                     pairs.append((f"第 {index + 1} 层的 segments 第 {number + 1} 项",
                                   float(seg_depth) if isinstance(seg_depth, (int, float))
                                   and not isinstance(seg_depth, bool) else None,
-                                  float(seg_z) if isinstance(seg_z, (int, float))
-                                  and not isinstance(seg_z, bool) else None))
+                                  seg_low, seg_high))
             _validate_depth_z(pairs, errors)
     else:
         _validate_component_list(plan.get("components"), "components", errors)

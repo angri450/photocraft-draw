@@ -334,3 +334,80 @@ class TestSplit:
         piece = slice_shape(params, ((0, 0), (100, 0)), 0.25, 0.75)
         xs = [knot[0] for knot in piece["subpaths"][0]["knots"]]
         assert min(xs) >= 24.0 and max(xs) <= 76.0
+
+class TestSlopeDepth:
+    """兵器的深度沿着长度变化的时候，地面投影得是一条直线。"""
+
+    def sloped_duel(self):
+        plan = duel(cudgel_z=-60.0)
+        # 一件兵器的深度沿着长度一条直线变，两段接得上
+        plan["layers"][1]["segments"] = [
+            {"from": 0.0, "to": 0.4, "depth": 5.0, "z_from": 80.0, "z_to": 24.0},
+            {"from": 0.4, "to": 1.0, "depth": 1.5, "z_from": 24.0, "z_to": -60.0},
+        ]
+        plan["layers"][1]["depth"] = 5.0
+        del plan["layers"][1]["z"]
+        return plan
+
+    def test_the_depth_changes_along_the_length(self):
+        from photocraft_draw.views import prop_z_at
+
+        prop = {"z": 0.0, "segments": [
+            {"from": 0.0, "to": 0.5, "z_from": 80.0, "z_to": 0.0},
+            {"from": 0.5, "to": 1.0, "z_from": 0.0, "z_to": -80.0},
+        ]}
+        assert abs(prop_z_at(prop, 0.0) - 80.0) < 0.001
+        assert abs(prop_z_at(prop, 0.25) - 40.0) < 0.001
+        assert abs(prop_z_at(prop, 0.75) + 40.0) < 0.001
+        assert abs(prop_z_at(prop, 1.0) + 80.0) < 0.001
+
+    def test_a_sloped_weapon_keeps_a_straight_ground_projection(self):
+        result = analyze(self.sloped_duel())
+        assert not any("地面投影是折的" in text for text in result["issues"])
+
+    def test_flat_segments_break_the_ground_projection(self):
+        plan = duel(cudgel_z=-60.0)
+        plan["layers"][1]["segments"] = [
+            {"from": 0.0, "to": 0.4, "depth": 5.0, "z": 80},
+            {"from": 0.4, "to": 1.0, "depth": 1.5, "z": -60},
+        ]
+        plan["layers"][1]["depth"] = 5.0
+        del plan["layers"][1]["z"]
+        result = analyze(plan)
+        assert any("地面投影是折的" in text for text in result["issues"])
+
+    def test_two_weapons_cross_in_the_ground_projection(self):
+        result = analyze(self.sloped_duel())
+        assert result["crossings"]
+        assert result["crossings"][0]["ground_point"]
+
+    def test_a_flat_weapon_never_meets_the_other_one_on_the_ground(self):
+        result = analyze(duel(cudgel_z=-60.0))
+        assert result["crossings"]
+        assert result["crossings"][0]["ground_point"] is None
+
+    def test_the_depth_has_to_sit_inside_the_slope(self):
+        plan = self.sloped_duel()
+        plan["layers"][1]["segments"][1]["depth"] = 0.5
+        errors = validate_plan(plan)
+        assert any("该在" in text for text in errors)
+
+    def test_z_from_and_z_to_have_to_come_together(self):
+        plan = duel(cudgel_z=-60.0)
+        plan["layers"][1]["segments"] = [
+            {"from": 0.0, "to": 1.0, "depth": 5.0, "z_from": 80.0},
+        ]
+        del plan["layers"][1]["z"]
+        errors = validate_plan(plan)
+        assert any("z_from 和 z_to 要么都写" in text for text in errors)
+
+    def test_the_top_view_draws_a_sloped_line(self):
+        from photocraft_draw.views import render_view
+
+        commands, _ = render_view(self.sloped_duel(), "top")
+        lines = [item["params"] for item in commands
+                 if item["params"].get("name", "").startswith("兵器")]
+        assert lines
+        sloped = [item for item in lines
+                  if abs(item["from"][1] - item["to"][1]) > 1.0]
+        assert sloped

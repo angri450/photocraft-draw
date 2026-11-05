@@ -232,3 +232,33 @@ class TestBrief:
     def test_notes_are_built_for_every_figure(self):
         notes = staging_notes(two_figures())
         assert set(notes["notes"]) == {"wukong", "erlang shen"}
+
+class TestSlopedWeapon:
+    """兵器的深度沿着长度变化的时候，俯视图上是一条斜线。"""
+
+    def sloped(self):
+        plan = two_figures()
+        plan["layers"][1]["segments"] = [
+            {"from": 0.0, "to": 0.5, "depth": 4.0, "z_from": 80.0, "z_to": 0.0},
+            {"from": 0.5, "to": 1.0, "depth": 1.0, "z_from": 0.0, "z_to": -80.0},
+        ]
+        plan["layers"][1]["depth"] = 4.0
+        return plan
+
+    def test_the_top_view_shows_a_sloped_line(self):
+        commands, _ = render_view(self.sloped(), "top")
+        lines = [item["params"] for item in commands
+                 if item["params"].get("name", "").startswith("兵器")]
+        assert lines
+        assert any(abs(item["from"][1] - item["to"][1]) > 1.0 for item in lines)
+
+    def test_a_flat_weapon_stays_horizontal_in_the_top_view(self):
+        plan = two_figures()
+        plan["layers"][1]["segments"] = [
+            {"from": 0.0, "to": 1.0, "depth": 4.0, "z": 20.0},
+        ]
+        commands, _ = render_view(plan, "top")
+        lines = [item["params"] for item in commands
+                 if item["params"].get("name", "").startswith("兵器")]
+        assert lines
+        assert not any(abs(item["from"][1] - item["to"][1]) > 1.0 for item in lines)

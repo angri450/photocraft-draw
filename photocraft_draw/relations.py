@@ -156,12 +156,108 @@ def in_wedge(vertex, first, second, point, radius, margin=0.06):
     return side(one, to_point) <= -margin and side(to_point, two) <= -margin
 
 
+def cross_2d(p1, q1, p2, q2):
+    """两条线段在画面平面上真的交叉就返回交点，不交叉返回 None。
+
+    返回的后两项是交点在两条线段上的位置比例。
+    """
+    x1, y1 = p1[0], p1[1]
+    x2, y2 = q1[0], q1[1]
+    x3, y3 = p2[0], p2[1]
+    x4, y4 = q2[0], q2[1]
+    den = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)
+    if abs(den) < 1e-9:
+        return None
+    t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / den
+    u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / den
+    if not (0.0 <= t <= 1.0 and 0.0 <= u <= 1.0):
+        return None
+    return ((x1 + t * (x2 - x1), y1 + t * (y2 - y1)), t, u)
+
+
+def ground_line(prop):
+    """兵器投在地面上的那条直线。俯视图上看到的就是它。
+
+    横坐标是画面上的横坐标，纵坐标是深度。
+    """
+    (start, end) = prop["ends"]
+    return ((start[0], prop_z_at(prop, 0.0)), (end[0], prop_z_at(prop, 1.0)))
+
+
+def ground_pieces(prop):
+    """兵器投在地面上的每一段。俯视图上看到的就是这些线段。
+
+    横坐标是画面上的横坐标，纵坐标是深度。一段兵器的深度是一段斜坡的
+    时候，这一段在俯视图上就是一条斜线。
+    """
+    (start, end) = prop["ends"]
+    segments = prop.get("segments") or []
+    length = math.dist(start, end) or 1.0
+    ux = (end[0] - start[0]) / length
+    if not segments:
+        return [((start[0], prop["z"]), (end[0], prop["z"]))]
+    out = []
+    for segment in segments:
+        a = (start[0] + ux * length * segment["from"], segment["z_from"])
+        b = (start[0] + ux * length * segment["to"], segment["z_to"])
+        out.append((a, b))
+    return out
+
+
+def ground_cross(first, second):
+    """两件兵器的地面投影有没有交叉。交叉了返回交点，没交叉返回 None。"""
+    for one_a, one_b in ground_pieces(first):
+        for two_a, two_b in ground_pieces(second):
+            hit = cross_2d(one_a, one_b, two_a, two_b)
+            if hit is not None:
+                return hit[0]
+    return None
+
+
+def ground_bends(prop):
+    """一件兵器的地面投影是不是折的。折了返回折的地方，笔直就返回空列表。
+
+    一件直兵器在空间里的深度是沿着长度一条直线变的。各段各写一个深度，
+    俯视图上就成了几条平行的横线，两件兵器在空间里的前后关系也看不出来。
+    """
+    segments = prop.get("segments") or []
+    if len(segments) < 2:
+        return []
+    z_first = prop_z_at(prop, 0.0)
+    z_last = prop_z_at(prop, 1.0)
+    out = []
+    for segment in segments:
+        for ratio in (segment["from"], segment["to"]):
+            expect = z_first + (z_last - z_first) * ratio
+            actual = prop_z_at(prop, ratio)
+            if abs(actual - expect) > 1.0:
+                out.append((ratio, actual, expect))
+    return out
+
+
+def _ratio_at_point(prop, point):
+    """画面上的一个点在兵器主轴上的位置比例。"""
+    (start, end) = prop["ends"]
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    length2 = dx * dx + dy * dy
+    if length2 <= 1e-9:
+        return 0.0
+    step = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / length2
+    return max(0.0, min(1.0, step))
+
+
 def prop_segments(prop):
-    """兵器在空间里的线段。兵器按深度分段，每一段一个深度。"""
+    """兵器在空间里的线段。一段兵器的深度可以是一段斜坡。
+
+    斜坡写成这一段两头的深度，三维线段的两个端点就带着各自的深度，
+    距离和交叉都按真的空间位置算。
+    """
     (start, end) = prop["ends"]
     segments = prop.get("segments") or []
     if not segments:
         return [{"name": prop["layer"], "z": prop["z"],
+                 "z_from": prop["z"], "z_to": prop["z"],
                  "a": (start[0], start[1], prop["z"]),
                  "b": (end[0], end[1], prop["z"]),
                  "from": 0.0, "to": 1.0}]
@@ -171,10 +267,12 @@ def prop_segments(prop):
     uy = (end[1] - start[1]) / length
     for segment in segments:
         a = (start[0] + ux * length * segment["from"],
-             start[1] + uy * length * segment["from"], segment["z"])
+             start[1] + uy * length * segment["from"], segment["z_from"])
         b = (start[0] + ux * length * segment["to"],
-             start[1] + uy * length * segment["to"], segment["z"])
-        out.append({"name": prop["layer"], "z": segment["z"], "a": a, "b": b,
+             start[1] + uy * length * segment["to"], segment["z_to"])
+        out.append({"name": prop["layer"], "z": segment["z_from"],
+                    "z_from": segment["z_from"], "z_to": segment["z_to"],
+                    "a": a, "b": b,
                     "from": segment["from"], "to": segment["to"]})
     return out
 
@@ -210,19 +308,14 @@ def analyze(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
     # 兵器和兵器
     for index, first in enumerate(props):
         for second in props[index + 1:]:
-            hit = seg_seg_cross(prop_segments(first)[0]["a"],
-                                prop_segments(first)[-1]["b"],
-                                prop_segments(second)[0]["a"],
-                                prop_segments(second)[-1]["b"])
+            hit = cross_2d(first["ends"][0], first["ends"][1],
+                           second["ends"][0], second["ends"][1])
             if hit is None:
                 continue
-            point, s, t = hit
-            length_first = math.dist(first["ends"][0], first["ends"][1]) or 1.0
-            length_second = math.dist(second["ends"][0], second["ends"][1]) or 1.0
-            ratio_first = s * length_first / (math.dist(first["ends"][0],
-                                                        first["ends"][1]) or 1.0)
-            ratio_second = t
-            gap = abs(prop_z_at(first, ratio_first) - prop_z_at(second, ratio_second))
+            point, ratio_first, ratio_second = hit
+            gap = abs(prop_z_at(first, ratio_first)
+                      - prop_z_at(second, ratio_second))
+            ground = ground_cross(first, second)
             entry = {
                 "props": [first["layer"], second["layer"]],
                 "point": list(point),
@@ -230,12 +323,25 @@ def analyze(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
                 "touch": gap <= TOUCH_TOLERANCE,
                 "at_first": ratio_first,
                 "at_second": ratio_second,
+                "ground_point": list(ground) if ground else None,
             }
             entries.append(entry)
             if not entry["touch"]:
                 issues.append(
                     "%s 和 %s 在画面上交叉，可两件兵器的深度差 %.0f 像素，它们碰不到一起"
                     % (first["layer"], second["layer"], gap))
+
+    # 每件兵器的地面投影都得是一条直线。折了的话俯视图上就是几条平行线，
+    # 两件兵器在空间里的前后关系看不出来。
+    for prop in props:
+        bends = ground_bends(prop)
+        if not bends:
+            continue
+        worst = max(bends, key=lambda item: abs(item[1] - item[2]))
+        issues.append(
+            "%s 的各段深度连不成一条直线，最大差 %.0f 像素，"
+            "俯视图上这件兵器的地面投影是折的"
+            % (prop["layer"], abs(worst[1] - worst[2])))
 
     # 兵器和骨段。距离算画面平面上的，深度另算一笔，两样分开看。
     distances = []
@@ -246,16 +352,17 @@ def analyze(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
                 continue
             best = None
             for segment in prop_segments(prop):
-                gap, _, t = seg_seg_distance(segment["a"], segment["b"],
-                                             bone["a"], bone["b"])
+                gap, along, t = seg_seg_distance(segment["a"], segment["b"],
+                                                  bone["a"], bone["b"])
                 if best is None or gap < best[0]:
-                    best = (gap, segment, t)
+                    best = (gap, segment, along, t)
             if best is None:
                 continue
-            _, segment, t = best
+            _, segment, along, t = best
             flat = seg_seg_distance_2d(segment["a"], segment["b"],
                                        bone["a"], bone["b"])[0]
-            prop_z = segment["z"]
+            prop_z = (segment["z_from"]
+                      + (segment["z_to"] - segment["z_from"]) * along)
             bone_z = bone["a"][2] + (bone["b"][2] - bone["a"][2]) * t
             entry = {
                 "prop": prop["layer"],
@@ -322,8 +429,9 @@ def analyze(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
                 if hit is None:
                     continue
                 # 卡在兵器和胳膊中间才是穿进缝里，从前面扫过去不算。
-                prop_z = segment["z"]
-                weapon_z = other["z"]
+                prop_z = (segment["z_from"]
+                          + (segment["z_to"] - segment["z_from"]) * ratio)
+                weapon_z = prop_z_at(other, _ratio_at_point(other, hit))
                 arm_z = elbow[2]
                 low = min(weapon_z, arm_z) - GAP_DEPTH_TOLERANCE
                 high = max(weapon_z, arm_z) + GAP_DEPTH_TOLERANCE
@@ -363,7 +471,7 @@ def analyze(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
                 hand = figure["joints"].get(name)
                 if hand is None:
                     continue
-                gap = math.dist(hand, entry["point"])
+                gap = math.dist(hand[:2], entry["point"])
                 hands_gap.append({
                     "prop": prop["layer"],
                     "hand": name,
@@ -381,6 +489,11 @@ def analyze(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
                    "z": prop["z"], "segments": prop.get("segments") or [],
                    "ends": [list(end) for end in prop["ends"]]}
                   for prop in props],
+        "ground": [{"layer": prop["layer"],
+                    "line": [list(point) for point in ground_line(prop)],
+                    "bends": [[ratio, round(actual, 1), round(expect, 1)]
+                              for ratio, actual, expect in ground_bends(prop)]}
+                   for prop in props],
         "crossings": entries,
         "distances": distances,
         "gaps": gaps,
@@ -401,6 +514,9 @@ def report(result: dict) -> str:
                          % (entry["props"][0], entry["props"][1],
                             point[0], point[1], entry["z_gap"],
                             "碰得到" if entry["touch"] else "碰不到"))
+            ground = entry.get("ground_point")
+            if ground:
+                lines.append("    地面投影在 (%.0f, %.0f) 交叉" % (ground[0], ground[1]))
     else:
         lines.append("")
         lines.append("  两件兵器在画面上没有交叉")
