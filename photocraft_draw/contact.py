@@ -17,6 +17,9 @@ import subprocess
 from collections import deque
 from pathlib import Path
 
+import shutil
+import tempfile
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
@@ -99,13 +102,18 @@ def _blobs(mask: np.ndarray, min_area: int = 10) -> list[dict]:
     return blobs
 
 
+def _work_dir(psd_path: Path) -> Path:
+    """临时渲染图放在系统临时目录，成品目录里不留一堆图。"""
+    return Path(tempfile.gettempdir()) / ("photocraft-contact-" + psd_path.stem)
+
+
 def _layer_masks(psd_path: Path, tmp_dir: Path | None):
     """取出每层的透明掩码。返回 (宽, 高, 层序, 掩码表)。
 
     层序按引擎给出的顺序，从前到后：第一个在最上面。
     """
     width, height, _ = read_layers(psd_path)
-    work = tmp_dir or psd_path.parent / "_contact"
+    work = tmp_dir or _work_dir(psd_path)
     work.mkdir(parents=True, exist_ok=True)
     rendered = render_layer_images(psd_path, work)
     masks = {}
@@ -906,6 +914,9 @@ def main(argv=None) -> int:
     if args.json:
         Path(args.json).write_text(json.dumps(public(result), ensure_ascii=False, indent=2),
                                    encoding="utf-8")
+    # 没给临时目录就用系统临时目录那个。用完删掉。
+    if not args.tmp:
+        shutil.rmtree(_work_dir(Path(args.psd)), ignore_errors=True)
     return 0
 
 
