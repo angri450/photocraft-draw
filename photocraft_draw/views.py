@@ -527,7 +527,111 @@ def _view_transform(scene: dict, view: str):
     return (lambda point: (point[0], shift - point[2])), "上下深浅"
 
 
+def _view_items(plan: dict, scene: dict) -> list:
+    """三视图里要画的东西，按远近排好。远的先画，近的后画。
+
+    排的次序跟白模一样。白模里压在谁上头，三视图里也是谁在上头，两张图
+    摆在一起才对着得上。
+    """
+    order = {}
+    for index, layer in enumerate(plan.get("layers") or []):
+        if isinstance(layer, dict):
+            order.setdefault(str(layer.get("name", "")), index)
+    items = []
+    for index, figure in enumerate(scene["figures"]):
+        items.append({
+            "depth": figure["depth"],
+            "key": (order.get(figure["layer"], 0), index),
+            "kind": "figure",
+            "figure": figure,
+            "color": LAYER_COLORS[index % len(LAYER_COLORS)],
+        })
+    for index, prop in enumerate(scene["props"]):
+        color = LAYER_COLORS[(index + len(scene["figures"])) % len(LAYER_COLORS)]
+        segments = prop.get("segments") or []
+        if segments:
+            for number, segment in enumerate(segments):
+                items.append({
+                    "depth": segment["depth"],
+                    "key": (order.get(prop["layer"], 0), number),
+                    "kind": "segment",
+                    "prop": prop,
+                    "segment": segment,
+                    "color": color,
+                })
+            continue
+        items.append({
+            "depth": prop["depth"],
+            "key": (order.get(prop["layer"], 0), 0),
+            "kind": "plain",
+            "prop": prop,
+            "color": color,
+        })
+    items.sort(key=lambda item: (-item["depth"], item["key"]))
+    return items
+
+
+def _draw_figure(pen, project, item) -> None:
+    """一个人物白模。"""
+    figure = item["figure"]
+    color = item["color"]
+    joints = figure["joints"]
+    for start, end, width_ratio in BONES:
+        a = joints.get(start)
+        b = joints.get(end)
+        if a is None or b is None:
+            continue
+        pa = project(a)
+        pb = project(b)
+        pen.line(pa[0], pa[1], pb[0], pb[1],
+                 width=max(1.0, width_ratio * figure["height"]),
+                 color=color, name="骨段 %s-%s" % (start, end))
+    for name, radius in JOINT_SCALE.items():
+        point = joints.get(name)
+        if point is None:
+            continue
+        p = project(point)
+        r = max(1.5, radius * figure["height"])
+        pen.ellipse(p[0], p[1], r, r, fill=color, stroke_width=None,
+                    stroke=None, name="关节 %s" % name)
+    head = joints.get("head")
+    if head:
+        p = project(head)
+        r = 0.075 * figure["height"]
+        pen.ellipse(p[0], p[1], r * 0.86, r, fill=color, stroke_width=None,
+                    stroke=None, name="头")
+
+
+def _draw_segment(pen, project, item) -> None:
+    """兵器分出来的一段。"""
+    prop = item["prop"]
+    segment = item["segment"]
+    length = math.dist(prop["ends"][0], prop["ends"][1]) or 1.0
+    ux = (prop["ends"][1][0] - prop["ends"][0][0]) / length
+    uy = (prop["ends"][1][1] - prop["ends"][0][1]) / length
+    a = project((prop["ends"][0][0] + ux * length * segment["from"],
+                 prop["ends"][0][1] + uy * length * segment["from"],
+                 segment["z_from"]))
+    b = project((prop["ends"][0][0] + ux * length * segment["to"],
+                 prop["ends"][0][1] + uy * length * segment["to"],
+                 segment["z_to"]))
+    pen.line(a[0], a[1], b[0], b[1],
+             width=max(2.0, prop["span"] * 0.025), color=item["color"],
+             name="兵器 %s" % prop["shape"])
+
+
+def _draw_plain_prop(pen, project, item) -> None:
+    """没有分段的兵器，整件画一条线。"""
+    prop = item["prop"]
+    a = project((prop["ends"][0][0], prop["ends"][0][1], prop["z"]))
+    b = project((prop["ends"][1][0], prop["ends"][1][1], prop["z"]))
+    pen.line(a[0], a[1], b[0], b[1],
+             width=max(2.0, prop["span"] * 0.025), color=item["color"],
+             name="兵器 %s" % prop["shape"])
+
+
 def render_view(plan: dict, view: str, unit: float = DEFAULT_UNIT):
+
     """一个视图的绘制指令。"""
     if view not in VIEW_NAMES:
         raise ValueError("视图只能是 %s，收到 %s" % ("、".join(VIEW_NAMES), view))
@@ -543,57 +647,14 @@ def render_view(plan: dict, view: str, unit: float = DEFAULT_UNIT):
     pen.rect(6, 6, width - 12, height - 12, fill=None, stroke_width=2,
              stroke="line", name="画框")
 
-    for index, figure in enumerate(scene["figures"]):
-        color = LAYER_COLORS[index % len(LAYER_COLORS)]
-        joints = figure["joints"]
-        for start, end, width_ratio in BONES:
-            a = joints.get(start)
-            b = joints.get(end)
-            if a is None or b is None:
-                continue
-            pa = project(a)
-            pb = project(b)
-            pen.line(pa[0], pa[1], pb[0], pb[1],
-                     width=max(1.0, width_ratio * figure["height"]),
-                     color=color, name="骨段 %s-%s" % (start, end))
-        for name, radius in JOINT_SCALE.items():
-            point = joints.get(name)
-            if point is None:
-                continue
-            p = project(point)
-            r = max(1.5, radius * figure["height"])
-            pen.ellipse(p[0], p[1], r, r, fill=color, stroke_width=None,
-                        stroke=None, name="关节 %s" % name)
-        head = joints.get("head")
-        if head:
-            p = project(head)
-            r = 0.075 * figure["height"]
-            pen.ellipse(p[0], p[1], r * 0.86, r, fill=color, stroke_width=None,
-                        stroke=None, name="头")
-
-    for index, prop in enumerate(scene["props"]):
-        color = LAYER_COLORS[(index + len(scene["figures"])) % len(LAYER_COLORS)]
-        segments = prop.get("segments") or []
-        if segments:
-            length = math.dist(prop["ends"][0], prop["ends"][1]) or 1.0
-            ux = (prop["ends"][1][0] - prop["ends"][0][0]) / length
-            uy = (prop["ends"][1][1] - prop["ends"][0][1]) / length
-            for segment in segments:
-                a = project((prop["ends"][0][0] + ux * length * segment["from"],
-                             prop["ends"][0][1] + uy * length * segment["from"],
-                             segment["z_from"]))
-                b = project((prop["ends"][0][0] + ux * length * segment["to"],
-                             prop["ends"][0][1] + uy * length * segment["to"],
-                             segment["z_to"]))
-                pen.line(a[0], a[1], b[0], b[1],
-                         width=max(2.0, prop["span"] * 0.025), color=color,
-                         name="兵器 %s" % prop["shape"])
-            continue
-        a = project((prop["ends"][0][0], prop["ends"][0][1], prop["z"]))
-        b = project((prop["ends"][1][0], prop["ends"][1][1], prop["z"]))
-        pen.line(a[0], a[1], b[0], b[1],
-                 width=max(2.0, prop["span"] * 0.025), color=color,
-                 name="兵器 %s" % prop["shape"])
+    # 人物和兵器按远近一起排。远的先画，近的后画，压在谁上头跟白模一致。
+    for item in _view_items(plan, scene):
+        if item["kind"] == "figure":
+            _draw_figure(pen, project, item)
+        elif item["kind"] == "segment":
+            _draw_segment(pen, project, item)
+        else:
+            _draw_plain_prop(pen, project, item)
 
     return pen.commands, {"width": int(width), "height": int(height),
                           "name": "%s %s" % (plan.get("name", "画面"), VIEW_TITLES[view])}

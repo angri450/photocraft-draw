@@ -262,3 +262,32 @@ class TestSlopedWeapon:
                  if item["params"].get("name", "").startswith("兵器")]
         assert lines
         assert not any(abs(item["from"][1] - item["to"][1]) > 1.0 for item in lines)
+
+class TestViewOrder:
+    """三视图里压在谁上头，跟白模里一样。远的先画，近的后画。"""
+
+    def weapon_lines(self, plan, view="front"):
+        commands, _ = render_view(plan, view)
+        return [item["params"] for item in commands
+                if item["params"].get("name", "").startswith("兵器")]
+
+    def test_the_nearer_weapon_is_drawn_later(self):
+        plan = two_figures()
+        lines = self.weapon_lines(plan)
+        assert len(lines) == 2
+        # 金箍棒 depth 3，远，先画；长杆 depth 2，近，后画
+        assert abs(lines[0]["from"][0] - 200) < 1.0
+        assert abs(lines[1]["from"][0] - 420) < 1.0
+
+    def test_a_split_weapon_is_drawn_piece_by_piece(self):
+        plan = two_figures()
+        plan["layers"][1]["segments"] = [
+            {"from": 0.0, "to": 0.5, "depth": 5.0, "z_from": 80.0, "z_to": 40.0},
+            {"from": 0.5, "to": 1.0, "depth": 1.0, "z_from": 40.0, "z_to": -20.0},
+        ]
+        plan["layers"][1]["depth"] = 5.0
+        lines = self.weapon_lines(plan)
+        assert len(lines) == 3
+        # 棒尾 depth 5 最远先画，长杆 depth 2 居中，棒身 depth 1 最近后画
+        starts = [round(line["from"][0]) for line in lines]
+        assert starts == [200, 420, 360]
