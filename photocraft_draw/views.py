@@ -39,7 +39,7 @@ from .components.rig import BONES, JOINT_SCALE
 from .components.rig import pose_table_3d
 from .motion import HOLD_TOLERANCE, PROP_KEYWORDS, _prop_axes
 from .palette import resolve_palette
-from .plan import load_plan, ordered_layers
+from .plan import load_plan, ordered_layers, resolve_depths
 
 VIEW_NAMES = ("front", "left", "top")
 VIEW_TITLES = {"front": "正视图", "left": "左视图", "top": "俯视图"}
@@ -89,6 +89,34 @@ def _depth_of(plan: dict) -> dict:
     return out
 
 
+def _segments_of(plan: dict, name: str) -> list:
+    """一层里兵器按深度分的那几段。"""
+    out = []
+    for layer in plan.get("layers") or []:
+        if str(layer.get("name", "")) != name:
+            continue
+        for segment in layer.get("segments") or []:
+            out.append({
+                "from": float(segment.get("from", 0.0)),
+                "to": float(segment.get("to", 1.0)),
+                "z": float(segment.get("z", 0.0)),
+                "depth": float(segment.get("depth", 0.0)),
+            })
+        return out
+    return out
+
+
+def prop_z_at(prop: dict, ratio: float) -> float:
+    """兵器主轴上某一点的深度。兵器分几段，每一段一个深度。"""
+    segments = prop.get("segments") or []
+    for segment in segments:
+        if segment["from"] - 1e-9 <= ratio <= segment["to"] + 1e-9:
+            return segment["z"]
+    if segments:
+        return segments[0]["z"]
+    return prop["z"]
+
+
 def _figure_layers(plan: dict):
     for layer in plan.get("layers") or []:
         for item in layer.get("components") or []:
@@ -114,8 +142,11 @@ def _point_to_segment(point, start, end) -> float:
     return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
 
 
-def _segment_cross(first, second, third, fourth):
-    """两条线段在画平面上相交的点。平行或者不相交返回 None。"""
+def _segment_cross_params(first, second, third, fourth):
+    """两条线段在画平面上相交的点，以及交点在两段上的位置。
+
+    位置是从第一个端点算起的比例，用来查兵器在那一点是哪个深度。
+    """
     x1, y1 = first
     x2, y2 = second
     x3, y3 = third
@@ -127,7 +158,13 @@ def _segment_cross(first, second, third, fourth):
     u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / den
     if not (0.0 <= t <= 1.0 and 0.0 <= u <= 1.0):
         return None
-    return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
+    return (x1 + t * (x2 - x1), y1 + t * (y2 - y1)), t, u
+
+
+def _segment_cross(first, second, third, fourth):
+    """两条线段在画平面上相交的点。平行或者不相交返回 None。"""
+    hit = _segment_cross_params(first, second, third, fourth)
+    return hit[0] if hit else None
 
 
 def _layer_z(plan: dict, name: str, depths: dict, near: float,
@@ -155,6 +192,7 @@ def scene_3d(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
 
     人物的关节在图层深度上加自己的 z。兵器的深度取持械者的手。
     """
+    plan = resolve_depths(plan)
     canvas = plan.get("canvas") or [800, 600]
     widths = float(canvas[0])
     heights = float(canvas[1])
@@ -193,6 +231,9 @@ def scene_3d(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
         holder = prop.get("holder") or ""
         holder_figure = figures_of.get(holder)
         prop_z = _layer_z(plan, prop["layer"], depths, near, unit)
+        segments = _segments_of(plan, prop["layer"])
+        if segments:
+            prop_z = segments[0]["z"]
         hands = []
         if holder_figure:
             ends = prop["ends"]
@@ -204,24 +245,28 @@ def scene_3d(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
                 gap = _point_to_segment((hand[0], hand[1]), ends[0], ends[1])
                 if gap <= HOLD_TOLERANCE:
                     hands.append(hand)
-            if hands:
-                prop_z = sum(hand[2] for hand in hands) / len(hands)
-            else:
-                nearest = min(
-                    (joints.get(name) for name in ("hand_l", "hand_r")
-                     if joints.get(name) is not None),
-                    key=lambda hand: _point_to_segment(
-                        (hand[0], hand[1]), prop["ends"][0], prop["ends"][1]),
-                    default=None,
-                )
-                if nearest is not None:
-                    prop_z = nearest[2]
+            # 兵器分了段的，每一段自己写深度，整体深度按第一段算，
+            # 不拿手的高度改写，免得把分段的意思抹掉
+            if not segments:
+                if hands:
+                    prop_z = sum(hand[2] for hand in hands) / len(hands)
+                else:
+                    nearest = min(
+                        (joints.get(name) for name in ("hand_l", "hand_r")
+                         if joints.get(name) is not None),
+                        key=lambda hand: _point_to_segment(
+                            (hand[0], hand[1]), prop["ends"][0], prop["ends"][1]),
+                        default=None,
+                    )
+                    if nearest is not None:
+                        prop_z = nearest[2]
         props.append({
             "layer": prop["layer"],
             "shape": prop["shape"],
             "holder": holder,
             "depth": depths.get(prop["layer"], 0.0),
             "z": prop_z,
+            "segments": segments,
             "ends": [(float(end[0]), float(end[1])) for end in prop["ends"]],
             "span": float(prop["span"]),
         })
@@ -307,11 +352,12 @@ def analyze_plan(plan: dict, unit: float = DEFAULT_UNIT) -> dict:
         for second in props[index + 1:]:
             if not first["holder"] or first["holder"] == second["holder"]:
                 continue
-            point = _segment_cross(first["ends"][0], first["ends"][1],
-                                   second["ends"][0], second["ends"][1])
-            if point is None:
+            hit = _segment_cross_params(first["ends"][0], first["ends"][1],
+                                       second["ends"][0], second["ends"][1])
+            if hit is None:
                 continue
-            gap = abs(first["z"] - second["z"])
+            point, at_first, at_second = hit
+            gap = abs(prop_z_at(first, at_first) - prop_z_at(second, at_second))
             crossing = {
                 "props": [first["layer"], second["layer"]],
                 "point": point,
@@ -497,6 +543,23 @@ def render_view(plan: dict, view: str, unit: float = DEFAULT_UNIT):
 
     for index, prop in enumerate(scene["props"]):
         color = LAYER_COLORS[(index + len(scene["figures"])) % len(LAYER_COLORS)]
+        segments = prop.get("segments") or []
+        if segments:
+            length = math.dist(prop["ends"][0], prop["ends"][1]) or 1.0
+            ux = (prop["ends"][1][0] - prop["ends"][0][0]) / length
+            uy = (prop["ends"][1][1] - prop["ends"][1][1] + prop["ends"][0][1]) / length
+            uy = (prop["ends"][1][1] - prop["ends"][0][1]) / length
+            for segment in segments:
+                a = project((prop["ends"][0][0] + ux * length * segment["from"],
+                             prop["ends"][0][1] + uy * length * segment["from"],
+                             segment["z"]))
+                b = project((prop["ends"][0][0] + ux * length * segment["to"],
+                             prop["ends"][0][1] + uy * length * segment["to"],
+                             segment["z"]))
+                pen.line(a[0], a[1], b[0], b[1],
+                         width=max(2.0, prop["span"] * 0.025), color=color,
+                         name="兵器 %s" % prop["shape"])
+            continue
         a = project((prop["ends"][0][0], prop["ends"][0][1], prop["z"]))
         b = project((prop["ends"][1][0], prop["ends"][1][1], prop["z"]))
         pen.line(a[0], a[1], b[0], b[1],

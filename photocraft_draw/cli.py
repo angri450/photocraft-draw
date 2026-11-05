@@ -225,6 +225,12 @@ def cmd_facing(args) -> int:
     return 0
 
 
+def cmd_relations(args) -> int:
+    from .relations import run as run_relations
+
+    return run_relations(args.plan, args.unit, args.json)
+
+
 def cmd_views(args) -> int:
     from .views import run as run_views
 
@@ -473,6 +479,13 @@ def build_parser() -> argparse.ArgumentParser:
     facing.add_argument("plan", help="绘制方案文件")
     facing.add_argument("--json", help="结构化结果输出路径")
     facing.set_defaults(func=cmd_facing)
+
+    relations = sub.add_parser("relations", help="算兵器和肢体之间的空间关系")
+    relations.add_argument("plan", help="绘制方案文件")
+    relations.add_argument("--unit", type=float, default=40.0,
+                           help="图层 depth 每差 1 相当于多少像素，默认 40")
+    relations.add_argument("--json", help="结构化结果输出路径")
+    relations.set_defaults(func=cmd_relations)
 
     views = sub.add_parser("views", help="按正视图、左视图、俯视图出三张图")
     views.add_argument("plan", help="绘制方案文件")

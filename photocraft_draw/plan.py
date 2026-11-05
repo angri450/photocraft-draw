@@ -11,8 +11,66 @@ from .components.rig import FACE_WORDS
 from .motion import ACTION_RULES
 from .palette import resolve_palette
 from .registry import get_component
+from .split import axis_of, slice_shape
 
 NUMBER = (int, float)
+
+# 一档 depth 相当于多少像素。方案里只写 z 不写 depth 的，按这个换算。
+DEFAULT_DEPTH_UNIT = 40.0
+
+# depth 和 z 的换算差多少档以内算对得上
+DEPTH_Z_TOLERANCE = 0.1
+
+
+def _depth_scale(anchors: list) -> tuple:
+    """从写了 depth 和 z 的层里推出换算关系：depth = (z - base) / unit。
+
+    两个锚点定出一档 depth 相当于多少像素，只有一个锚点就按引擎默认的
+    40 像素一档。定不出来的时候返回两个 None，方案里也没法补 depth。
+    """
+    if not anchors:
+        return None, None
+    if len(anchors) == 1:
+        depth, z = anchors[0]
+        return z - depth * DEFAULT_DEPTH_UNIT, DEFAULT_DEPTH_UNIT
+    low = min(anchors, key=lambda item: item[1])
+    high = max(anchors, key=lambda item: item[1])
+    if high[1] == low[1] or high[0] == low[0]:
+        depth, z = anchors[0]
+        return z - depth * DEFAULT_DEPTH_UNIT, DEFAULT_DEPTH_UNIT
+    unit = (high[1] - low[1]) / (high[0] - low[0])
+    if unit <= 0:
+        return None, None
+    return high[1] - high[0] * unit, unit
+
+
+def resolve_depths(plan: dict) -> dict:
+    """层写了 z 没写 depth 的，depth 按 z 推出来。
+
+    换算基准从写了 depth 和 z 的层里取，推出来的 depth 和别的层排在
+    一起才是一张画面。作者只写 z 的时候，前后关系由 z 说话。
+    """
+    layers = plan.get("layers")
+    if not isinstance(layers, list):
+        return plan
+    anchors = []
+    for layer in layers:
+        if not isinstance(layer, dict):
+            continue
+        depth = layer.get("depth")
+        z = layer.get("z")
+        if isinstance(depth, NUMBER) and isinstance(z, NUMBER):
+            anchors.append((float(depth), float(z)))
+    base, unit = _depth_scale(anchors)
+    if base is None:
+        return plan
+    for layer in layers:
+        if not isinstance(layer, dict) or "depth" in layer:
+            continue
+        z = layer.get("z")
+        if isinstance(z, NUMBER) and not isinstance(z, bool):
+            layer["depth"] = round((float(z) - base) / unit, 4)
+    return plan
 
 
 def ordered_layers(plan: dict) -> list[dict]:
@@ -21,6 +79,7 @@ def ordered_layers(plan: dict) -> list[dict]:
     每层都写了 depth 时，层序由 depth 决定：depth 大的更远，先画。
     depth 相同按方案里的先后排。一层没写 depth 就按方案里的顺序。
     """
+    plan = resolve_depths(plan)
     layers = plan.get("layers") or []
     if not layers or not all(isinstance(layer, dict) and "depth" in layer
                              for layer in layers):
@@ -41,7 +100,7 @@ def load_plan(path: str | Path) -> dict:
     errors = validate_plan(plan)
     if errors:
         raise ValueError("绘制方案有问题：\n- " + "\n- ".join(errors))
-    return plan
+    return resolve_depths(plan)
 
 
 def _validate_component_list(items, where: str, errors: list[str]) -> None:
@@ -124,6 +183,81 @@ def _validate_holder(layer: dict, label: str, names: set, errors: list) -> None:
         errors.append(f"{label}的 holder 要写层名")
     elif holder not in names:
         errors.append(f"{label}的 holder「{holder}」不是方案里的层")
+
+def _validate_segments(layer: dict, label: str, errors: list) -> None:
+    """一件兵器按深度分段。每一段写主轴上的起止位置、这一段的深度和物理深度。"""
+    segments = layer.get("segments")
+    if segments is None:
+        return
+    if not isinstance(segments, list) or not segments:
+        errors.append(f"{label}的 segments 必须是非空数组")
+        return
+    last = 0.0
+    for index, segment in enumerate(segments):
+        name = f"{label}的 segments 第 {index + 1} 项"
+        if not isinstance(segment, dict):
+            errors.append(f"{name}必须是一个对象")
+            continue
+        low = segment.get("from")
+        high = segment.get("to")
+        for key, value in (("from", low), ("to", high)):
+            if isinstance(value, bool) or not isinstance(value, NUMBER):
+                errors.append(f"{name}的 {key} 必须是数字")
+        if isinstance(low, (int, float)) and isinstance(high, (int, float)):
+            if not 0.0 <= low < high <= 1.0:
+                errors.append(f"{name}的 from 和 to 必须在 0 到 1 之间，from 要小于 to")
+            if low < last - 1e-9:
+                errors.append(f"{name}和上一段接不上，from 不能比上一段的 to 小")
+            last = high
+        depth = segment.get("depth")
+        if isinstance(depth, bool) or not isinstance(depth, NUMBER):
+            errors.append(f"{name}的 depth 必须是数字")
+        elif not math.isfinite(depth):
+            errors.append(f"{name}的 depth 必须是有限数字")
+        z = segment.get("z")
+        if z is not None:
+            if isinstance(z, bool) or not isinstance(z, NUMBER):
+                errors.append(f"{name}的 z 必须是数字")
+            elif not math.isfinite(z):
+                errors.append(f"{name}的 z 必须是有限数字")
+
+
+def _validate_depth_z(pairs: list, errors: list) -> None:
+    """深度和物理深度写在一起的时候，两者的远近要一致。
+
+    depth 大的更远，z 大的也离观众更远。两个都写了，前后关系就得对得上，
+    对不上说明作者写岔了，机器替不了这个决定，报告出来。
+    """
+    for index, first in enumerate(pairs):
+        if first[1] is None or first[2] is None:
+            continue
+        for second in pairs[index + 1:]:
+            if second[1] is None or second[2] is None:
+                continue
+            if first[1] == second[1] and first[2] == second[2]:
+                continue
+            if (first[1] - second[1]) * (first[2] - second[2]) < 0:
+                errors.append(
+                    "%s的 depth %.1f 和 %s的 depth %.1f 的远近，跟各自的 z %.1f 和 %.1f "
+                    "对不上，深度和物理深度打架了"
+                    % (first[0], first[1], second[0], second[1],
+                       first[2], second[2]))
+
+    # 两样都写了，换算关系得是同一条直线。对不上说明写岔了。
+    anchors = [(depth, z) for _, depth, z in pairs
+               if depth is not None and z is not None]
+    base, unit = _depth_scale(anchors)
+    if base is None:
+        return
+    for label, depth, z in pairs:
+        if depth is None or z is None:
+            continue
+        expect = (z - base) / unit
+        if abs(expect - depth) > DEPTH_Z_TOLERANCE:
+            errors.append(
+                "%s的 depth %.2f 跟它的 z %.1f 对不上，按这一场的换算该是 %.2f"
+                % (label, depth, z, expect))
+
 
 def _validate_layer_z(layer: dict, label: str, errors: list) -> None:
     """一层的物理深度 z。写了就得是数字，单位是像素，正数朝观众。
@@ -209,6 +343,7 @@ def validate_plan(plan: dict) -> list[str]:
                 _validate_motion(layer, label, names, errors)
                 _validate_holder(layer, label, names, errors)
                 _validate_layer_z(layer, label, errors)
+                _validate_segments(layer, label, errors)
             depths = [index for index, layer in enumerate(layers)
                       if isinstance(layer, dict) and "depth" in layer]
             if depths and len(depths) != len(layers):
@@ -216,10 +351,76 @@ def validate_plan(plan: dict) -> list[str]:
                            if not (isinstance(layer, dict) and "depth" in layer)]
                 errors.append("depth 要么每层都写，要么都不写；没写 depth 的有："
                               + "、".join(missing))
+            pairs = []
+            for index, layer in enumerate(layers):
+                if not isinstance(layer, dict):
+                    continue
+                depth = layer.get("depth")
+                z = layer.get("z")
+                pairs.append((f"第 {index + 1} 层",
+                              float(depth) if isinstance(depth, (int, float))
+                              and not isinstance(depth, bool) else None,
+                              float(z) if isinstance(z, (int, float))
+                              and not isinstance(z, bool) else None))
+                for number, segment in enumerate(layer.get("segments") or []):
+                    if not isinstance(segment, dict):
+                        continue
+                    seg_depth = segment.get("depth")
+                    seg_z = segment.get("z")
+                    pairs.append((f"第 {index + 1} 层的 segments 第 {number + 1} 项",
+                                  float(seg_depth) if isinstance(seg_depth, (int, float))
+                                  and not isinstance(seg_depth, bool) else None,
+                                  float(seg_z) if isinstance(seg_z, (int, float))
+                                  and not isinstance(seg_z, bool) else None))
+            _validate_depth_z(pairs, errors)
     else:
         _validate_component_list(plan.get("components"), "components", errors)
 
     return errors
+
+
+def ordered_units(plan: dict) -> list[dict]:
+    """把方案展开成要画的单元，一件兵器按深度分段会拆成几个单元。
+
+    单元按深度从远到近排，白模的画家算法照这个顺序画。
+    """
+    units = []
+    for layer in ordered_layers(plan):
+        segments = layer.get("segments")
+        if not segments:
+            units.append({
+                "name": layer["name"],
+                "depth": float(layer.get("depth", 0.0)),
+                "components": layer["components"],
+            })
+            continue
+        axis = axis_of(layer["components"], layer.get("axis"))
+        if axis is None:
+            units.append({
+                "name": layer["name"],
+                "depth": float(layer.get("depth", 0.0)),
+                "components": layer["components"],
+            })
+            continue
+        for segment in segments:
+            components = []
+            for item in layer["components"]:
+                params = item.get("params") or {}
+                if item.get("component") == "custom_shape":
+                    params = slice_shape(params, axis,
+                                         float(segment["from"]), float(segment["to"]))
+                components.append({"component": item.get("component"),
+                                   "params": params})
+            name = layer["name"]
+            if segment.get("name"):
+                name = "%s %s" % (name, segment["name"])
+            units.append({
+                "name": name,
+                "depth": float(segment.get("depth", layer.get("depth", 0.0))),
+                "components": components,
+            })
+    units.sort(key=lambda unit: -unit["depth"])
+    return units
 
 
 def compose_plan(plan: dict) -> tuple[list[dict], dict]:
@@ -242,9 +443,10 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
 
     layers = plan.get("layers")
     if layers:
-        for layer in ordered_layers(plan):
-            pen.stage(layer["name"])
-            for item in layer["components"]:
+        units = ordered_units(plan)
+        for unit in units:
+            pen.stage(unit["name"])
+            for item in unit["components"]:
                 component = get_component(item["component"])
                 pen.stage(component.name, nested=True)
                 component.build(item.get("params") or {}, pen)

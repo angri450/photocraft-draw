@@ -197,29 +197,38 @@ def _prop_axes(plan: dict) -> list:
             shape_name = str(params.get("name", ""))
             if not any(word in shape_name.lower() for word in PROP_KEYWORDS):
                 continue
-            points = []
-            for subpath in params.get("subpaths") or []:
-                for knot in subpath.get("knots") or []:
-                    if isinstance(knot, dict):
-                        points.append((float(knot["anchor"][0]), float(knot["anchor"][1])))
-                    else:
-                        points.append((float(knot[0]), float(knot[1])))
-            if len(points) < 2:
-                continue
-            best = (0.0, None, None)
-            for index, first in enumerate(points):
-                for other in points[index + 1:]:
-                    span = math.dist(first, other)
-                    if span > best[0]:
-                        best = (span, first, other)
-            if best[1] is None:
-                continue
+            declared = layer.get("axis")
+            if declared:
+                ends = [(float(declared[0][0]), float(declared[0][1])),
+                        (float(declared[1][0]), float(declared[1][1]))]
+                span = math.dist(ends[0], ends[1])
+            else:
+                points = []
+                for subpath in params.get("subpaths") or []:
+                    for knot in subpath.get("knots") or []:
+                        if isinstance(knot, dict):
+                            points.append((float(knot["anchor"][0]),
+                                           float(knot["anchor"][1])))
+                        else:
+                            points.append((float(knot[0]), float(knot[1])))
+                if len(points) < 2:
+                    continue
+                best = (0.0, None, None)
+                for index, first in enumerate(points):
+                    for other in points[index + 1:]:
+                        span = math.dist(first, other)
+                        if span > best[0]:
+                            best = (span, first, other)
+                if best[1] is None:
+                    continue
+                ends = [best[1], best[2]]
+                span = best[0]
             out.append({
                 "layer": layer_name,
                 "shape": shape_name,
                 "holder": str(holder) if holder else "",
-                "ends": [best[1], best[2]],
-                "span": best[0],
+                "ends": ends,
+                "span": span,
             })
     return out
 
