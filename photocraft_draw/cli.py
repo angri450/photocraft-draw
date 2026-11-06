@@ -237,6 +237,49 @@ def cmd_views(args) -> int:
     return run_views(args.plan, args.out_dir, args.unit, args.json)
 
 
+def cmd_layout(args) -> int:
+    from .layout import analyze, draw_grid
+
+    rules = None
+    if args.rules:
+        rules = json.loads(Path(args.rules).read_text(encoding="utf-8"))
+    result = analyze(args.png, rules=rules)
+    if args.json:
+        Path(args.json).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.json).write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    if args.grid:
+        draw_grid(args.png, args.grid, result=result)
+    subject = result["subject"]
+    offset = result["center_offset"]
+    quadrants = result["density"]["quadrants"]
+    print("主体 %.1f%% | 重心 (%.0f, %.0f) | 横向 %+.0f 纵向 %+.0f"
+          % (subject["ratio"] * 100, subject["centroid"][0], subject["centroid"][1],
+             offset["x"], offset["y"]))
+    print("疏密 左上 %.1f%% 右上 %.1f%% 左下 %.1f%% 右下 %.1f%% | 长轴 %.1f° %s"
+          % (quadrants[0] * 100, quadrants[1] * 100, quadrants[2] * 100,
+             quadrants[3] * 100, result["axis_angle"], result["axis_note"]))
+    if args.grid:
+        print("网格图：%s" % args.grid)
+    if args.json:
+        print("结构化结果：%s" % args.json)
+    return 0
+
+
+def cmd_sheet(args) -> int:
+    from .sheet import build_page
+
+    path = build_page(
+        Path(args.model), Path(args.views), Path(args.out),
+        moss=Path(args.moss) if args.moss else None,
+        title=args.title,
+        detail_box=tuple(int(part) for part in args.detail.split(",")) if args.detail else None,
+    )
+    print("手稿页：%s" % path)
+    return 0
+
+
 def cmd_verify(args) -> int:
     from .checker import check_commands, report_text
 
@@ -494,6 +537,22 @@ def build_parser() -> argparse.ArgumentParser:
                        help="图层 depth 每差 1 相当于多少像素，默认 40")
     views.add_argument("--json", help="结构化结果输出路径")
     views.set_defaults(func=cmd_views)
+
+    layout = sub.add_parser("layout", help="量构图：重心偏移、疏密、长轴和边距")
+    layout.add_argument("png", help="要看的那张图")
+    layout.add_argument("--grid", help="叠网格后的输出路径")
+    layout.add_argument("--json", help="结构化结果输出路径")
+    layout.add_argument("--rules", help="规则文件，JSON 对象")
+    layout.set_defaults(func=cmd_layout)
+
+    sheet = sub.add_parser("sheet", help="把成图、三视图和放大拼成一页手稿")
+    sheet.add_argument("--model", required=True, help="结构成图")
+    sheet.add_argument("--views", required=True, help="三视图")
+    sheet.add_argument("--moss", help="模型重绘的成图，可省略")
+    sheet.add_argument("--out", required=True, help="手稿页输出路径")
+    sheet.add_argument("--title", default="海棠花枝 · 结构研究", help="页首标题")
+    sheet.add_argument("--detail", help="局部放大的裁剪框，写成 x,y,边长")
+    sheet.set_defaults(func=cmd_sheet)
 
     verify = sub.add_parser("verify", help="只读指令检查结构，不出图")
     verify.add_argument("plan", help="绘制方案文件")
