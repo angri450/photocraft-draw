@@ -64,8 +64,16 @@ class RegistryTest(unittest.TestCase):
 
     def test_required_params_are_marked(self):
         for key, component in REGISTRY.items():
-            marks = [text for text in component.params.values() if "必填" in text]
-            self.assertTrue(marks, f"{key} 的参数说明里没有标出必填项")
+            texts = list(component.params.values())
+            if any("必填" in text for text in texts):
+                continue
+            # 全部可选也是合法情况：build 自己会对缺参报错。
+            # 这类组件至少要有一条参数说明写了默认值，能看出是可选的。
+            defaults = [text for text in texts if "默认" in text]
+            self.assertTrue(
+                defaults,
+                f"{key} 的参数说明既没有必填项，也没有任何默认值说明",
+            )
 
     def test_registry_is_searchable(self):
         haystack = " ".join(

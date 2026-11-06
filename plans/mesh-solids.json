@@ -1,0 +1,57 @@
+{
+  "name": "网格管线 · 方球柱锥与一棵树",
+  "canvas": [900, 1200],
+  "ref_width": 900,
+  "document_background": "transparent",
+  "brief_zh": {
+    "subject": "一片平地上摆着方块、球、圆柱、圆锥和一棵用柱加球拼成的树，从近到远排列",
+    "style": "结构素描的平涂版本，只用色面分面，不作写实光影",
+    "light": "左上方柔和光，暗面统一压一档",
+    "mood": "练习",
+    "camera": "平视，视平线在画高 0.55 处，相机高 1.6 米",
+    "palette": "天空 #F4EBDF、地面 #E8DDC4、金 #C9A227、玫红 #C8455F、绿 #7A9A5B、深红 #B3324C"
+  },
+  "brief_en": {
+    "subject": "a flat ground with a cube, a sphere, a cylinder, a cone and a tree built from a cylinder and a sphere, arranged from near to far",
+    "style": "structural drawing rendered as flat colour planes",
+    "light": "soft light from upper left, shadow sides one step darker",
+    "mood": "study",
+    "camera": "eye level, horizon at 0.55 of frame height, camera height 1.6 m",
+    "palette": "sky #F4EBDF, ground #E8DDC4, gold #C9A227, rose #C8455F, green #7A9A5B, deep red #B3324C"
+  },
+  "layers": [
+    {
+      "name": "网格场景",
+      "depth": 1,
+      "z": 100,
+      "describe_zh": "同一组几何体，用网格管线重画：顶点、变换、透视投影、面排序、背面剔除",
+      "describe_en": "the same solids rebuilt through the mesh pipeline: vertices, transforms, perspective projection, face sorting, back-face culling",
+      "components": [
+        {
+          "component": "mesh_scene",
+          "params": {
+            "named_faces": true,
+            "lighting": { "direction": [0.5, -1.0, 0.5], "ambient": 0.85, "diffuse": 0.28 },
+            "camera": {
+              "position": [0, 1.6, 0],
+              "target": [0, 1.6, 1],
+              "focal": 965,
+              "frame": [900, 1200],
+              "center": [450, 660],
+              "projection": "perspective"
+            },
+            "meshes": [
+              { "type": "box", "size": [0.6, 0.6, 0.6], "center": [1.2, 0.3, 3.5], "color": "#88B4B9", "name": "小方块" },
+              { "type": "box", "size": [1.0, 1.0, 1.0], "center": [-1.0, 0.5, 4.0], "color": "#C9A227", "name": "大方块" },
+              { "type": "sphere", "radius": 0.6, "segments": 28, "rings": 16, "center": [0.0, 0.6, 6.0], "color": "#C8455F", "name": "球" },
+              { "type": "cylinder", "radius": 0.45, "height": 1.6, "segments": 28, "center": [1.2, 0.8, 8.0], "color": "#7A9A5B", "name": "柱" },
+              { "type": "cone", "radius": 0.6, "height": 1.7, "segments": 28, "center": [2.2, 0.85, 11.0], "color": "#B3324C", "name": "锥" },
+              { "type": "cylinder", "radius": 0.12, "height": 2.75, "segments": 16, "center": [-1.0, 1.375, 14.0], "color": "#6B4A36", "name": "树干" },
+              { "type": "sphere", "radius": 0.9, "segments": 28, "rings": 16, "center": [-1.0, 3.2, 14.0], "color": "#E3AEC4", "name": "树冠" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
