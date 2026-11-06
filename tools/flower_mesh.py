@@ -190,7 +190,7 @@ def scene():
 
 def camera():
     return Camera(
-        position=(0.016, 0.042, -0.150),
+        position=(0.016, 0.042, -0.250),
         target=(0.024, 0.046, 0.020),
         up=(0.0, 1.0, 0.0),
         focal=900.0,

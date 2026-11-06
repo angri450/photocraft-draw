@@ -17,6 +17,10 @@ ortho_project 只负责坐标映射，返回数学坐标，v 轴向上。render_
 网格只按 vertices 和 faces 两个字段读，不 import mesh.py：传字典也行，传带
 同名属性的对象也行。面的顶点按逆时针写，法向量朝外，背面会自动剔除。
 
+花形用 make_blossom(center, diameter, facing=(0, 0, 1), petals=5) 生成，返回
+带 shape="blossom" 标记的网格；带这个标记或者带 petals 字段的对象按花形画，
+不做法向剔除，侧视压成一条也保留同色描边。
+
 用法：
     from photocraft_draw.ortho import ortho_project, render_views
 
@@ -105,7 +109,11 @@ def _field(mesh, key: str, default=None):
 
 
 def _mesh_data(mesh, index: int):
-    """读一份网格，返回 (顶点, 面, 颜色, 名字)。不依赖 mesh.py 的类型。"""
+    """读一份网格，返回 (顶点, 面, 颜色, 名字, 是不是花形)。
+
+    只认 vertices 和 faces；带 shape="blossom" 或者带 petals 字段的按花形画，
+    花形不做法向剔除，侧视压成一条也照样画出来。
+    """
     number = index + 1
     vertices = _field(mesh, "vertices")
     faces = _field(mesh, "faces")
@@ -132,7 +140,9 @@ def _mesh_data(mesh, index: int):
 
     color = _field(mesh, "color") or "mid"
     name = _field(mesh, "name") or "网格 %d" % number
-    return points, polygons, str(color), str(name)
+    shape = str(_field(mesh, "shape") or "")
+    blossom = shape == "blossom" or _field(mesh, "petals") is not None
+    return points, polygons, str(color), str(name), blossom
 
 
 def _normal(vertices, face):
@@ -173,6 +183,90 @@ def _dot(first, second) -> float:
     return first[0] * second[0] + first[1] * second[1] + first[2] * second[2]
 
 
+def _cross(first, second):
+    return (
+        first[1] * second[2] - first[2] * second[1],
+        first[2] * second[0] - first[0] * second[2],
+        first[0] * second[1] - first[1] * second[0],
+    )
+
+
+def _normalize(vector):
+    length = math.sqrt(_dot(vector, vector))
+    if length <= 1e-12:
+        raise ValueError("方向向量不能是零向量")
+    return (vector[0] / length, vector[1] / length, vector[2] / length)
+
+
+def make_blossom(center=None, diameter=0.0, facing=(0.0, 0.0, 1.0), petals=5,
+                 color="#C8455F", name="花"):
+    """做一朵薄片花：花瓣绕中心排一圈，瓣尖带凹缺，厚度为零。
+
+    参数：
+        center   [x, y, z]，花心位置，必填
+        diameter 花径，必填，必须大于 0
+        facing   花面朝向，默认 [0, 0, 1]，零向量报错
+        petals   花瓣数，默认 5，至少 3
+        color    颜色，默认 #C8455F
+        name     名字，默认「花」
+
+    返回一份 dict 网格：vertices、faces、color、name，外加 shape="blossom"、
+    petals、center、diameter、facing 几个标记。ortho 认这个标记，按花形画，
+    不做法向剔除，侧视压成一条也保留同色描边，不会露白缝。
+    """
+    if center is None:
+        raise ValueError("花形需要 center：[x, y, z]")
+    cx, cy, cz = _numbers(center, "花形的 center")
+    size = float(diameter)
+    if size <= 0:
+        raise ValueError("花形的 diameter 必须大于 0")
+    count = int(petals)
+    if count < 3:
+        raise ValueError("花形的 petals 至少为 3")
+    normal = _normalize(_numbers(facing, "花形的 facing"))
+
+    # 花面里的两个基向量。朝向接近竖直时换辅助向量，免得叉积退化。
+    helper = (0.0, 1.0, 0.0) if abs(normal[1]) < 0.9 else (1.0, 0.0, 0.0)
+    axis_u = _normalize(_cross(helper, normal))
+    axis_v = _normalize(_cross(normal, axis_u))
+
+    radius = size / 2.0
+    # 半宽略大于半个瓣距，相邻花瓣叠一点，同色描边把接缝盖住。
+    half = (math.pi / count) * 1.06
+    # 单瓣轮廓：中心、左缘、左肩、左尖、瓣尖凹缺、右尖、右肩、右缘。
+    # 半径收到 0.35 再抬到 1.0，瓣与瓣之间才有清楚的 V 形缺口。
+    profile = [
+        (0.35, -1.00), (0.86, -0.72), (1.00, -0.40),
+        (0.72, 0.00),
+        (1.00, 0.40), (0.86, 0.72), (0.35, 1.00),
+    ]
+
+    vertices = []
+    faces = []
+    for petal in range(count):
+        angle = 2.0 * math.pi * petal / count
+        face = [len(vertices)]
+        vertices.append([cx, cy, cz])
+        for ratio, spread in profile:
+            theta = angle + half * spread
+            a = math.cos(theta) * radius * ratio
+            b = math.sin(theta) * radius * ratio
+            vertices.append([
+                cx + axis_u[0] * a + axis_v[0] * b,
+                cy + axis_u[1] * a + axis_v[1] * b,
+                cz + axis_u[2] * a + axis_v[2] * b,
+            ])
+            face.append(len(vertices) - 1)
+        faces.append(face)
+
+    return {
+        "vertices": vertices, "faces": faces,
+        "color": str(color), "name": str(name),
+        "shape": "blossom", "petals": count,
+        "center": [cx, cy, cz], "diameter": size, "facing": list(normal),
+    }
+
+
 def _light(normal) -> float:
     """法向量跟光的夹角换成明度系数，保持平涂的克制。"""
     return 0.60 + 0.40 * max(0.0, _dot(normal, LIGHT))
@@ -203,7 +297,7 @@ def _layout(prepared, width: int, height: int, margin: int, title_band: int,
 
     us, vs = [], []
     view_vs = {view: [] for view in AXES}
-    for vertices, _, _, _ in prepared:
+    for vertices, _, _, _, _ in prepared:
         for view in AXES:
             for u, v in ortho_project(vertices, view, 1.0):
                 us.append(u)
@@ -364,29 +458,36 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
                  name="%s画板" % AXIS_TITLES[panel["view"]])
 
     drawn_faces = 0
+    view_faces = {view: 0 for view in AXES}
     for view, panel in zip(AXES, layout["panels"]):
         items = []
-        for mesh_index, (vertices, faces, color, name) in enumerate(prepared):
+        for mesh_index, (vertices, faces, color, name, blossom) in enumerate(prepared):
             for face_index, face in enumerate(faces):
                 normal = _normal(vertices, face)
-                if _dot(normal, FORWARD[view]) >= -1e-9:
+                # 花形是零厚度的薄片，侧视会退化成一条，不能按法向剔掉。
+                if not blossom and _dot(normal, FORWARD[view]) >= -1e-9:
                     continue
                 items.append((-_depth(_center(vertices, face), view),
-                              mesh_index, face_index, face, normal, color, name))
+                              mesh_index, face_index, face, normal, color, name, blossom))
         items.sort(key=lambda item: item[0])
-        for _, mesh_index, face_index, face, normal, color, name in items:
+        for (_, mesh_index, face_index, face, normal, color, name,
+             blossom) in items:
             knots = [list(project_panel(prepared[mesh_index][0][index], view, layout))
                      for index in face]
             # 描边跟填充同色：盖住相邻面之间的抗锯齿缝，近看不会有细白线。
             # 圆角接头是必须的：锥体顶点的夹角极尖，斜接会甩出两根长刺。
             tone = _shade(color_of(colors, color), _light(normal))
+            if blossom and face_index % 2:
+                tone = _shade(tone, 0.94)
             pen.path([{"closed": True, "knots": knots}],
                      fill=tone, stroke_width=1, stroke=tone,
-                     name="%s·面 %d" % (name, face_index + 1))
+                     name=("%s·花瓣 %d" if blossom else "%s·面 %d")
+                          % (name, face_index + 1))
             stroke = pen.commands[-1]["params"].get("stroke")
             if stroke:
                 stroke["join"] = "round"
             drawn_faces += 1
+            view_faces[view] += 1
 
     drawn_dimensions = 0
     for index, item in enumerate(dimensions or []):
@@ -415,6 +516,7 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
         "panels": [dict(panel) for panel in layout["panels"]],
         "meshes": len(prepared),
         "faces": drawn_faces,
+        "view_faces": dict(view_faces),
         "dimensions": drawn_dimensions,
         "commands": len(pen.commands),
     }
@@ -513,6 +615,36 @@ def _cone_mesh(radius, height, x, z, color, name, segments=16):
     return {"vertices": vertices, "faces": faces, "color": color, "name": name}
 
 
+def _stick_mesh(start, end, radius, color, name, sides=8):
+    """两点之间的一根细柱，给花枝用。"""
+    first = [float(value) for value in start]
+    second = [float(value) for value in end]
+    axis = _normalize([second[0] - first[0], second[1] - first[1],
+                       second[2] - first[2]])
+    helper = (0.0, 1.0, 0.0) if abs(axis[1]) < 0.9 else (1.0, 0.0, 0.0)
+    axis_u = _normalize(_cross(helper, axis))
+    axis_v = _normalize(_cross(axis, axis_u))
+
+    vertices = []
+    for center in (first, second):
+        for step in range(sides):
+            phi = 2.0 * math.pi * step / sides
+            offset = (math.cos(phi), math.sin(phi))
+            vertices.append([
+                center[0] + (axis_u[0] * offset[0] + axis_v[0] * offset[1]) * radius,
+                center[1] + (axis_u[1] * offset[0] + axis_v[1] * offset[1]) * radius,
+                center[2] + (axis_u[2] * offset[0] + axis_v[2] * offset[1]) * radius,
+            ])
+
+    faces = []
+    for step in range(sides):
+        nxt = (step + 1) % sides
+        faces.append([step, sides + step, sides + nxt, nxt])
+    faces.append(list(range(sides)))
+    faces.append([sides + step for step in range(sides - 1, -1, -1)])
+    return {"vertices": vertices, "faces": faces, "color": color, "name": name}
+
+
 DEMO_DIMENSIONS = [
     # 三个尺寸都摆到物体外接框以外，线离物体至少 40 像素。
     # 同一条尺寸在左视图和俯视图里方向不同，拆成几条各给各的间距和位置。
@@ -539,16 +671,48 @@ def demo_meshes():
     ]
 
 
+def demo_flower_meshes():
+    """一枝花：主枝、两根侧枝、三朵朝向不同的花。
+
+    顶花朝正前方、左花朝左边、右花朝上，三个视图各有一朵正对镜头的
+    五瓣花；另外两朵在这个视图里压成一条，这是平面花的正确投影。
+    """
+    return [
+        _stick_mesh((0.0, 0.0, 0.0), (0.12, 1.95, 0.03), 0.035, "#6B4A36", "主枝"),
+        _stick_mesh((0.03, 1.05, 0.01), (-0.88, 1.50, 0.18), 0.024, "#6B4A36", "左枝"),
+        _stick_mesh((0.08, 1.45, 0.02), (0.72, 1.26, -0.32), 0.024, "#6B4A36", "右枝"),
+        make_blossom((0.16, 2.16, 0.06), 1.10, facing=(0.32, 0.22, 0.92),
+                     color="#C8455F", name="顶花"),
+        make_blossom((-1.00, 1.62, 0.22), 0.90, facing=(-0.86, 0.30, 0.42),
+                     color="#D25A72", name="左花"),
+        make_blossom((0.82, 1.32, -0.40), 0.85, facing=(0.28, 0.90, 0.34),
+                     color="#B3324C", name="右花"),
+    ]
+
+
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="正交投影演示：方块、球、柱、锥的三视图")
-    parser.add_argument("--out", default="out/ortho-demo.png", help="输出 PNG，默认 out/ortho-demo.png")
+    parser = argparse.ArgumentParser(description="正交投影演示：三视图")
+    parser.add_argument("--scene", choices=("solids", "flower"), default="solids",
+                        help="solids 是方块球柱锥，flower 是一枝花，默认 solids")
+    parser.add_argument("--out", default=None, help="输出 PNG；不写时按场景取名")
     parser.add_argument("--width", type=int, default=800, help="单张视图宽，默认 800")
     parser.add_argument("--height", type=int, default=700, help="画布高，默认 700")
     parser.add_argument("--center-per-view", action="store_true",
                         help="每个视图按自身内容竖向居中，比例尺不变")
     args = parser.parse_args(argv)
-    summary = render_views(demo_meshes(), args.out, width=args.width, height=args.height,
-                           dimensions=DEMO_DIMENSIONS,
+
+    if args.scene == "flower":
+        meshes = demo_flower_meshes()
+        dimensions = None
+        default_out = "out/ortho-flower.png"
+    else:
+        meshes = demo_meshes()
+        dimensions = DEMO_DIMENSIONS
+        default_out = "out/ortho-demo.png"
+
+    summary = render_views(meshes, args.out or default_out,
+                           width=args.width, height=args.height,
+                           dimensions=dimensions,
                            center_per_view=args.center_per_view)
     print("%s | %dx%d | 3 个视图 | %d 个面 | 比例尺 %.3f | %d 条尺寸 | 居中 %s | %s"
           % (summary["name"], summary["width"], summary["height"],

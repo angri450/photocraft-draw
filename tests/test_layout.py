@@ -206,5 +206,78 @@ class LayoutTest(unittest.TestCase):
             self.assertIn(word, text)
 
 
+def make_branch(path, start, end, width=5, size=(240, 160), background=BG):
+    """画一根从边上伸进来的斜线，当折枝用。"""
+    image = Image.new("RGB", size, background)
+    draw = ImageDraw.Draw(image)
+    draw.line([start, end], fill=BLOCK, width=width)
+    image.save(path)
+    return path
+
+
+class PresetTest(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.root = Path(self.folder.name)
+
+    def test_default_preset_is_centered(self):
+        path = make_image(self.root / "a.png", blocks=[([50, 30, 70, 50], BLOCK)])
+        result = analyze(path)
+        self.assertEqual(result["preset"], "centered")
+        self.assertIsNone(result["branch"])
+        self.assertIsNone(result["exit_edge"])
+
+    def test_presets_disagree_on_branch(self):
+        path = make_branch(self.root / "branch.png", (0, 20), (90, 60))
+        centered = analyze(path)
+        branch = analyze(path, {"preset": "branch"})
+        self.assertTrue(any("黄金分割" in item for item in centered["issues"]))
+        self.assertFalse(any("黄金分割" in item for item in branch["issues"]))
+        self.assertEqual(branch["exit_edge"], "left")
+        self.assertTrue(branch["branch"]["ok"])
+
+    def test_exit_edge_right_and_bottom(self):
+        right = make_branch(self.root / "right.png", (239, 120), (150, 40))
+        bottom = make_branch(self.root / "bottom.png", (120, 159), (60, 60))
+        self.assertEqual(analyze(right, {"preset": "branch"})["exit_edge"], "right")
+        self.assertEqual(analyze(bottom, {"preset": "branch"})["exit_edge"], "bottom")
+
+    def test_branch_skips_centroid_warning(self):
+        path = make_branch(self.root / "branch.png", (0, 20), (90, 60))
+        result = analyze(path, {"preset": "branch"})
+        self.assertEqual(result["issues"], [])
+        self.assertIsNotNone(result["center_offset"])
+
+    def test_branch_checks_other_three_margins(self):
+        # 从左边进来，但枝梢顶到上边，三边余量里上边不够
+        path = make_branch(self.root / "top.png", (0, 60), (120, 1))
+        result = analyze(path, {"preset": "branch"})
+        self.assertIn("top", result["branch"]["short_edges"])
+        self.assertTrue(any("上边余量" in item for item in result["issues"]))
+
+    def test_branch_tip_must_stay_upper_two_thirds(self):
+        path = make_branch(self.root / "low.png", (0, 20), (150, 150))
+        result = analyze(path, {"preset": "branch"})
+        self.assertFalse(result["branch"]["tip_ok"])
+        self.assertTrue(any("枝梢" in item for item in result["issues"]))
+
+    def test_branch_empty_image_raises(self):
+        path = make_image(self.root / "empty.png", blocks=())
+        with self.assertRaises(ValueError):
+            analyze(path, {"preset": "branch"})
+
+    def test_unknown_preset_raises(self):
+        with self.assertRaises(ValueError):
+            merge_rules({"preset": "no_such"})
+
+    def test_branch_report_has_entry(self):
+        path = make_branch(self.root / "branch.png", (0, 20), (90, 60))
+        text = report(analyze(path, {"preset": "branch"}))
+        self.assertIn("折枝", text)
+        self.assertIn("入画", text)
+        self.assertNotIn("重心偏移", text)
+
+
 if __name__ == "__main__":
     unittest.main()

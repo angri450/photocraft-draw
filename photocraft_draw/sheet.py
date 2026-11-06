@@ -20,7 +20,7 @@ NOTO = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
 
 DEFAULT_NOTES = (
     ("一", "出枝", "主枝从左下进画，与地平线约成四十二度，合折枝画的取势。"),
-    ("二", "花数", "四朵开放、三个花苞，最大在右上，最小收在枝的中段。"),
+    ("二", "花数", "四朵开放、两个花苞，最大在右上，最小收在枝的中段。"),
     ("三", "朝向", "花面与视线夹角控制在四十五度以内，再侧就压成一条线。"),
     ("四", "叶序", "叶片全部在花后，只露边缘，不插进花心。"),
     ("五", "花梗", "梗长一厘米到一厘米半，长短不一，避免所有花贴在枝上。"),
@@ -83,7 +83,7 @@ def build_page(model: Path, views: Path, out: Path, moss: Path | None = None,
     vx, vy = 96, 1258
     page.paste(picture, (vx, vy))
     _frame(page, [vx, vy, vx + picture.width, vy + picture.height])
-    draw.text((vx, vy + picture.height + 12), "图三  同一枝的正、左、俯三视，花用体积球代替",
+    draw.text((vx, vy + picture.height + 12), "图三  同一枝的正、左、俯三视，花用五瓣薄片表示朝向",
               font=_font(NOTO, 24), fill=SOFT)
 
     source = moss if (moss and Path(moss).is_file()) else model

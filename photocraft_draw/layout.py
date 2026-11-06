@@ -30,6 +30,7 @@ from pathlib import Path
 
 # 默认规则。rules 参数只覆盖给出的项，其余照旧。
 DEFAULT_RULES = {
+    "preset": "centered",
     "golden": [0.382, 0.618],
     "thirds": [1 / 3, 2 / 3],
     "three_seven": [0.3, 0.7],
@@ -37,7 +38,16 @@ DEFAULT_RULES = {
     "background_share": 0.05,
     "background_tolerance": 24.0,
     "margin_warn": 0.02,
+    "branch_margin": 8.0,
+    "tip_ratio": 2.0 / 3.0,
 }
+
+PRESETS = ("centered", "branch")
+
+EDGE_NAMES = {"left": "左", "right": "右", "top": "上", "bottom": "下"}
+
+# 主轴端点到画布边多少像素以内算入画。
+BRANCH_EDGE_TOLERANCE = 2.0
 
 GROUPS = (
     ("golden", "黄金分割"),
@@ -80,14 +90,19 @@ def merge_rules(rules: dict | None = None) -> dict:
     if not isinstance(rules, dict):
         raise ValueError("rules 必须是一个对象")
     for key, value in rules.items():
-        if key in ("golden", "thirds", "three_seven"):
+        if key == "preset":
+            if value not in PRESETS:
+                raise ValueError("preset 只能是 %s，收到 %r" % ("、".join(PRESETS), value))
+            merged["preset"] = value
+        elif key in ("golden", "thirds", "three_seven"):
             if not isinstance(value, (list, tuple)) or not value:
                 raise ValueError(f"{key} 要是非空数组")
             ratios = [float(item) for item in value]
             if any(item <= 0 or item >= 1 for item in ratios):
                 raise ValueError(f"{key} 的比例要在 0 和 1 之间")
             merged[key] = ratios
-        elif key in ("offset_warn", "background_share", "background_tolerance", "margin_warn"):
+        elif key in ("offset_warn", "background_share", "background_tolerance", "margin_warn",
+                     "branch_margin", "tip_ratio"):
             merged[key] = float(value)
         else:
             merged[key] = value
@@ -270,6 +285,85 @@ def _nearest_line(value: float, size: float, ratios: list):
     return best
 
 
+def _axis_extremes(raw, width: int, height: int, backgrounds: list,
+                   tolerance: float, angle: float):
+    """沿主轴方向找主体的两个端点。
+
+    折枝的主轴就是枝条本身，两端一个是入画点，一个是枝梢。先按主轴角度
+    把所有前景像素投到一个轴上，取投影最小和最大的两个点。
+    """
+    limit = tolerance * tolerance
+    rad = math.radians(angle)
+    dx, dy = math.cos(rad), math.sin(rad)
+    low = high = None
+    low_point = high_point = None
+    base = 0
+    for y in range(height):
+        for x in range(width):
+            if not _is_background(raw, base, backgrounds, limit):
+                projection = x * dx + y * dy
+                if low is None or projection < low:
+                    low, low_point = projection, (x, y)
+                if high is None or projection > high:
+                    high, high_point = projection, (x, y)
+            base += 3
+    return low_point, high_point
+
+
+def _edge_gaps(point, width: int, height: int) -> dict:
+    x, y = point
+    return {
+        "left": x,
+        "right": width - 1 - x,
+        "top": y,
+        "bottom": height - 1 - y,
+    }
+
+
+def _branch_analysis(raw, width: int, height: int, backgrounds: list,
+                     stats: dict, rules: dict) -> dict:
+    """折枝题材：枝条从画外进来，量入画边、枝梢位置和三边余量。"""
+    first, second = _axis_extremes(raw, width, height, backgrounds,
+                                   float(rules["background_tolerance"]), stats["angle"])
+    first_gaps = _edge_gaps(first, width, height)
+    second_gaps = _edge_gaps(second, width, height)
+    # 离边更近的那一头是入画点，另一头是枝梢
+    if min(first_gaps.values()) <= min(second_gaps.values()):
+        start, tip, gaps = first, second, first_gaps
+    else:
+        start, tip, gaps = second, first, second_gaps
+    edge = min(gaps, key=lambda key: gaps[key])
+    attached = gaps[edge] <= BRANCH_EDGE_TOLERANCE
+
+    tip_ratio = tip[1] / height if height else 0.0
+    limit = float(rules["tip_ratio"])
+    tip_ok = 0.0 <= tip_ratio <= limit
+
+    x0, y0, x1, y1 = stats["bbox"]
+    margins = {
+        "left": x0,
+        "right": width - 1 - x1,
+        "top": y0,
+        "bottom": height - 1 - y1,
+    }
+    need = float(rules["branch_margin"])
+    rest = {key: value for key, value in margins.items() if key != edge}
+    short = sorted(key for key, value in rest.items() if value < need)
+
+    return {
+        "start": [start[0], start[1]],
+        "tip": [tip[0], tip[1]],
+        "exit_edge": edge if attached else "none",
+        "attached": bool(attached),
+        "tip_ratio": round(tip_ratio, 4),
+        "tip_ok": bool(tip_ok),
+        "margins": {key: int(value) for key, value in rest.items()},
+        "margin_ok": not short,
+        "short_edges": short,
+        "ok": bool(attached and tip_ok and not short),
+    }
+
+
 def _analyze_image(image, rules: dict) -> dict:
     width, height = image.size
     raw = image.tobytes()
@@ -310,18 +404,37 @@ def _analyze_image(image, rules: dict) -> dict:
             "warn": warn,
         }
 
+    preset = rules["preset"]
+    branch = None
+    if preset == "branch":
+        if not stats["bbox"]:
+            raise ValueError("折枝检查需要主体像素，这张图整幅都是背景")
+        branch = _branch_analysis(raw, width, height, backgrounds, stats, rules)
+
     issues = []
-    if center_offset:
-        if center_offset["warn_x"]:
-            issues.append(
-                "横向离最近黄金分割线 %.1f 像素，超过警戒线 %.0f"
-                % (center_offset["gap_x"], center_offset["warn"]))
-        if center_offset["warn_y"]:
-            issues.append(
-                "纵向离最近黄金分割线 %.1f 像素，超过警戒线 %.0f"
-                % (center_offset["gap_y"], center_offset["warn"]))
-    if margin and margin["tight"]:
-        issues.append("主体离画布边缘最近只有 %d 像素，画面偏挤" % margin["min"])
+    if preset == "centered":
+        if center_offset:
+            if center_offset["warn_x"]:
+                issues.append(
+                    "横向离最近黄金分割线 %.1f 像素，超过警戒线 %.0f"
+                    % (center_offset["gap_x"], center_offset["warn"]))
+            if center_offset["warn_y"]:
+                issues.append(
+                    "纵向离最近黄金分割线 %.1f 像素，超过警戒线 %.0f"
+                    % (center_offset["gap_y"], center_offset["warn"]))
+        if margin and margin["tight"]:
+            issues.append("主体离画布边缘最近只有 %d 像素，画面偏挤" % margin["min"])
+    elif branch:
+        if not branch["attached"]:
+            issues.append("枝条没有从画布边缘入画，主轴两端都离边超过 %d 像素"
+                          % int(BRANCH_EDGE_TOLERANCE))
+        if not branch["tip_ok"]:
+            issues.append("枝梢落在画面 y %.0f%% 处，没有收在上三分之二以内"
+                          % (branch["tip_ratio"] * 100))
+        need = float(rules["branch_margin"])
+        for edge in branch["short_edges"]:
+            issues.append("%s边余量只有 %d 像素，不足 %.0f"
+                          % (EDGE_NAMES[edge], branch["margins"][edge], need))
     if not stats["pixels"]:
         issues.append("没有非背景像素，密度为 0")
 
@@ -332,6 +445,7 @@ def _analyze_image(image, rules: dict) -> dict:
             "height": height,
         },
         "rules": rules,
+        "preset": preset,
         "background": [list(color) for color in backgrounds],
         "subject": {
             "pixels": stats["pixels"],
@@ -350,6 +464,8 @@ def _analyze_image(image, rules: dict) -> dict:
         "axis_angle": stats["angle"] if stats["pixels"] else None,
         "axis_note": _axis_note(stats["angle"]) if stats["pixels"] else None,
         "margin": margin,
+        "exit_edge": branch["exit_edge"] if branch else None,
+        "branch": branch,
         "issues": issues,
     }
 
@@ -479,9 +595,11 @@ def draw_grid(png_path, out_path, rules: dict | None = None, result: dict | None
 def report(result: dict) -> str:
     image = result["image"]
     subject = result["subject"]
+    preset = result.get("preset", "centered")
+    preset_name = "居中主体" if preset == "centered" else "折枝"
     lines = [
-        "图 %dx%d | 背景 %d 色 | 主体像素 %d（%.1f%%）"
-        % (image["width"], image["height"], len(result["background"]),
+        "图 %dx%d | 题材 %s | 背景 %d 色 | 主体像素 %d（%.1f%%）"
+        % (image["width"], image["height"], preset_name, len(result["background"]),
            subject["pixels"], subject["ratio"] * 100),
     ]
     if not subject["pixels"]:
@@ -490,15 +608,34 @@ def report(result: dict) -> str:
 
     lines.append("主体外接框 %s，重心 (%.1f, %.1f)"
                  % (subject["bbox"], subject["centroid"][0], subject["centroid"][1]))
-    offset = result["center_offset"]
-    lines.append(
-        "重心偏移：横向 %+.1f 像素（最近黄金分割 %.3f，%s），"
-        "纵向 %+.1f 像素（%.3f，%s），警戒线 %.0f"
-        % (offset["x"], offset["line_x"],
-           "偏右" if offset["x"] < 0 else "偏左",
-           offset["y"], offset["line_y"],
-           "偏下" if offset["y"] < 0 else "偏上",
-           offset["warn"]))
+    if preset == "branch" and result.get("branch"):
+        branch = result["branch"]
+        edge = branch["exit_edge"]
+        where = EDGE_NAMES.get(edge, "没有贴边")
+        lines.append(
+            "入画：%s，起点 %s，枝梢 %s，枝梢 y 比例 %.2f（%s）"
+            % (where + "边" if edge in EDGE_NAMES else where,
+               branch["start"], branch["tip"], branch["tip_ratio"],
+               "在上三分之二以内" if branch["tip_ok"] else "超出上三分之二"))
+        margins = branch["margins"]
+        lines.append("余量：%s（至少 %.0f 像素）"
+                     % ("、".join("%s %d" % (EDGE_NAMES[key], value)
+                                 for key, value in margins.items()),
+                        float(result["rules"]["branch_margin"])))
+    else:
+        offset = result["center_offset"]
+        lines.append(
+            "重心偏移：横向 %+.1f 像素（最近黄金分割 %.3f，%s），"
+            "纵向 %+.1f 像素（%.3f，%s），警戒线 %.0f"
+            % (offset["x"], offset["line_x"],
+               "偏右" if offset["x"] < 0 else "偏左",
+               offset["y"], offset["line_y"],
+               "偏下" if offset["y"] < 0 else "偏上",
+               offset["warn"]))
+        margin = result["margin"]
+        lines.append("边距：左 %d 右 %d 上 %d 下 %d，最小 %d"
+                     % (margin["left"], margin["right"], margin["top"],
+                        margin["bottom"], margin["min"]))
     density = result["density"]
     quadrants = density["quadrants"]
     lines.append("疏密：左上 %.1f%% 右上 %.1f%% 左下 %.1f%% 右下 %.1f%% | 左右 %+.1f%% 上下 %+.1f%%"
@@ -506,10 +643,6 @@ def report(result: dict) -> str:
                     quadrants[2] * 100, quadrants[3] * 100,
                     density["left_right"] * 100, density["top_bottom"] * 100))
     lines.append("长轴：%.1f°，%s" % (result["axis_angle"], result["axis_note"]))
-    margin = result["margin"]
-    lines.append("边距：左 %d 右 %d 上 %d 下 %d，最小 %d"
-                 % (margin["left"], margin["right"], margin["top"],
-                    margin["bottom"], margin["min"]))
     if result["issues"]:
         lines.append("提示：")
         for text in result["issues"]:

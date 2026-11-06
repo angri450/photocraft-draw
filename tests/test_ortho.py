@@ -13,6 +13,7 @@ from photocraft_draw.ortho import (
     AXES,
     build_views,
     demo_meshes,
+    make_blossom,
     ortho_project,
     project_panel,
 )
@@ -278,3 +279,71 @@ class TestPerViewCenter:
         low_plain = project_panel([0.0, 0.0, 0.0], "front", plain)
         high_plain = project_panel([0.0, 2.2, 0.0], "front", plain)
         assert abs((low_plain[1] + high_plain[1]) / 2.0 - middle) > 1.0
+
+
+class TestBlossom:
+    """薄片花形：五瓣、自带标记、不按法向剔除、侧视压扁。"""
+
+    def flower(self, **kwargs):
+        options = {"center": [0.0, 0.0, 0.0], "diameter": 1.0,
+                   "facing": [0.0, 0.0, 1.0]}
+        options.update(kwargs)
+        return make_blossom(**options)
+
+    def test_mesh_has_five_petals_and_a_flag(self):
+        flower = self.flower()
+        assert flower["shape"] == "blossom"
+        assert flower["petals"] == 5
+        assert len(flower["faces"]) == 5
+        assert len(flower["vertices"]) == 40
+
+    def test_front_view_shows_five_petals(self):
+        _, meta = build_views([self.flower()], width=800, height=700)
+        assert meta["view_faces"]["front"] == 5
+
+    def test_petals_are_drawn_in_all_three_views(self):
+        commands, _ = build_views([self.flower()], width=800, height=700)
+        petals = [item for item in commands
+                  if item["params"].get("name", "").startswith("花·花瓣")]
+        assert len(petals) == 15   # 三个视图 × 五瓣，侧视也不剔除
+
+    def test_side_view_is_flatter_than_the_front(self):
+        flower = self.flower()
+        front = extents(ortho_project(flower["vertices"], "front"))[0]
+        left = extents(ortho_project(flower["vertices"], "left"))[0]
+        assert 0.9 <= front <= 1.0
+        assert left == pytest.approx(0.0, abs=1e-9)
+
+    def test_scale_matches_the_other_objects(self):
+        flower = self.flower()
+        box = box_mesh(1.8, 2.2, 1.1)
+        _, meta = build_views([box, flower], width=800, height=700)
+        for mesh in (box, flower):
+            world = extents(ortho_project(mesh["vertices"], "front"))[0]
+            screen = extents([project_panel(point, "front", meta)
+                              for point in mesh["vertices"]])[0]
+            assert screen == pytest.approx(world * meta["scale"])
+
+    def test_petals_are_stroked_with_their_own_fill(self):
+        commands, _ = build_views([self.flower()], width=800, height=700)
+        petals = [item["params"] for item in commands
+                  if item["params"].get("name", "").startswith("花·花瓣")]
+        assert petals
+        for params in petals:
+            assert params["stroke"]["color"] == params["fill"]
+
+    def test_petals_field_alone_marks_a_blossom(self):
+        flower = self.flower()
+        flower.pop("shape")
+        _, meta = build_views([flower], width=800, height=700)
+        assert meta["view_faces"]["left"] == 5
+
+    def test_empty_parameters_raise(self):
+        with pytest.raises(ValueError, match="center"):
+            make_blossom()
+        with pytest.raises(ValueError, match="diameter"):
+            make_blossom([0, 0, 0], 0)
+        with pytest.raises(ValueError, match="petals"):
+            make_blossom([0, 0, 0], 1.0, petals=2)
+        with pytest.raises(ValueError, match="facing|零向量"):
+            make_blossom([0, 0, 0], 1.0, facing=[0, 0, 0])

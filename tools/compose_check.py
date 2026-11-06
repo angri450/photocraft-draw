@@ -252,7 +252,8 @@ def main(argv=None) -> int:
          "views": ["left"], "offset": 26},
     ]
     views = render_views(meshes, out / "compose-views.png",
-                         width=600, height=700, dimensions=dimensions)
+                         width=600, height=700, dimensions=dimensions,
+                         center_per_view=True)
 
     # 4. layout 读透视底图出数字，再叠一张网格图
     result = analyze(persp)
