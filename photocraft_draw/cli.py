@@ -267,6 +267,33 @@ def cmd_layout(args) -> int:
     return 0
 
 
+def cmd_prompt(args) -> int:
+    from .scene_prompt import caption_from_plan, layout_from_plan
+
+    plan = load_plan(args.plan)
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if args.caption_only:
+        out.write_text(caption_from_plan(plan) + "\n", encoding="utf-8")
+        print("描述：%s" % out)
+        return 0
+    draft = layout_from_plan(plan, args.width, args.height, caption_from_plan(plan))
+    out.write_text(json.dumps(draft, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("Layout 草稿：%s | %d 项" % (out, len(draft["items"])))
+    if args.compile_to:
+        import subprocess
+        import sys as _sys
+        skill = Path("/home/wanli/cb-cwd-20261007/.codebuddy/skills/moss-image-prompt-enhancer")
+        result = subprocess.run(
+            [_sys.executable, str(skill / "scripts/compile_prompt.py"), str(out),
+             "--output", args.compile_to], capture_output=True, text=True)
+        print(result.stdout.strip() or result.stderr.strip())
+        if result.returncode:
+            return result.returncode
+        print("提示词：%s" % args.compile_to)
+    return 0
+
+
 def cmd_sheet(args) -> int:
     from .sheet import build_page
 
@@ -544,6 +571,15 @@ def build_parser() -> argparse.ArgumentParser:
     layout.add_argument("--json", help="结构化结果输出路径")
     layout.add_argument("--rules", help="规则文件，JSON 对象")
     layout.set_defaults(func=cmd_layout)
+
+    prompt = sub.add_parser("prompt", help="把方案编译成生图提示词或 Layout")
+    prompt.add_argument("plan", help="绘制方案文件")
+    prompt.add_argument("--out", default="out/layout.json", help="Layout 草稿输出路径")
+    prompt.add_argument("--width", type=int, default=896, help="目标宽，16 的倍数")
+    prompt.add_argument("--height", type=int, default=1200, help="目标高，16 的倍数")
+    prompt.add_argument("--caption-only", action="store_true", help="只出整体描述，不出 Layout")
+    prompt.add_argument("--compile-to", help="编译后的提示词路径")
+    prompt.set_defaults(func=cmd_prompt)
 
     sheet = sub.add_parser("sheet", help="把成图、三视图和放大拼成一页手稿")
     sheet.add_argument("--model", required=True, help="结构成图")
