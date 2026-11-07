@@ -1,0 +1,328 @@
+{
+  "name": "室内一角 · 窗光、长桌与陶瓶",
+  "canvas": [900, 1200],
+  "ref_width": 900,
+  "palette": "fresco",
+  "document_background": "#E3D3B4",
+  "brief_zh": {
+    "subject": "房间一角，后墙上有一扇拱窗，窗光斜照到地面上；前景一张长桌，桌上摆一只陶瓶和几只盘子",
+    "style": "平涂色块加建筑线条，结构清楚",
+    "light": "窗光从右上方斜照进来，光带落在地面和桌面上",
+    "mood": "安静，午后",
+    "camera": "平视，视平线在画高 0.55 处，灭点在画宽右侧三分之二处",
+    "palette": "土墙 #DDC9A4、侧墙 #C3A67C、地面 #A9895F、窗光 #F6E6BD、帷幔深红 #6B2F24"
+  },
+  "brief_en": {
+    "subject": "a corner of a room with an arched window on the back wall and a shaft of window light falling to the floor; a long table in the foreground with a pottery bottle and plates",
+    "style": "flat colour planes with architectural lines, clear structure",
+    "light": "window light from the upper right, a shaft falling across the floor and table",
+    "mood": "quiet, afternoon",
+    "camera": "eye level, horizon at 0.55 of frame height, vanishing point at two thirds of the frame width",
+    "palette": "earth wall #DDC9A4, side wall #C3A67C, floor #A9895F, window light #F6E6BD, drapery deep red #6B2F24"
+  },
+  "layers": [
+    {
+      "name": "室内背景",
+      "depth": 9,
+      "components": [
+        {
+          "component": "indoor_backdrop",
+          "params": {
+            "wall": [0, 0, 900, 1200],
+            "floor": [0, 909, 900, 291],
+            "ceiling": [0, 0, 900, 354],
+            "tapestries": [[300, 380, 84, 320]],
+            "colors": {
+              "wall": "#DDC9A4",
+              "floor": "#A9895F",
+              "ceiling": "#F2E6CC",
+              "tapestry": "#6B2F24",
+              "fold": "#3A2A1E"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "墙体透视",
+      "depth": 8,
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "左侧墙",
+            "fill": "#C3A67C",
+            "subpaths": [
+              {"closed": true, "knots": [[0, 120], [260, 354], [260, 909], [0, 1100]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "天顶斜面",
+            "fill": "#F2E6CC",
+            "subpaths": [
+              {"closed": true, "knots": [[0, 0], [900, 0], [900, 354], [260, 354], [0, 120]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "地面透视",
+            "fill": "#A9895F",
+            "subpaths": [
+              {"closed": true, "knots": [[0, 1100], [260, 909], [900, 909], [900, 1200], [0, 1200]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "墙角",
+            "fill": "#8F7A5C",
+            "subpaths": [
+              {"closed": true, "knots": [[259, 354], [261, 354], [261, 909], [259, 909]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "后墙踢脚线",
+            "fill": "#8F7A5C",
+            "subpaths": [
+              {"closed": true, "knots": [[261, 908], [900, 908], [900, 910], [261, 910]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "侧墙踢脚线",
+            "fill": null,
+            "stroke": "#8F7A5C",
+            "stroke_width": 2,
+            "subpaths": [
+              {"closed": false, "knots": [[0, 1098], [260, 908]]}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "拱窗",
+      "depth": 7,
+      "components": [
+        {
+          "component": "window_glow",
+          "params": {
+            "window": [470, 405, 180, 220],
+            "glow_steps": 1,
+            "halo": [560, 590, 90, 50],
+            "colors": {
+              "glow": "#E9D9B8",
+              "hot": "#F6E6BD",
+              "halo": "#EFE0C4"
+            }
+          }
+        },
+        {
+          "component": "arched_windows",
+          "params": {
+            "windows": [[470, 405, 180, 220]],
+            "mullions": true,
+            "colors": {
+              "frame": "#8F7A5C",
+              "glass": "#F8ECC9",
+              "light": "#FDF6DD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "窗光落地",
+      "depth": 6,
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "窗光光带",
+            "fill": "#F6E6BD",
+            "subpaths": [
+              {"closed": true, "knots": [[470, 625], [650, 625], [500, 1000], [220, 1000]]}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "长桌",
+      "depth": 5,
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "桌面透视",
+            "fill": "#E6D7B8",
+            "subpaths": [
+              {"closed": true, "knots": [[300, 750], [840, 750], [707, 700], [467, 700]]}
+            ]
+          }
+        },
+        {
+          "component": "long_table",
+          "params": {
+            "table": [300, 750, 540, 60],
+            "front": 26,
+            "colors": {
+              "cloth": "#E6D7B8",
+              "front": "#C9B48A",
+              "edge": "#9C8A6E",
+              "plate": "#DDC9A4",
+              "bread": "#8A6A3A"
+            }
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "桌面左棱",
+            "fill": null,
+            "stroke": "#9C8A6E",
+            "stroke_width": 2,
+            "subpaths": [
+              {"closed": false, "knots": [[300, 750], [467, 700]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "桌面右棱",
+            "fill": null,
+            "stroke": "#9C8A6E",
+            "stroke_width": 2,
+            "subpaths": [
+              {"closed": false, "knots": [[840, 750], [707, 700]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "左桌腿",
+            "fill": "#8A6A3A",
+            "subpaths": [
+              {"closed": true, "knots": [[330, 836], [348, 836], [348, 966], [330, 966]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "右桌腿",
+            "fill": "#8A6A3A",
+            "subpaths": [
+              {"closed": true, "knots": [[792, 836], [810, 836], [810, 966], [792, 966]]}
+            ]
+          }
+        },
+        {
+          "component": "dinner_plate",
+          "params": {"center": [390, 792], "size": 34}
+        },
+        {
+          "component": "dinner_plate",
+          "params": {"center": [500, 798], "size": 32}
+        },
+        {
+          "component": "dinner_plate",
+          "params": {"center": [610, 790], "size": 30}
+        },
+        {
+          "component": "wine_goblet",
+          "params": {"center": [455, 792], "height": 42}
+        },
+        {
+          "component": "wine_goblet",
+          "params": {"center": [665, 788], "height": 36}
+        }
+      ]
+    },
+    {
+      "name": "桌面光斑",
+      "depth": 4,
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "桌面亮部",
+            "fill": "#F6E6BD",
+            "subpaths": [
+              {"closed": true, "knots": [[690, 735], [652.0, 747.7], [560, 752], [468.0, 747.7], [430, 735], [468.0, 722.3], [560, 718], [652.0, 722.3]]}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "桌上陶瓶",
+      "depth": 3,
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "瓶影",
+            "fill": "#CBB189",
+            "subpaths": [
+              {"closed": true, "knots": [[652, 732], [636.8, 739.1], [600, 742], [563.2, 739.1], [548, 732], [563.2, 724.9], [600, 722], [636.8, 724.9]]}
+            ]
+          }
+        },
+        {
+          "component": "mesh_scene",
+          "params": {
+            "named_faces": true,
+            "lighting": {
+              "direction": [-0.5, -0.9, 0.3],
+              "ambient": 0.8,
+              "diffuse": 0.35
+            },
+            "camera": {
+              "position": [0, 0, -5],
+              "target": [0, 0, 0],
+              "up": [0, 1, 0],
+              "frame": [900, 1200],
+              "center": [600, 730],
+              "projection": "ortho",
+              "ortho_scale": 150
+            },
+            "meshes": [
+              {
+                "type": "lathe",
+                "name": "陶瓶",
+                "color": "#A85E45",
+                "segments": 24,
+                "profile": [
+                  [0.0, 0.0],
+                  [0.28, 0.0],
+                  [0.28, 0.06],
+                  [0.22, 0.16],
+                  [0.20, 0.42],
+                  [0.16, 0.55],
+                  [0.10, 0.60],
+                  [0.10, 0.78],
+                  [0.13, 0.82],
+                  [0.13, 0.90]
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

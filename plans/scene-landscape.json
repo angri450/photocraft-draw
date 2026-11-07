@@ -1,6 +1,9 @@
 {
   "name": "风景 · 海棠林",
-  "canvas": [900, 1200],
+  "canvas": [
+    900,
+    1200
+  ],
   "ref_width": 900,
   "document_background": "#F4EBDF",
   "layers": [
@@ -9,7 +12,15 @@
       "depth": 3,
       "z": 300,
       "components": [
-        { "component": "grove_backdrop", "params": { "width": 900, "height": 1200, "horizon": 0.72, "seed": 7 } }
+        {
+          "component": "grove_backdrop",
+          "params": {
+            "width": 900,
+            "height": 1200,
+            "horizon": 0.56,
+            "seed": 7
+          }
+        }
       ]
     },
     {
@@ -17,8 +28,36 @@
       "depth": 2,
       "z": 200,
       "components": [
-        { "component": "crabapple_tree", "params": { "root": [700, 905], "height": 300, "seed": 5, "bloom": 0.9, "fade": 0.35, "crown": 0.26, "trunk": 0.44 } },
-        { "component": "crabapple_tree", "params": { "root": [520, 880], "height": 360, "seed": 3, "bloom": 1.0, "fade": 0.18, "crown": 0.24, "trunk": 0.46 } }
+        {
+          "component": "crabapple_tree",
+          "params": {
+            "root": [
+              490,
+              668
+            ],
+            "height": 420,
+            "seed": 3,
+            "bloom": 0.9,
+            "fade": 0.18,
+            "crown": 0.23,
+            "trunk": 0.46
+          }
+        },
+        {
+          "component": "crabapple_tree",
+          "params": {
+            "root": [
+              660,
+              675
+            ],
+            "height": 310,
+            "seed": 5,
+            "bloom": 1.0,
+            "fade": 0.34,
+            "crown": 0.22,
+            "trunk": 0.44
+          }
+        }
       ]
     },
     {
@@ -26,7 +65,91 @@
       "depth": 1,
       "z": 100,
       "components": [
-        { "component": "crabapple_tree", "params": { "root": [270, 940], "height": 470, "seed": 1, "bloom": 1.0, "fade": 0, "crown": 0.22, "trunk": 0.50 } }
+        {
+          "component": "crabapple_tree",
+          "params": {
+            "root": [
+              300,
+              672
+            ],
+            "height": 560,
+            "seed": 1,
+            "bloom": 1.0,
+            "fade": 0.0,
+            "crown": 0.24,
+            "trunk": 0.5
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "subpaths": [
+              {
+                "closed": true,
+                "knots": [
+                  {
+                    "anchor": [
+                      0,
+                      1010
+                    ],
+                    "in": [
+                      0,
+                      1010
+                    ],
+                    "out": [
+                      0,
+                      1010
+                    ]
+                  },
+                  {
+                    "anchor": [
+                      900,
+                      985
+                    ],
+                    "in": [
+                      900,
+                      985
+                    ],
+                    "out": [
+                      900,
+                      985
+                    ]
+                  },
+                  {
+                    "anchor": [
+                      900,
+                      1200
+                    ],
+                    "in": [
+                      900,
+                      1200
+                    ],
+                    "out": [
+                      900,
+                      1200
+                    ]
+                  },
+                  {
+                    "anchor": [
+                      0,
+                      1200
+                    ],
+                    "in": [
+                      0,
+                      1200
+                    ],
+                    "out": [
+                      0,
+                      1200
+                    ]
+                  }
+                ]
+              }
+            ],
+            "fill": "#D6CB96",
+            "name": "前景"
+          }
+        }
       ]
     }
   ]

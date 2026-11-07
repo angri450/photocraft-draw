@@ -1439,7 +1439,7 @@ __all__ = [
     "compose_transform", "apply_matrix", "transform_point", "transform_points",
     "face_center", "face_normal", "shade_color",
     "make_box", "make_sphere", "make_cylinder", "make_cone",
-    "make_capsule", "make_lathe", "sweep", "bounds", "is_watertight",
+    "make_capsule", "make_lathe", "sweep", "bounds", "is_watertight", "subdivide",
     "box", "sphere", "cylinder", "cone", "capsule", "lathe",
     "mesh_from_dict", "camera_from_dict",
     "view_camera", "ortho_views", "project_points", "clip_near",

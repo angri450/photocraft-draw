@@ -3,8 +3,8 @@
 
 这一层不建三维曲面。每个形状是二维轮廓，先算出它所在平面的屏幕
 仿射，再把轮廓整体贴上去。朝向决定了它被压窄多少，位置决定了遮挡
-顺序。花按整朵处理，五片花瓣共用一个平面，侧视超过阈值时自动
-收成一个扁椭圆，避免花瓣尖拉出长刺。
+顺序。花按整朵处理，两层花瓣共用一个平面，内层错开半格、压暗一档；
+花心是一圈放射状花丝加一个小圆盘。
 """
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ import math
 
 from .commands import Pen
 from .mesh import camera_from_dict
+from .palette import color_of
 
 PETAL = [
     (0.00, 0.00), (-0.15, 0.08), (-0.29, 0.28), (-0.34, 0.55),
@@ -124,6 +125,72 @@ def _sprite(pen, camera, item):
              stroke=stroke, name=item.get("name", shape))
 
 
+def _darken(color, amount):
+    """把 #rrggbb 压暗一档，色相不变；不是十六进制就原样返回。"""
+    text = str(color)
+    if len(text) != 7 or not text.startswith("#"):
+        return text
+    try:
+        channels = [int(text[index:index + 2], 16) for index in (1, 3, 5)]
+    except ValueError:
+        return text
+    factor = max(0.0, 1.0 - float(amount))
+    return "#%02x%02x%02x" % tuple(
+        max(0, min(255, int(round(channel * factor)))) for channel in channels
+    )
+
+
+def _petal_layer(pen, to_screen, count, spin, scale, fill, stroke,
+                 stroke_width, name, suffix, offset):
+    """铺一层花瓣。scale 是这一层的直径比例，offset 是整层的旋转角。"""
+    for index in range(count):
+        angle = math.radians(360.0 / count * index + math.degrees(spin) + offset)
+        ca, sa = math.cos(angle), math.sin(angle)
+        mapped = []
+        for point_index, (x, y) in enumerate(PETAL):
+            if point_index == 6:
+                y -= NOTCH
+            rx = x * ca - (y - 0.05) * sa
+            ry = x * sa + (y - 0.05) * ca + 0.05
+            mapped.append(to_screen(rx * 0.92 * scale, ry * 0.92 * scale))
+        pen.path([{"closed": True, "knots": _smooth(mapped)}], fill=fill,
+                 stroke_width=stroke_width, stroke=stroke,
+                 name="%s·%s%d" % (name, suffix, index + 1))
+
+
+def _dot(pen, to_screen, cx, cy, radius, fill, name, sides=12):
+    """在花朵平面里画一个小圆点，跟着平面一起压扁。"""
+    points = [
+        to_screen(cx + radius * math.cos(2.0 * math.pi * index / sides),
+                  cy + radius * math.sin(2.0 * math.pi * index / sides))
+        for index in range(sides)
+    ]
+    pen.path([{"closed": True, "knots": points}], fill=fill, stroke_width=None,
+             stroke=None, name=name)
+
+
+def _heart(pen, to_screen, item, name):
+    """一圈花丝加一个小圆盘，长度按花径的一成算，随花朵平面一起压扁。"""
+    color = str(item.get("heart_color", "#E9C25C"))
+    count = int(item.get("stamens", 9))
+    if not 8 <= count <= 10:
+        raise ValueError("stamens 要在 8 到 10 之间")
+    length = 0.18
+    scale = math.dist(to_screen(0.0, 0.0), to_screen(1.0, 0.0))
+    width = max(1.0, scale * 0.0075)
+    for index in range(count):
+        angle = 2.0 * math.pi * index / count + math.radians(12.0)
+        dx, dy = math.cos(angle), math.sin(angle)
+        start = length * 0.34
+        pen.line(*to_screen(dx * start, dy * start),
+                 *to_screen(dx * length, dy * length),
+                 width=width, color=color, name="%s·花丝%d" % (name, index + 1))
+        _dot(pen, to_screen, dx * length, dy * length, 0.018, color,
+             "%s·蕊头%d" % (name, index + 1))
+    _dot(pen, to_screen, 0.0, 0.0, 0.045,
+         _darken(color_of(pen.palette, color), 0.12), "%s·心盘" % name, sides=16)
+
+
 def _blossom(pen, camera, item):
     center = tuple(float(v) for v in item["center"])
     facing = _unit(item.get("facing", (0.0, 0.0, -1.0)))
@@ -132,29 +199,27 @@ def _blossom(pen, camera, item):
     v = _unit(_cross(facing, u))
     size = float(item["size"])
     count = int(item.get("petals", 5))
+    layers = max(1, int(item.get("layers", 2)))
     color = str(item.get("color", "#F2C0CE"))
     spin = float(item.get("spin", 0.0))
-    to_screen, origin = _affine(camera, center, _mul(u, size), _mul(v, size))
+    name = item.get("name", "花")
+    to_screen, _ = _affine(camera, center, _mul(u, size), _mul(v, size))
+    stroke = item.get("stroke", "#DE9DB2")
+    stroke_width = float(item.get("stroke_width", 1.0))
 
-    for index in range(count):
-        angle = math.radians(360.0 / count * index + math.degrees(spin))
-        ca, sa = math.cos(angle), math.sin(angle)
-        mapped = []
-        for point_index, (x, y) in enumerate(PETAL):
-            if point_index == 6:
-                y -= NOTCH
-            rx = x * ca - (y - 0.05) * sa
-            ry = x * sa + (y - 0.05) * ca + 0.05
-            mapped.append(to_screen(rx * 0.92, ry * 0.92))
-        pen.path([{"closed": True, "knots": _smooth(mapped)}], fill=color,
-                 stroke_width=float(item.get("stroke_width", 1.0)),
-                 stroke=item.get("stroke", "#DE9DB2"),
-                 name="%s·瓣%d" % (item.get("name", "花"), index + 1))
+    # 外层五瓣
+    _petal_layer(pen, to_screen, count, spin, 1.0, color, stroke,
+                 stroke_width, name, "瓣", 0.0)
+
+    # 内层错开半格，直径 0.58，填充和描边都压暗一档
+    if layers >= 2:
+        inner_fill = _darken(color_of(pen.palette, color), 0.10)
+        inner_stroke = _darken(inner_fill, 0.16)
+        _petal_layer(pen, to_screen, count, spin, 0.58, inner_fill, inner_stroke,
+                     stroke_width, name, "内瓣", 180.0 / count)
+
     if item.get("heart", True):
-        radius = size * 0.085 * camera.focal / max(0.05, _distance(camera, center))
-        pen.ellipse(origin[0], origin[1], radius, radius * 0.92,
-                    fill=item.get("heart_color", "#E9C25C"),
-                    stroke=None, name="%s·心" % item.get("name", "花"))
+        _heart(pen, to_screen, item, name)
 
 
 def _distance(camera, point):
@@ -187,7 +252,8 @@ COMPONENTS = {
         "params": {
             "camera": "{position, target, up, focal, frame, projection}，必填",
             "items": "形状数组，每项含 shape（petal/leaf/bud）、center、size，"
-                     "可选 facing、radial、width、color、spin、petals",
+                     "可选 facing、radial、width、color、spin、petals；"
+                     "花另有 layers（默认 2）、stamens（8 到 10，默认 9）、heart",
         },
         "build": build,
     },

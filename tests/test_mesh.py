@@ -725,10 +725,6 @@ class RenderTest(unittest.TestCase):
             build({"meshes": [{"type": "mesh"}]}, pen())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class SubdivideTest(unittest.TestCase):
     """Catmull-Clark 细分：面数、水密、边界和级数上限。"""
 
@@ -741,7 +737,9 @@ class SubdivideTest(unittest.TestCase):
     def test_two_levels_and_watertight(self):
         mesh = subdivide(make_box(1, 1, 1), 2)
         self.assertEqual(len(mesh.faces), 96)
+        self.assertEqual(len(mesh.vertices), 98)
         self.assertTrue(is_watertight(mesh))
+        self.assertGreater(volume(mesh), 0)
 
     def test_bounding_box_shrinks_but_stays_close(self):
         base = make_box(1, 1, 1)
@@ -766,6 +764,16 @@ class SubdivideTest(unittest.TestCase):
             self.assertGreaterEqual(point[1], -1e-9)
             self.assertLessEqual(point[1], 1 + 1e-9)
 
+    def test_boundary_edge_points_are_midpoints(self):
+        sheet = Mesh([(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)],
+                     [[0, 1, 2, 3]], color="#c8455f")
+        mesh = subdivide(sheet, 1)
+        self.assertEqual(len(mesh.vertices), 9)
+        self.assertEqual(len(mesh.faces), 4)
+        for point in ((0.5, 0.0, 0.0), (1.0, 0.5, 0.0), (0.5, 1.0, 0.0), (0.0, 0.5, 0.0)):
+            self.assertIn(point, mesh.vertices)
+        self.assertEqual(bounds(mesh)["size"], (1.0, 1.0, 0.0))
+
     def test_triangle_input_becomes_quads(self):
         tri = mesh_from_dict({
             "vertices": [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
@@ -774,9 +782,44 @@ class SubdivideTest(unittest.TestCase):
         mesh = subdivide(tri, 1)
         self.assertTrue(all(len(face) == 4 for face in mesh.faces))
         self.assertEqual(len(mesh.faces), 3)
+        self.assertEqual(len(mesh.vertices), 7)
+
+    def test_face_points_sit_at_face_centres(self):
+        mesh = subdivide(make_box(2, 2, 2), 1)
+        for point in ((1.0, 0.0, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0),
+                      (0.0, -1.0, 0.0), (0.0, 0.0, 1.0), (0.0, 0.0, -1.0)):
+            self.assertIn(point, mesh.vertices)
+
+    def test_attributes_are_copied(self):
+        source = make_box(1, 1, 1)
+        source.color = "#c8455f"
+        source.name = "花瓣"
+        source.transform = {"translate": [1, 2, 3], "rotate": [0, 15, 0]}
+        source.cull = False
+        mesh = subdivide(source, 1)
+        self.assertEqual(mesh.color, "#c8455f")
+        self.assertEqual(mesh.name, "花瓣")
+        self.assertEqual(mesh.transform, source.transform)
+        self.assertFalse(mesh.cull)
+        self.assertEqual(len(source.vertices), 8)
+        self.assertEqual(len(source.faces), 6)
+
+    def test_level_zero_is_a_copy(self):
+        source = make_box(1, 1, 1)
+        copy = subdivide(source, 0)
+        self.assertIsNot(copy, source)
+        self.assertEqual(len(copy.vertices), 8)
+        self.assertEqual(len(copy.faces), 6)
+        self.assertEqual(copy.vertices, source.vertices)
 
     def test_levels_are_limited(self):
         with self.assertRaises(ValueError):
             subdivide(make_box(1, 1, 1), 3)
         with self.assertRaises(ValueError):
             subdivide(make_box(1, 1, 1), -1)
+        with self.assertRaises(ValueError):
+            subdivide(make_box(1, 1, 1), 1.5)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,191 @@
+{
+  "name": "夜色街道 · 两盏路灯",
+  "canvas": [900, 1200],
+  "ref_width": 900,
+  "palette": "fresco",
+  "background": "#101A2C",
+  "document_background": "#101A2C",
+  "brief_zh": {
+    "subject": "夜色里的一条街，左右各三栋高低错落的楼，两盏路灯一近一远，路面有两块暖色光斑",
+    "style": "平涂色块，深蓝夜空配暖黄灯光",
+    "light": "路灯的暖光照在路面，月光从左上角来",
+    "mood": "安静，夜",
+    "camera": "平视，视平线在画高 0.55 处，灭点在画宽右侧三分之一处",
+    "palette": "夜空 #101A2C、路面 #1F222A、楼体 #353C4A、灯光 #F2C46A、光斑 #D9A253"
+  },
+  "brief_en": {
+    "subject": "a street at night, three buildings of staggered heights on each side, two street lamps near and far, two warm pools of light on the road",
+    "style": "flat colour planes, deep blue night sky with warm yellow lamplight",
+    "light": "warm lamplight on the road, moonlight from the upper left",
+    "mood": "quiet, night",
+    "camera": "eye level, horizon at 0.55 of frame height, vanishing point one third from the right edge",
+    "palette": "night sky #101A2C, road #1F222A, buildings #353C4A, lamplight #F2C46A, light pools #D9A253"
+  },
+  "layers": [
+    {
+      "name": "夜空",
+      "depth": 8,
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "月晕",
+            "fill": "#1B2740",
+            "subpaths": [
+              {"closed": true, "knots": [[234, 190], [228.4, 218.3], [212.3, 242.3], [188.3, 259.5], [160, 264], [131.7, 259.5], [107.7, 242.3], [91.7, 218.3], [86, 190], [91.7, 161.7], [107.7, 137.7], [131.7, 120.5], [160, 116], [188.3, 120.5], [212.3, 137.7], [228.4, 161.7]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "月亮",
+            "fill": "#E8E0C8",
+            "subpaths": [
+              {"closed": true, "knots": [[202, 190], [198.8, 206.1], [189.7, 219.7], [176.1, 229.5], [160, 232], [143.9, 229.5], [130.3, 219.7], [121.2, 206.1], [118, 190], [121.2, 173.9], [130.3, 160.3], [143.9, 150.5], [160, 148], [176.1, 150.5], [189.7, 160.3], [198.8, 173.9]]}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "路面",
+      "depth": 7,
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "人行道",
+            "fill": "#333844",
+            "subpaths": [
+              {"closed": true, "knots": [[0, 1200], [900, 1200], [617, 690], [567, 690]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "车道",
+            "fill": "#1F222A",
+            "subpaths": [
+              {"closed": true, "knots": [[60, 1200], [840, 1200], [613, 690], [570, 690]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "路缘石",
+            "fill": null,
+            "stroke": "#3E4350",
+            "stroke_width": 4,
+            "subpaths": [
+              {"closed": false, "knots": [[60, 1200], [570, 690]]},
+              {"closed": false, "knots": [[840, 1200], [613, 690]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "中心虚线",
+            "fill": null,
+            "stroke": "#7C7C62",
+            "stroke_width": 4,
+            "subpaths": [
+              {"closed": false, "knots": [[453, 1189], [468, 1135]]},
+              {"closed": false, "knots": [[480, 1092], [495, 1038]]},
+              {"closed": false, "knots": [[507, 995], [522, 941]]},
+              {"closed": false, "knots": [[534, 898], [549, 844]]},
+              {"closed": false, "knots": [[561, 800], [576, 746]]}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "灯光地面",
+      "depth": 6,
+      "components": [
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "近灯光斑外圈",
+            "fill": "#7A5A32",
+            "subpaths": [
+              {"closed": true, "knots": [[846, 842], [831.3, 857.0], [791, 868], [736, 872], [681, 868], [640.7, 857.0], [626, 842], [640.7, 827.0], [681, 816], [736, 812], [791, 816], [831.3, 827.0]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "近灯光斑",
+            "fill": "#D9A253",
+            "subpaths": [
+              {"closed": true, "knots": [[816, 842], [805.3, 853.0], [776, 861], [736, 864], [696, 861], [666.7, 853.0], [656, 842], [666.7, 831.0], [696, 823], [736, 820], [776, 823], [805.3, 831.0]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "远灯光斑外圈",
+            "fill": "#7A5A32",
+            "subpaths": [
+              {"closed": true, "knots": [[741, 760], [733, 768.0], [711, 774], [681, 776], [651, 774], [629, 768.0], [621, 760], [629, 752.0], [651, 746], [681, 744], [711, 746], [733, 752.0]]}
+            ]
+          }
+        },
+        {
+          "component": "custom_shape",
+          "params": {
+            "name": "远灯光斑",
+            "fill": "#D9A253",
+            "subpaths": [
+              {"closed": true, "knots": [[723, 760], [717.4, 765.5], [702, 769.5], [681, 771], [660, 769.5], [644.6, 765.5], [639, 760], [644.6, 754.5], [660, 750.5], [681, 749], [702, 750.5], [717.4, 754.5]]}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "建筑与路灯",
+      "depth": 5,
+      "components": [
+        {
+          "component": "mesh_scene",
+          "params": {
+            "named_faces": true,
+            "lighting": {
+              "direction": [0.6, -0.8, -0.5],
+              "ambient": 0.55,
+              "diffuse": 0.45
+            },
+            "camera": {
+              "position": [0, 1.6, 0],
+              "target": [0, 1.6, 1],
+              "up": [0, 1, 0],
+              "focal": 965,
+              "frame": [900, 1200],
+              "center": [600, 660],
+              "projection": "perspective"
+            },
+            "meshes": [
+              { "type": "box", "name": "左一楼", "size": [2.0, 4.0, 3.0], "center": [-2.9, 2.0, 9.5], "color": "#353C4A" },
+              { "type": "box", "name": "左二楼", "size": [2.2, 3.4, 3.0], "center": [-3.0, 1.7, 14.0], "color": "#3C4453" },
+              { "type": "box", "name": "左三楼", "size": [2.4, 3.0, 3.0], "center": [-3.2, 1.5, 20.0], "color": "#444D5C" },
+              { "type": "box", "name": "右一楼", "size": [1.6, 3.8, 3.0], "center": [2.3, 1.9, 9.5], "color": "#333A47" },
+              { "type": "box", "name": "右二楼", "size": [2.0, 3.4, 3.0], "center": [2.8, 1.7, 14.0], "color": "#3A4250" },
+              { "type": "box", "name": "右三楼", "size": [2.2, 3.0, 3.0], "center": [2.6, 1.5, 20.0], "color": "#424B5A" },
+              { "type": "cylinder", "name": "近灯杆", "radius": 0.07, "height": 3.2, "segments": 14, "center": [1.2, 1.6, 8.5], "color": "#3A3F4A" },
+              { "type": "sphere", "name": "近灯罩", "radius": 0.16, "segments": 16, "rings": 10, "center": [1.2, 3.3, 8.5], "color": "#F2C46A" },
+              { "type": "cylinder", "name": "远灯杆", "radius": 0.06, "height": 3.0, "segments": 14, "center": [1.3, 1.5, 15.5], "color": "#3A3F4A" },
+              { "type": "sphere", "name": "远灯罩", "radius": 0.13, "segments": 16, "rings": 10, "center": [1.3, 3.1, 15.5], "color": "#F2C46A" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
