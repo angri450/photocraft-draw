@@ -1,0 +1,33 @@
+{
+  "name": "风景 · 海棠林",
+  "canvas": [900, 1200],
+  "ref_width": 900,
+  "document_background": "#F4EBDF",
+  "layers": [
+    {
+      "name": "天光与地",
+      "depth": 3,
+      "z": 300,
+      "components": [
+        { "component": "grove_backdrop", "params": { "width": 900, "height": 1200, "horizon": 0.72, "seed": 7 } }
+      ]
+    },
+    {
+      "name": "远树",
+      "depth": 2,
+      "z": 200,
+      "components": [
+        { "component": "crabapple_tree", "params": { "root": [700, 905], "height": 300, "seed": 5, "bloom": 0.9, "fade": 0.35, "crown": 0.26, "trunk": 0.44 } },
+        { "component": "crabapple_tree", "params": { "root": [520, 880], "height": 360, "seed": 3, "bloom": 1.0, "fade": 0.18, "crown": 0.24, "trunk": 0.46 } }
+      ]
+    },
+    {
+      "name": "近树",
+      "depth": 1,
+      "z": 100,
+      "components": [
+        { "component": "crabapple_tree", "params": { "root": [270, 940], "height": 470, "seed": 1, "bloom": 1.0, "fade": 0, "crown": 0.22, "trunk": 0.50 } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,213 @@
+{
+  "name": "静物 · 桌面、瓶与果",
+  "canvas": [
+    900,
+    1200
+  ],
+  "ref_width": 900,
+  "document_background": "#EFE4CF",
+  "brief_zh": {
+    "subject": "一张木桌上放着一只陶瓶和三个果子，桌边有一片叶子",
+    "style": "平涂色块加细线，结构清楚",
+    "light": "左上方柔光",
+    "mood": "安静",
+    "camera": "略高于桌面，平视偏俯",
+    "palette": "木褐 #8A6A4A、陶土 #B4694F、果红 #B23A48、叶绿 #6F8F52"
+  },
+  "layers": [
+    {
+      "name": "静物",
+      "depth": 1,
+      "z": 100,
+      "components": [
+        {
+          "component": "mesh_scene",
+          "params": {
+            "named_faces": true,
+            "lighting": {
+              "direction": [
+                -0.5,
+                -0.8,
+                -0.4
+              ],
+              "ambient": 0.86,
+              "diffuse": 0.3
+            },
+            "camera": {
+              "position": [
+                0,
+                0.42,
+                -0.8
+              ],
+              "target": [
+                0,
+                0.2,
+                0.06
+              ],
+              "up": [
+                0,
+                1,
+                0
+              ],
+              "focal": 800,
+              "frame": [
+                900,
+                1200
+              ],
+              "center": [
+                450,
+                600
+              ],
+              "projection": "perspective"
+            },
+            "meshes": [
+              {
+                "type": "box",
+                "size": [
+                  1.5,
+                  0.06,
+                  0.9
+                ],
+                "center": [
+                  0,
+                  0,
+                  0.1
+                ],
+                "color": "#8A6A4A",
+                "name": "桌面"
+              },
+              {
+                "type": "lathe",
+                "profile": [
+                  [
+                    0.1,
+                    0.0
+                  ],
+                  [
+                    0.15,
+                    0.05
+                  ],
+                  [
+                    0.11,
+                    0.16
+                  ],
+                  [
+                    0.13,
+                    0.28
+                  ],
+                  [
+                    0.12,
+                    0.3
+                  ]
+                ],
+                "segments": 28,
+                "center": [
+                  0.02,
+                  0.03,
+                  -0.06
+                ],
+                "color": "#B4694F",
+                "name": "陶瓶"
+              },
+              {
+                "type": "sphere",
+                "radius": 0.075,
+                "segments": 24,
+                "rings": 14,
+                "center": [
+                  -0.28,
+                  0.1,
+                  0.1
+                ],
+                "color": "#B23A48",
+                "name": "果一"
+              },
+              {
+                "type": "sphere",
+                "radius": 0.068,
+                "segments": 24,
+                "rings": 14,
+                "center": [
+                  0.24,
+                  0.09,
+                  0.04
+                ],
+                "color": "#C25A4A",
+                "name": "果二"
+              },
+              {
+                "type": "sphere",
+                "radius": 0.06,
+                "segments": 24,
+                "rings": 14,
+                "center": [
+                  0.12,
+                  0.08,
+                  0.22
+                ],
+                "color": "#A8333F",
+                "name": "果三"
+              }
+            ]
+          }
+        },
+        {
+          "component": "organic_layer",
+          "params": {
+            "camera": {
+              "position": [
+                0,
+                0.42,
+                -0.8
+              ],
+              "target": [
+                0,
+                0.2,
+                0.06
+              ],
+              "up": [
+                0,
+                1,
+                0
+              ],
+              "focal": 800,
+              "frame": [
+                900,
+                1200
+              ],
+              "center": [
+                450,
+                600
+              ],
+              "projection": "perspective"
+            },
+            "items": [
+              {
+                "shape": "leaf",
+                "center": [
+                  0.34,
+                  0.035,
+                  0.16
+                ],
+                "facing": [
+                  0,
+                  0,
+                  -1
+                ],
+                "radial": [
+                  0.85,
+                  0.3,
+                  0
+                ],
+                "size": 0.16,
+                "width": 0.07,
+                "color": "#6F8F52",
+                "name": "叶"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
