@@ -295,17 +295,25 @@ class TestBlossom:
         assert flower["shape"] == "blossom"
         assert flower["petals"] == 5
         assert len(flower["faces"]) == 5
-        assert len(flower["vertices"]) == 40
+        # 每瓣一圈轮廓点，瓣数固定，点数随轮廓加密可增
+        first = len(flower["faces"][0])
+        assert all(len(face) == first for face in flower["faces"])
+        assert len(flower["vertices"]) == len(flower["faces"]) * first
 
     def test_front_view_shows_five_petals(self):
         _, meta = build_views([self.flower()], width=800, height=700)
         assert meta["view_faces"]["front"] == 5
 
-    def test_petals_are_drawn_in_all_three_views(self):
+    def test_side_view_uses_one_lens_instead_of_petals(self):
         commands, _ = build_views([self.flower()], width=800, height=700)
         petals = [item for item in commands
                   if item["params"].get("name", "").startswith("花·花瓣")]
-        assert len(petals) == 15   # 三个视图 × 五瓣，侧视也不剔除
+        lenses = [item for item in commands
+                  if item["params"].get("name", "").startswith("花·侧视")]
+        # 正视是五瓣；左视和俯视接近侧视，按杯状截面画成一个扁椭圆，
+        # 不再让花瓣尖拉出长刺。
+        assert len(petals) == 5
+        assert len(lenses) == 2
 
     def test_side_view_is_flatter_than_the_front(self):
         flower = self.flower()
@@ -335,8 +343,22 @@ class TestBlossom:
     def test_petals_field_alone_marks_a_blossom(self):
         flower = self.flower()
         flower.pop("shape")
-        _, meta = build_views([flower], width=800, height=700)
-        assert meta["view_faces"]["left"] == 5
+        commands, meta = build_views([flower], width=800, height=700)
+        lenses = [item for item in commands
+                  if item["params"].get("name", "").startswith("花·侧视")]
+        assert len(lenses) == 2
+        assert meta["view_faces"]["left"] == 1
+
+    def test_flower_turned_toward_a_view_keeps_its_petals(self):
+        # 花面朝 +X 时，左视图是正视，应当画五瓣而不是扁椭圆
+        flower = self.flower(facing=[1.0, 0.0, 0.0])
+        commands, _ = build_views([flower], width=800, height=700)
+        petals = [item for item in commands
+                  if item["params"].get("name", "").startswith("花·花瓣")]
+        lenses = [item for item in commands
+                  if item["params"].get("name", "").startswith("花·侧视")]
+        assert len(petals) == 5
+        assert lenses
 
     def test_empty_parameters_raise(self):
         with pytest.raises(ValueError, match="center"):

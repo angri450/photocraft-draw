@@ -236,9 +236,10 @@ def make_blossom(center=None, diameter=0.0, facing=(0.0, 0.0, 1.0), petals=5,
     # 单瓣轮廓：中心、左缘、左肩、左尖、瓣尖凹缺、右尖、右肩、右缘。
     # 半径收到 0.35 再抬到 1.0，瓣与瓣之间才有清楚的 V 形缺口。
     profile = [
-        (0.35, -1.00), (0.86, -0.72), (1.00, -0.40),
-        (0.72, 0.00),
-        (1.00, 0.40), (0.86, 0.72), (0.35, 1.00),
+        (0.35, -1.00), (0.72, -0.80), (0.92, -0.62), (1.00, -0.45),
+        (0.86, -0.22), (0.74, 0.00),
+        (0.86, 0.22), (1.00, 0.45), (0.92, 0.62), (0.72, 0.80),
+        (0.35, 1.00),
     ]
 
     vertices = []
@@ -427,6 +428,18 @@ def _draw_dimension(pen, start, end, label, view, layout, offset, index) -> bool
     return True
 
 
+
+def _projected_box(vertices, view, layout):
+    """一组点在某个视图里的屏幕包围盒：返回 (x0, y0, x1, y1)。"""
+    xs = []
+    ys = []
+    for point in vertices:
+        px, py = project_panel(point, view, layout)
+        xs.append(px)
+        ys.append(py)
+    return min(xs), min(ys), max(xs), max(ys)
+
+
 def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
                 dimensions=None, margin: int = MARGIN, title_band: int = TITLE_BAND,
                 center_per_view: bool = False):
@@ -461,7 +474,25 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
     view_faces = {view: 0 for view in AXES}
     for view, panel in zip(AXES, layout["panels"]):
         items = []
+        slivers = []
+        skipped = set()
         for mesh_index, (vertices, faces, color, name, blossom) in enumerate(prepared):
+            if not blossom:
+                continue
+            x0, y0, x1, y1 = _projected_box(vertices, view, layout)
+            span_x = x1 - x0
+            span_y = y1 - y0
+            long_side = max(span_x, span_y)
+            short_side = min(span_x, span_y)
+            # 薄片花侧视会退化成一条线，花瓣尖会拉出长刺；这里按杯状截面
+            # 画成一个扁椭圆，宽度和位置照投影包围盒，厚度给长边的十分之一；夹角小于约二十五度就按椭圆画。
+            if long_side >= 6 and short_side <= long_side * 0.62:
+                slivers.append(((x0 + x1) / 2.0, (y0 + y1) / 2.0, long_side / 2.0,
+                                max(2.0, long_side * 0.10), color, name))
+                skipped.add(mesh_index)
+        for mesh_index, (vertices, faces, color, name, blossom) in enumerate(prepared):
+            if mesh_index in skipped:
+                continue
             for face_index, face in enumerate(faces):
                 normal = _normal(vertices, face)
                 # 花形是零厚度的薄片，侧视会退化成一条，不能按法向剔掉。
@@ -476,9 +507,13 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
                      for index in face]
             # 描边跟填充同色：盖住相邻面之间的抗锯齿缝，近看不会有细白线。
             # 圆角接头是必须的：锥体顶点的夹角极尖，斜接会甩出两根长刺。
-            tone = _shade(color_of(colors, color), _light(normal))
-            if blossom and face_index % 2:
-                tone = _shade(tone, 0.94)
+            if blossom:
+                # 花形按平涂上色，不打光，免得粉花被压成灰紫
+                tone = color_of(colors, color)
+                if face_index % 2:
+                    tone = _shade(tone, 0.94)
+            else:
+                tone = _shade(color_of(colors, color), _light(normal))
             pen.path([{"closed": True, "knots": knots}],
                      fill=tone, stroke_width=1, stroke=tone,
                      name=("%s·花瓣 %d" if blossom else "%s·面 %d")
@@ -486,6 +521,13 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
             stroke = pen.commands[-1]["params"].get("stroke")
             if stroke:
                 stroke["join"] = "round"
+            drawn_faces += 1
+            view_faces[view] += 1
+
+        for cx, cy, rx, ry, color, name in slivers:
+            tone = _shade(color_of(colors, color), 0.95)
+            pen.ellipse(cx, cy, rx, ry, fill=tone, stroke_width=1, stroke=tone,
+                        name="%s·侧视" % name)
             drawn_faces += 1
             view_faces[view] += 1
 
