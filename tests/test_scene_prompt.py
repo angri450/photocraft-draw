@@ -45,7 +45,15 @@ def test_boxes_stay_inside_canvas():
 
 
 def test_missing_camera_raises():
+    plan = {"layers": [{"components": [{"component": "organic_layer", "params": {
+        "items": [{"shape": "leaf", "center": [0, 0, 0], "facing": [0, 0, -1],
+                   "radial": [0, 1, 0], "size": 0.2, "width": 0.08}]}}]}]}
     with pytest.raises(ValueError, match="相机"):
+        layout_from_plan(plan, 800, 800, "x")
+
+
+def test_empty_plan_raises():
+    with pytest.raises(ValueError, match="没有可以投影"):
         layout_from_plan({"layers": [{"components": []}]}, 800, 800, "x")
 
 
@@ -86,3 +94,37 @@ def test_mesh_item_caption_can_be_overridden():
     ]}]}
     draft = layout_from_plan(plan, 800, 800, "x")
     assert draft["items"][0]["caption"] == "a folded linen cloth"
+
+
+TREE_PLAN = {
+    "canvas": [900, 1200],
+    "ref_width": 900,
+    "layers": [{"components": [
+        {"component": "crabapple_tree", "params": {
+            "root": [400, 900], "height": 600, "crown": 0.3, "fade": 0.0}},
+        {"component": "foreground_rocks", "params": {
+            "rocks": [[100, 1100, 120, 40], [300, 1120, 80, 30]]}},
+    ]}],
+}
+
+
+def test_legacy_components_report_boxes_without_camera():
+    draft = layout_from_plan(TREE_PLAN, 900, 1200, "x")
+    assert len(draft["items"]) == 3
+    captions = " ".join(item["caption"] for item in draft["items"])
+    assert "crabapple tree" in captions
+    assert "mossy rock" in captions
+
+
+def test_tree_box_sits_above_its_root():
+    draft = layout_from_plan(TREE_PLAN, 900, 1200, "x")
+    tree = draft["items"][0]["bbox"]
+    assert tree[3] == pytest.approx(900, abs=1)
+    assert tree[1] < 400
+
+
+def test_legacy_caption_counts_trees():
+    text = caption_from_plan(TREE_PLAN)
+    assert "1 flowering crabapple tree" in text
+    assert "2 mossy rocks" in text
+    assert "flowering grove" in text

@@ -29,6 +29,83 @@ MESH_CAPTIONS = {
 }
 
 
+def _rect(value):
+    """[x, y, 宽, 高] 转成 [x0, y0, x1, y1]；不是合格的矩形就返回空。"""
+    if not isinstance(value, (list, tuple)) or len(value) != 4:
+        return None
+    try:
+        x, y, w, h = (float(v) for v in value)
+    except (TypeError, ValueError):
+        return None
+    if w <= 0 or h <= 0:
+        return None
+    return [x, y, x + w, y + h]
+
+
+def _rects(value):
+    """一个矩形或者一组矩形，统一成 xyxy 列表。"""
+    if not isinstance(value, (list, tuple)) or not value:
+        return []
+    if isinstance(value[0], (list, tuple)):
+        found = [_rect(item) for item in value]
+        return [box for box in found if box]
+    single = _rect(value)
+    return [single] if single else []
+
+
+def _tree_boxes(params):
+    root = params.get("root")
+    if not isinstance(root, (list, tuple)) or len(root) != 2:
+        return []
+    try:
+        x, y = float(root[0]), float(root[1])
+        height = float(params.get("height", 400))
+        crown = float(params.get("crown", 0.225))
+    except (TypeError, ValueError):
+        return []
+    half = height * (crown + 0.12)   # 树冠半径，再放一点枝条外倾
+    return [([x - half, y - height, x + half, y],
+             "a flowering crabapple tree with a full round crown")]
+
+
+def _rock_boxes(params):
+    return [(box, "a low mossy rock") for box in _rects(params.get("rocks"))]
+
+
+def _window_boxes(params):
+    return [(box, "a tall arched window with mullions and warm light")
+            for box in _rects(params.get("windows"))]
+
+
+def _table_boxes(params):
+    return [(box, "a long banquet table with a pale linen cloth")
+            for box in _rects(params.get("table"))]
+
+
+def _tapestry_boxes(params):
+    return [(box, "a hanging tapestry with soft folds")
+            for box in _rects(params.get("tapestries"))]
+
+
+# 老组件用屏幕坐标画，没有相机可投影。这里按各自的参数报出占位矩形，
+# 只报看得见的物体，墙、地、天顶这类结构面不报，免得把主体盖住。
+COMPONENT_LAYOUT = {
+    "crabapple_tree": _tree_boxes,
+    "foreground_rocks": _rock_boxes,
+    "arched_windows": _window_boxes,
+    "long_table": _table_boxes,
+    "indoor_backdrop": _tapestry_boxes,
+}
+
+COMPONENT_SUBJECTS = {
+    "crabapple_tree": ("flowering crabapple tree", "flowering crabapple trees"),
+    "foreground_rocks": ("mossy rock", "mossy rocks"),
+    "arched_windows": ("arched window", "arched windows"),
+    "long_table": ("banquet table", "banquet tables"),
+    "indoor_backdrop": ("tapestry", "tapestries"),
+}
+
+
 def _camera(plan: dict):
     for layer in plan.get("layers", []):
         for component in layer.get("components", []):
@@ -36,6 +113,16 @@ def _camera(plan: dict):
             if "camera" in params:
                 return camera_from_dict(params["camera"])
     raise ValueError("方案里没有相机，无法算 Layout")
+
+
+def _needs_camera(plan: dict) -> bool:
+    """只有网格和有机形状要用相机投影；老组件自己就有屏幕坐标。"""
+    for layer in plan.get("layers", []):
+        for component in layer.get("components", []):
+            params = component.get("params") or {}
+            if params.get("items") or params.get("meshes"):
+                return True
+    return False
 
 
 def _box(points, camera, scale_x, scale_y):
@@ -106,7 +193,7 @@ def layout_from_plan(plan: dict, width: int, height: int, caption: str) -> dict:
     canvas = plan.get("canvas") or [width, height]
     scale_x = width / float(canvas[0])
     scale_y = height / float(canvas[1])
-    camera = _camera(plan)
+    camera = _camera(plan) if _needs_camera(plan) else None
     items = []
     for layer in plan.get("layers", []):
         for component in layer.get("components", []):
@@ -138,6 +225,15 @@ def layout_from_plan(plan: dict, width: int, height: int, caption: str) -> dict:
                             label = "a tall flat panel standing upright"
                     items.append({"label": "object", "caption": label,
                                   "bbox": [round(v, 1) for v in box]})
+            report = COMPONENT_LAYOUT.get(str(component.get("component")))
+            if report and not params.get("items") and not params.get("meshes"):
+                factor = width / float(plan.get("ref_width", 800))
+                for rect, label in report(params):
+                    box = _clamp([rect[0] * factor, rect[1] * factor,
+                                  rect[2] * factor, rect[3] * factor], width, height)
+                    if box:
+                        items.append({"label": "object", "caption": label,
+                                      "bbox": [round(v, 1) for v in box]})
     if not items:
         raise ValueError("方案里没有可以投影的物体")
     return {"width": width, "height": height,
@@ -169,6 +265,8 @@ def caption_from_plan(plan: dict) -> str:
 
     flowers = buds = leaves = 0
     shapes = {}
+    subjects = {}
+    components = {}
     for layer in plan.get("layers", []):
         for component in layer.get("components", []):
             params = component.get("params") or {}
@@ -179,9 +277,22 @@ def caption_from_plan(plan: dict) -> str:
                     buds += 1
                 elif item.get("shape") == "leaf":
                     leaves += 1
+            cid = str(component.get("component"))
+            report = COMPONENT_LAYOUT.get(cid)
+            if report:
+                try:
+                    count = len(report(params))
+                except (TypeError, ValueError):
+                    count = 0
+                if count:
+                    components[cid] = components.get(cid, 0) + count
             for mesh_data in params.get("meshes") or []:
-                kind = str(mesh_data.get("type", "sweep"))
-                shapes[kind] = shapes.get(kind, 0) + 1
+                subject = mesh_data.get("subject")
+                if subject:
+                    subjects[str(subject)] = subjects.get(str(subject), 0) + 1
+                else:
+                    kind = str(mesh_data.get("type", "sweep"))
+                    shapes[kind] = shapes.get(kind, 0) + 1
 
     if flowers or buds:
         parts = ["a crabapple branch with %d open blossoms" % flowers]
@@ -194,16 +305,29 @@ def caption_from_plan(plan: dict) -> str:
                 "slender brown twigs, " + STYLE +
                 ", traditional Chinese gongbi flower painting")
 
-    # 没有花，就按形状把主体列出来，别把静物说成花枝。
+    # 没有花，就把场景里的主体按实际数量列出来，别把静物说成花枝。
+    parts = []
+    for cid, count in sorted(components.items(), key=lambda pair: -pair[1])[:4]:
+        one, many = COMPONENT_SUBJECTS[cid]
+        parts.append("%d %s" % (count, one if count == 1 else many))
+    for name, count in sorted(subjects.items(), key=lambda pair: -pair[1])[:4]:
+        parts.append("%d %s" % (count, name if count == 1 else name + "s"))
     counted = [(kind, count) for kind, count in shapes.items() if count > 0]
     counted.sort(key=lambda pair: -pair[1])
-    parts = []
     for kind, count in counted[:4]:
         one, many = SUBJECT_NAMES.get(kind, ("object", "objects"))
         parts.append("%d %s" % (count, one if count == 1 else many))
     if leaves:
         parts.append("%d leaves" % leaves)
     subject = ", ".join(parts) if parts else "a simple arrangement"
-    if "lathe" in shapes:
-        return subject + ", a still life on a plain table, " + STYLE
-    return subject + ", a simple geometric study, " + STYLE
+    if "arched_windows" in components or "long_table" in components:
+        scene = "a quiet interior lit from one side"
+    elif "crabapple_tree" in components:
+        scene = "a flowering grove under soft spring light"
+    elif any("building" in name for name in subjects):
+        scene = "a quiet night street receding to one vanishing point"
+    elif "lathe" in shapes:
+        scene = "a still life on a plain table"
+    else:
+        scene = "a simple geometric study"
+    return subject + ", " + scene + ", " + STYLE
