@@ -16,6 +16,18 @@ CAPTIONS = {
     "branch": "a slender brown twig with fine taper and small nodes",
 }
 
+# 网格按形状给出默认描述，写方案时不用逐个手写；写了 caption 就用写的那个。
+MESH_CAPTIONS = {
+    "sweep": "a slender brown tapered stem with small nodes",
+    "capsule": "an elongated rounded form",
+    "lathe": "a turned ceramic vessel with a narrow neck",
+    "box": "a flat rectangular panel",
+    "plane": "a flat rectangular panel",
+    "sphere": "a smooth round fruit",
+    "cylinder": "a straight cylindrical column",
+    "cone": "a tapered cone",
+}
+
 
 def _camera(plan: dict):
     for layer in plan.get("layers", []):
@@ -115,7 +127,16 @@ def layout_from_plan(plan: dict, width: int, height: int, caption: str) -> dict:
                 box = _box(mesh.vertices, camera, scale_x, scale_y)
                 box = _clamp(box, width, height)
                 if box:
-                    items.append({"label": "object", "caption": CAPTIONS["branch"],
+                    kind = str(mesh_data.get("type", "sweep"))
+                    label = mesh_data.get("caption") or MESH_CAPTIONS.get(
+                        kind, MESH_CAPTIONS["sweep"])
+                    size = mesh_data.get("size") or []
+                    if kind in ("box", "plane") and len(size) == 3 and isinstance(size, list):
+                        # 又宽又薄的写板子，又高又窄的写柱子，别把墙说成果子
+                        wide, tall, deep = (float(v) for v in size)
+                        if tall > wide * 1.6 and tall > deep * 1.6:
+                            label = "a tall flat panel standing upright"
+                    items.append({"label": "object", "caption": label,
                                   "bbox": [round(v, 1) for v in box]})
     if not items:
         raise ValueError("方案里没有可以投影的物体")
@@ -126,25 +147,63 @@ def layout_from_plan(plan: dict, width: int, height: int, caption: str) -> dict:
             "items": items}
 
 
+SUBJECT_NAMES = {
+    "sweep": ("tapered stem", "tapered stems"),
+    "lathe": ("turned vessel", "turned vessels"),
+    "sphere": ("round fruit", "round fruits"),
+    "box": ("rectangular panel", "rectangular panels"),
+    "plane": ("rectangular panel", "rectangular panels"),
+    "cylinder": ("cylindrical column", "cylindrical columns"),
+    "cone": ("tapered cone", "tapered cones"),
+    "capsule": ("rounded form", "rounded forms"),
+}
+
+STYLE = ("pale warm beige paper, flat colour planes, fine even outlines, "
+         "soft diffuse light, no text, no border")
+
+
 def caption_from_plan(plan: dict) -> str:
-    """从方案里读数量与主体，拼一段整体描述。"""
+    """从方案里读数量与主体，拼一段整体描述；方案顶层写了 caption 就直接用。"""
+    if plan.get("caption"):
+        return str(plan["caption"])
+
     flowers = buds = leaves = 0
+    shapes = {}
     for layer in plan.get("layers", []):
         for component in layer.get("components", []):
-            for item in (component.get("params") or {}).get("items") or []:
+            params = component.get("params") or {}
+            for item in params.get("items") or []:
                 if item.get("petals"):
                     flowers += 1
                 elif item.get("shape") == "bud":
                     buds += 1
                 elif item.get("shape") == "leaf":
                     leaves += 1
-    parts = ["a crabapple branch with %d open blossoms" % flowers]
-    if buds:
-        parts.append("%d closed buds" % buds)
+            for mesh_data in params.get("meshes") or []:
+                kind = str(mesh_data.get("type", "sweep"))
+                shapes[kind] = shapes.get(kind, 0) + 1
+
+    if flowers or buds:
+        parts = ["a crabapple branch with %d open blossoms" % flowers]
+        if buds:
+            parts.append("%d closed buds" % buds)
+        if leaves:
+            parts.append("%d narrow leaves" % leaves)
+        return (", ".join(parts) +
+                ", pale rose-pink petals with golden stamens, dark green serrated leaves, "
+                "slender brown twigs, " + STYLE +
+                ", traditional Chinese gongbi flower painting")
+
+    # 没有花，就按形状把主体列出来，别把静物说成花枝。
+    counted = [(kind, count) for kind, count in shapes.items() if count > 0]
+    counted.sort(key=lambda pair: -pair[1])
+    parts = []
+    for kind, count in counted[:4]:
+        one, many = SUBJECT_NAMES.get(kind, ("object", "objects"))
+        parts.append("%d %s" % (count, one if count == 1 else many))
     if leaves:
-        parts.append("%d narrow leaves" % leaves)
-    return (", ".join(parts) +
-            ", pale rose-pink petals with golden stamens, dark green serrated leaves, "
-            "slender brown twigs, pale warm beige paper, traditional Chinese gongbi "
-            "flower painting, flat colour planes, fine even outlines, soft diffuse "
-            "light, no text, no border")
+        parts.append("%d leaves" % leaves)
+    subject = ", ".join(parts) if parts else "a simple arrangement"
+    if "lathe" in shapes:
+        return subject + ", a still life on a plain table, " + STYLE
+    return subject + ", a simple geometric study, " + STYLE
