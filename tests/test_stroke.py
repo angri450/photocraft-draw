@@ -16,7 +16,7 @@ from pathlib import Path
 
 from photocraft_draw.commands import Pen
 from photocraft_draw.palette import resolve_palette
-from photocraft_draw.stroke import stroke_path, taper
+from photocraft_draw.stroke import (outline, stroke_path, taper, widths_from_depth)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -314,8 +314,131 @@ class DemoTest(unittest.TestCase):
         self.assertEqual(len(rings[0]["params"]["path"]["subpaths"]), 2)
 
 
+class OutlineTest(unittest.TestCase):
+    def test_screen_coordinates_are_not_scaled_twice(self):
+        target = Pen(1600, 900, ref_width=800, palette=resolve_palette("fresco"))
+        outline(target, [[100, 100], [300, 100]], 10, "ink", name="轮廓")
+        knots = knots_of(path_command(target))
+        self.assertEqual(knots, [[100, 105], [300, 105], [300, 95], [100, 95]])
+        caps = [item for item in target.commands
+                if str(item["params"].get("name", "")).startswith("轮廓 端头")]
+        self.assertEqual(len(caps), 2)
+        self.assertEqual(caps[0]["params"]["rect"], [95, 95, 10, 10])
+        self.assertEqual(caps[1]["params"]["rect"], [295, 95, 10, 10])
+
+    def test_constant_width(self):
+        target = pen()
+        outline(target, [[100, 100], [300, 100]], 8, "ink")
+        self.assertEqual(knots_of(path_command(target)),
+                         [[100, 104], [300, 104], [300, 96], [100, 96]])
+
+    def test_gradient_width(self):
+        target = pen()
+        outline(target, [[100, 100], [300, 100]], [10, 2], "ink")
+        self.assertEqual(knots_of(path_command(target)),
+                         [[100, 105], [300, 101], [300, 99], [100, 95]])
+
+    def test_min_width_is_applied(self):
+        target = pen()
+        outline(target, [[100, 100], [300, 100]], [0.2, 0.2], "ink", min_width=4)
+        self.assertEqual(knots_of(path_command(target)),
+                         [[100, 102], [300, 102], [300, 98], [100, 98]])
+
+    def test_closed_outline_has_no_caps(self):
+        target = pen()
+        outline(target, [[200, 200], [300, 200], [300, 300], [200, 300]], 6,
+                "ink", closed=True, name="环")
+        paths = [item for item in target.commands if item["params"].get("kind") == "path"]
+        caps = [item for item in target.commands if item["params"].get("kind") == "ellipse"]
+        self.assertEqual(len(paths), 1)
+        self.assertEqual(caps, [])
+        subpaths = paths[0]["params"]["path"]["subpaths"]
+        self.assertEqual(len(subpaths), 2)
+        self.assertTrue(all(item["closed"] for item in subpaths))
+
+    def test_outline_requires_points(self):
+        with self.assertRaises(ValueError):
+            outline(pen(), [[10, 10]], 4, "ink")
+
+    def test_outline_rejects_negative_min_width(self):
+        with self.assertRaises(ValueError):
+            outline(pen(), [[0, 0], [10, 0]], 4, "ink", min_width=-1)
+
+
+class DepthWidthTest(unittest.TestCase):
+    def test_linear_mapping(self):
+        widths = widths_from_depth([0, 1, 2, 3], 0, 3, w_near=1.6, w_far=1.0)
+        for value, expected in zip(widths, [1.6, 1.4, 1.2, 1.0]):
+            self.assertAlmostEqual(value, expected, places=6)
+
+    def test_monotonic(self):
+        widths = widths_from_depth([0, 0.5, 1, 1.5], 0, 1.5, w_near=2.0, w_far=0.8)
+        self.assertEqual(widths, sorted(widths, reverse=True))
+
+    def test_out_of_range_is_clamped(self):
+        widths = widths_from_depth([-10, 0, 5, 20], 0, 5, w_near=2.0, w_far=1.0)
+        self.assertEqual(widths, [2.0, 2.0, 1.0, 1.0])
+
+    def test_requires_two_depths(self):
+        with self.assertRaises(ValueError):
+            widths_from_depth([1], 0, 1)
+        with self.assertRaises(ValueError):
+            widths_from_depth([], 0, 1)
+
+    def test_near_and_far_must_differ(self):
+        with self.assertRaises(ValueError):
+            widths_from_depth([0, 1], 1, 1)
+
+
+def draw_outline_demo(target):
+    """演示图：一条开口折线、一条闭合轮廓，都按深度近粗远细。"""
+    target.rect(0, 0, 800, 450, fill="bg", name="底")
+
+    curve = [[160, 780], [360, 700], [560, 640], [760, 600],
+             [960, 580], [1160, 570], [1360, 570]]
+    curve_depths = [0, 0.8, 1.6, 2.4, 3.2, 4.0, 4.8]
+    outline(target, curve, widths_from_depth(curve_depths, 0, 4.8, 14, 2),
+            "mid", name="折线")
+
+    ring = [[1180, 250], [1400, 250], [1470, 520], [1110, 520]]
+    ring_widths = widths_from_depth([4.6, 4.6, 0.4, 0.4], 0, 4.6, 12, 2)
+    outline(target, ring, ring_widths, "deep", closed=True, name="闭合轮廓")
+
+    target.text(24, 424, "变宽轮廓线：近处 14→远处 2，端头收圆", size=12,
+                color="muted", name="题字")
+
+
+def render_outline_demo(path=None):
+    """把轮廓线演示画成 PNG，返回输出路径。"""
+    from photocraft_draw.engine import Engine
+
+    target = Path(path).resolve() if path else (ROOT / "out" / "stroke-outline.png")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    canvas = Pen(1600, 900, ref_width=800, palette=resolve_palette("fresco"))
+    draw_outline_demo(canvas)
+    with Engine(read_root=ROOT, write_root=target.parent) as engine:
+        engine.new_document(1600, 900, "变宽轮廓线演示")
+        for item in canvas.commands:
+            engine.execute(item["command"], item.get("params") or {})
+        engine.save(target, "png")
+    return target
+
+
+class OutlineDemoTest(unittest.TestCase):
+    def test_demo_has_open_and_closed_outlines(self):
+        target = Pen(1600, 900, ref_width=800, palette=resolve_palette("fresco"))
+        draw_outline_demo(target)
+        names = [item["params"].get("name") for item in target.commands]
+        self.assertIn("折线", names)
+        self.assertIn("闭合轮廓", names)
+        self.assertEqual(len([name for name in names if name and "端头" in name]), 2)
+        self.assertLess(len(target.commands), 120)
+
+
 if __name__ == "__main__":
     if "--demo" in sys.argv:
         print(render_demo())
+    elif "--outline-demo" in sys.argv:
+        print(render_outline_demo())
     else:
         unittest.main()

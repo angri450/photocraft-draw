@@ -7,15 +7,19 @@ from photocraft_draw.mesh import (
     Camera,
     Mesh,
     apply_matrix,
+    bounds,
     build,
     camera_from_dict,
     compose_transform,
     face_center,
     face_normal,
     identity,
+    is_watertight,
     make_box,
+    make_capsule,
     make_cone,
     make_cylinder,
+    make_lathe,
     make_sphere,
     matmul,
     mesh_from_dict,
@@ -27,6 +31,7 @@ from photocraft_draw.mesh import (
     rotation_z,
     scaling,
     shade_color,
+    sweep,
     translation,
     view_camera,
 )
@@ -55,6 +60,31 @@ def outward(mesh):
         if self_dot <= 0:
             return False, face, self_dot
     return True, None, None
+
+
+def volume(mesh):
+    """按面片算有向体积，正数说明面朝外，负数说明整体翻面。"""
+    total = 0.0
+    for face in mesh.faces:
+        points = [mesh.vertices[index] for index in face]
+        for index in range(1, len(points) - 1):
+            a, b, c = points[0], points[index], points[index + 1]
+            total += (
+                a[0] * (b[1] * c[2] - b[2] * c[1])
+                - a[1] * (b[0] * c[2] - b[2] * c[0])
+                + a[2] * (b[0] * c[1] - b[1] * c[0])
+            ) / 6.0
+    return total
+
+
+def edge_uses(mesh):
+    uses = {}
+    for face in mesh.faces:
+        for index, corner in enumerate(face):
+            following = face[(index + 1) % len(face)]
+            key = (corner, following) if corner < following else (following, corner)
+            uses[key] = uses.get(key, 0) + 1
+    return uses
 
 
 class MatrixTest(unittest.TestCase):
@@ -132,6 +162,179 @@ class PrimitiveTest(unittest.TestCase):
             make_sphere(1, 1, 6)
 
 
+class CapsuleTest(unittest.TestCase):
+    def test_topology(self):
+        mesh = make_capsule(1, 2, 12, 4)
+        self.assertEqual(len(mesh.vertices), 98)
+        self.assertEqual(len(mesh.faces), 108)
+
+    def test_bounds_include_both_hemispheres(self):
+        mesh = make_capsule(0.5, 1.2, 16, 6, center=(2, 3, 4))
+        box = bounds(mesh)
+        self.assertAlmostEqual(box["size"][0], 1.0, places=6)
+        self.assertAlmostEqual(box["size"][1], 2.2, places=6)
+        self.assertAlmostEqual(box["size"][2], 1.0, places=6)
+        self.assertAlmostEqual(box["min"][1], 3 - 1.1, places=6)
+        self.assertAlmostEqual(box["max"][1], 3 + 1.1, places=6)
+
+    def test_watertight_and_outward(self):
+        mesh = make_capsule(0.5, 1.0, 16, 6)
+        self.assertTrue(is_watertight(mesh))
+        self.assertGreater(volume(mesh), 0)
+
+    def test_every_vertex_lies_on_the_surface(self):
+        radius, height = 0.6, 1.4
+        mesh = make_capsule(radius, height, 20, 8)
+        half = height / 2.0
+        for x, y, z in mesh.vertices:
+            radial = math.hypot(x, z)
+            if abs(y) <= half + 1e-9:
+                self.assertAlmostEqual(radial, radius, places=6)
+            else:
+                bulge = abs(y) - half
+                self.assertAlmostEqual(radial * radial + bulge * bulge,
+                                       radius * radius, places=6)
+
+    def test_zero_height_is_a_sphere(self):
+        capsule = make_capsule(1, 0, 12, 4)
+        sphere = make_sphere(1, 12, 8)
+        self.assertEqual(len(capsule.vertices), len(sphere.vertices))
+        self.assertEqual(len(capsule.faces), len(sphere.faces))
+        self.assertTrue(is_watertight(capsule))
+
+    def test_rejects_negative_radius(self):
+        with self.assertRaises(ValueError):
+            make_capsule(-1, 1)
+
+
+class LatheTest(unittest.TestCase):
+    def test_vase_topology_and_cap(self):
+        mesh = make_lathe([(0.0, 0.0), (0.5, 0.0), (0.35, 0.6), (0.55, 1.2), (0.3, 1.5)], 20)
+        self.assertEqual(len(mesh.vertices), 82)
+        self.assertEqual(len(mesh.faces), 100)
+        self.assertTrue(is_watertight(mesh))
+        self.assertGreater(volume(mesh), 0)
+
+    def test_closed_profile_needs_no_caps(self):
+        # 一条从轴到轴的母线，两头都是尖，顶点里没有额外的盖子中心
+        mesh = make_lathe([(0.0, 0.0), (0.6, 0.5), (0.0, 1.0)], 12)
+        self.assertEqual(len(mesh.vertices), 2 + 12)
+        self.assertEqual(len(mesh.faces), 24)
+        self.assertTrue(is_watertight(mesh))
+
+    def test_bounds(self):
+        mesh = make_lathe([(0.0, 0.0), (0.5, 0.0), (0.5, 2.0), (0.0, 2.0)], 16)
+        box = bounds(mesh)
+        self.assertAlmostEqual(box["size"][1], 2.0, places=6)
+        self.assertAlmostEqual(box["size"][0], 1.0, places=6)
+        self.assertAlmostEqual(box["size"][2], 1.0, places=6)
+
+    def test_duplicate_profile_points_are_dropped(self):
+        clean = make_lathe([(0.0, 0.0), (0.5, 0.0), (0.5, 0.0), (0.0, 1.0)], 8)
+        plain = make_lathe([(0.0, 0.0), (0.5, 0.0), (0.0, 1.0)], 8)
+        self.assertEqual(len(clean.vertices), len(plain.vertices))
+        self.assertEqual(len(clean.faces), len(plain.faces))
+
+    def test_rejects_profile_going_down(self):
+        with self.assertRaises(ValueError):
+            make_lathe([(0.0, 1.0), (0.5, 0.0)], 8)
+
+    def test_rejects_bad_profile(self):
+        with self.assertRaises(ValueError):
+            make_lathe([(0.5, 0.0)], 8)
+        with self.assertRaises(ValueError):
+            make_lathe([(0.0, 0.0), (0.5, 1.0, 2.0)], 8)
+        with self.assertRaises(ValueError):
+            make_lathe([(0.0, 0.0), (-0.5, 1.0)], 8)
+
+
+class SweepTest(unittest.TestCase):
+    def test_straight_tube_topology(self):
+        mesh = sweep([(0, 0, 0), (0, 2, 0)], 0.3, sides=8)
+        self.assertEqual(len(mesh.vertices), 2 * 8 + 2)
+        self.assertEqual(len(mesh.faces), 8 + 16)
+        self.assertTrue(is_watertight(mesh))
+
+    def test_radius_follows_each_point(self):
+        points = [(0, 0, 0), (0, 1, 0), (1, 2, 0), (2, 2, 0)]
+        weights = [0.1, 0.2, 0.15, 0.05]
+        sides = 10
+        mesh = sweep(points, weights, sides=sides)
+        for index, (center, radius) in enumerate(zip(points, weights)):
+            for side in range(sides):
+                vertex = mesh.vertices[index * sides + side]
+                distance = math.dist(vertex, center)
+                self.assertAlmostEqual(distance, radius, places=6)
+
+    def test_planar_sweep_does_not_twist(self):
+        points = [(0, 0, 0), (0, 1, 0), (0.6, 1.6, 0), (1.4, 1.4, 0), (2.0, 0.6, 0)]
+        sides = 8
+        mesh = sweep(points, 0.12, sides=sides)
+        bases = []
+        for index in range(len(points) - 1):
+            center = points[index]
+            vertex = mesh.vertices[index * sides]
+            bases.append(tuple((vertex[axis] - center[axis]) / 0.12 for axis in range(3)))
+        for basis in bases:
+            overlap = sum(a * b for a, b in zip(basis, bases[0]))
+            self.assertAlmostEqual(overlap, 1.0, places=6)
+            self.assertAlmostEqual(abs(basis[2]), 1.0, places=6)
+
+    def test_tip_radius_zero_makes_a_point(self):
+        mesh = sweep([(0, 0, 0), (0, 1, 0), (0, 2, 0)], [0.2, 0.1, 0.0], sides=6)
+        self.assertEqual(len(mesh.vertices), 6 + 6 + 1 + 1)
+        self.assertIn((0.0, 2.0, 0.0), mesh.vertices)
+        self.assertTrue(is_watertight(mesh))
+
+    def test_caps_can_be_turned_off(self):
+        capped = sweep([(0, 0, 0), (0, 1, 0)], 0.2, sides=6)
+        open_tube = sweep([(0, 0, 0), (0, 1, 0)], 0.2, sides=6, caps=False)
+        self.assertTrue(is_watertight(capped))
+        self.assertFalse(is_watertight(open_tube))
+
+    def test_bounds(self):
+        mesh = sweep([(-1, 0, 0), (1, 0, 0)], 0.25, sides=16)
+        box = bounds(mesh)
+        # 两头是平盖，管的长度就是 2，管的粗细算在 y、z 上
+        self.assertAlmostEqual(box["size"][0], 2.0, places=6)
+        self.assertAlmostEqual(box["size"][1], 0.5, places=6)
+
+    def test_rejects_bad_path(self):
+        with self.assertRaises(ValueError):
+            sweep([(0, 0, 0)], 0.1)
+        with self.assertRaises(ValueError):
+            sweep([(0, 0, 0), (0, 0, 0)], 0.1)
+        with self.assertRaises(ValueError):
+            sweep([(0, 0, 0), (0, 1, 0)], [0.1, 0.2, 0.3])
+        with self.assertRaises(ValueError):
+            sweep([(0, 0, 0), (0, 1, 0)], -0.1)
+
+
+class PrimitiveInspectionTest(unittest.TestCase):
+    def test_bounds_apply_transform(self):
+        mesh = make_box(2, 2, 2, center=(0, 0, 0))
+        mesh.transform = {"translate": [3, 0, 0]}
+        box = bounds(mesh)
+        self.assertAlmostEqual(box["min"][0], 2.0, places=6)
+        self.assertAlmostEqual(box["max"][0], 4.0, places=6)
+
+    def test_watertight_on_old_primitives(self):
+        for mesh in (make_box(), make_sphere(1, 8, 4), make_cylinder(1, 2, 8),
+                     make_cone(1, 2, 8)):
+            self.assertTrue(is_watertight(mesh), mesh.name)
+        self.assertFalse(is_watertight(make_cylinder(1, 2, 8, caps=False)))
+
+    def test_every_edge_shared_by_two_faces(self):
+        for mesh in (make_capsule(0.5, 1, 12, 4),
+                     make_lathe([(0, 0), (0.4, 0.3), (0.2, 1.0)], 10),
+                     sweep([(0, 0, 0), (0.5, 1, 0), (1, 1.5, 0.3)], [0.1, 0.15, 0.0], 8)):
+            uses = edge_uses(mesh)
+            self.assertTrue(uses)
+            self.assertEqual(set(uses.values()), {2}, mesh.name)
+            edges = len(uses)
+            self.assertEqual(len(mesh.vertices) - edges + len(mesh.faces), 2, mesh.name)
+
+
 class MeshFromDictTest(unittest.TestCase):
     def test_blueprint_schema(self):
         data = {
@@ -152,6 +355,26 @@ class MeshFromDictTest(unittest.TestCase):
         self.assertEqual(len(mesh.vertices), 8)
         mesh = mesh_from_dict({"primitive": "sphere", "radius": 1, "segments": 6, "rings": 4})
         self.assertEqual(len(mesh.faces), 24)
+
+    def test_new_primitive_sugar(self):
+        capsule = mesh_from_dict({"type": "capsule", "radius": 0.5, "height": 1,
+                                  "segments": 10, "rings": 3})
+        self.assertEqual(capsule.name, "网格")
+        self.assertTrue(is_watertight(capsule))
+
+        lathe = mesh_from_dict({"type": "lathe", "segments": 12,
+                                "profile": [[0, 0], [0.4, 0.2], [0, 1]]})
+        self.assertEqual(len(lathe.vertices), 2 + 12)
+
+        swept = mesh_from_dict({"type": "sweep", "sides": 6,
+                                "points": [[0, 0, 0], [0, 1, 0]],
+                                "radii": [0.1, 0.1]})
+        self.assertTrue(is_watertight(swept))
+        self.assertEqual(len(swept.faces), 6 + 12)
+
+    def test_sweep_needs_radii(self):
+        with self.assertRaises(ValueError):
+            mesh_from_dict({"type": "sweep", "points": [[0, 0, 0], [0, 1, 0]]})
 
     def test_bad_index(self):
         with self.assertRaises(ValueError):
@@ -358,6 +581,20 @@ class RenderTest(unittest.TestCase):
     def test_bad_light(self):
         with self.assertRaises(ValueError):
             shade_color("#808080", (0, 1, 0), {"direction": [0, 0, 0]})
+
+    def test_new_primitives_render(self):
+        target = pen()
+        camera = Camera(position=(0, 0, -9), target=(0, 0, 0), focal=200,
+                        frame=(200, 100))
+        stats = render([
+            make_capsule(0.4, 0.8, 12, 4, center=(-1.4, 0, 0), color="mid"),
+            make_lathe([(0, -0.6), (0.4, -0.6), (0.25, 0.4), (0.15, 0.6)], 12,
+                       center=(0, 0, 0), color="mid"),
+            sweep([(1.0, -0.6, 0), (1.4, 0.2, 0), (1.2, 0.8, 0)], [0.12, 0.08, 0.0],
+                  sides=8, color="mid"),
+        ], camera, target)
+        self.assertGreater(stats["drawn"], 3)
+        self.assertEqual(stats["commands"], stats["drawn"])
 
     def test_build_scene(self):
         target = pen(400, 225)

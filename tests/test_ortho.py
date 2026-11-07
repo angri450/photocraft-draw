@@ -13,6 +13,7 @@ from photocraft_draw.ortho import (
     AXES,
     build_views,
     demo_meshes,
+    edge_width,
     make_blossom,
     ortho_project,
     project_panel,
@@ -369,3 +370,161 @@ class TestBlossom:
             make_blossom([0, 0, 0], 1.0, petals=2)
         with pytest.raises(ValueError, match="facing|零向量"):
             make_blossom([0, 0, 0], 1.0, facing=[0, 0, 0])
+
+
+def rotated_box(angle_deg, size=2.0):
+    """绕 Y 轴转过的立方体：正视图是矩形外框加一条竖折边。"""
+    import math as _math
+
+    data = box_mesh(size, size, size)
+    angle = _math.radians(angle_deg)
+    cos, sin = _math.cos(angle), _math.sin(angle)
+    data["vertices"] = [
+        [x * cos + z * sin, y, -x * sin + z * cos]
+        for x, y, z in data["vertices"]
+    ]
+    data["name"] = "斜盒"
+    return data
+
+
+def edge_commands(commands, mesh_name, kind, left=0, right=800):
+    """某个物体、某一类边、某一块面板里的线命令。"""
+    marks = ("轮廓", "折边", "隐藏边")
+    out = []
+    for item in commands:
+        params = item["params"]
+        name = params.get("name", "")
+        if item["command"] != "shape.create" or params.get("kind") != "line":
+            continue
+        if not name.startswith(mesh_name + "·"):
+            continue
+        if kind in marks and kind not in name:
+            continue
+        if not left <= params["from"][0] < right:
+            continue
+        out.append(params)
+    return out
+
+
+class TestHiddenEdges:
+    """消隐：只画外轮廓和硬折边，被挡的边不画，可选虚线。"""
+
+    def test_cube_keeps_the_frame_and_one_crease(self):
+        commands, meta = build_views([rotated_box(30)], width=800, height=700)
+        counts = meta["edge_counts"]["front"]
+        assert counts["crease"] == 1
+        assert counts["visible"] == 5
+        # 四条外框：上、下两条各由两段共线边接成，竖直两条各一段
+        assert len(edge_commands(commands, "斜盒", "轮廓")) == 4
+        assert len(edge_commands(commands, "斜盒", "折边")) == 1
+
+    def test_sphere_has_only_one_outline(self):
+        sphere = demo_meshes()[1]
+        commands, meta = build_views([sphere], width=800, height=700)
+        assert meta["edge_counts"]["front"]["crease"] == 0
+        lines = edge_commands(commands, "球", "轮廓")
+        assert lines
+        center = project_panel([-0.9, 0.78, -0.35], "front", meta)
+        radius = 0.78 * meta["scale"]
+        for params in lines:
+            for point in (params["from"], params["to"]):
+                distance = ((point[0] - center[0]) ** 2
+                            + (point[1] - center[1]) ** 2) ** 0.5
+                assert distance == pytest.approx(radius, rel=0.02)
+
+    def test_covered_edges_are_not_drawn(self):
+        front = box_mesh(2.0, 2.0, 1.0, 0.0, 0.0)
+        front["name"] = "前盒"
+        back = box_mesh(1.0, 1.0, 1.0, 0.0, 5.0)
+        back["name"] = "后盒"
+        commands, meta = build_views([front, back], width=800, height=700)
+        assert meta["edge_counts"]["front"]["visible"] == 4
+        assert not edge_commands(commands, "后盒", "轮廓")
+        assert not edge_commands(commands, "后盒", "折边")
+
+    def test_crease_angle_is_adjustable(self):
+        _, loose = build_views([rotated_box(30)], width=800, height=700,
+                               crease_angle=25)
+        _, strict = build_views([rotated_box(30)], width=800, height=700,
+                                crease_angle=100)
+        assert loose["edge_counts"]["front"]["crease"] == 1
+        assert strict["edge_counts"]["front"]["crease"] == 0
+        assert strict["edge_counts"]["front"]["visible"] == 4
+
+    def test_hidden_lines_can_be_dashed(self):
+        commands, meta = build_views([rotated_box(30)], width=800, height=700,
+                                     hidden_lines=True)
+        assert meta["hidden_lines"] is True
+        assert meta["edge_counts"]["front"]["hidden"] > 0
+        dashes = edge_commands(commands, "斜盒", "隐藏边")
+        assert dashes
+        for params in dashes:
+            length = ((params["to"][0] - params["from"][0]) ** 2
+                      + (params["to"][1] - params["from"][1]) ** 2) ** 0.5
+            assert length <= 6.0   # 每段都很短，才是虚线
+
+        plain, plain_meta = build_views([rotated_box(30)], width=800, height=700)
+        assert plain_meta["edge_counts"]["front"]["hidden"] == 0
+        assert not edge_commands(plain, "斜盒", "隐藏边")
+
+    def test_width_gets_thinner_with_depth(self):
+        assert edge_width(0.0, 0.0, 10.0) == pytest.approx(1.6)
+        assert edge_width(5.0, 0.0, 10.0) == pytest.approx(1.3)
+        assert edge_width(10.0, 0.0, 10.0) == pytest.approx(1.0)
+        assert edge_width(3.0, 3.0, 3.0) == pytest.approx(1.6)
+
+        near = box_mesh(1.0, 1.0, 1.0, -1.5, 0.0)
+        near["name"] = "近盒"
+        far = box_mesh(1.0, 1.0, 1.0, 1.5, 5.0)
+        far["name"] = "远盒"
+        _, meta = build_views([near, far], width=800, height=700)
+        pairs = sorted(zip(meta["edge_depths"], meta["edge_widths"]))
+        assert pairs[0][1] == pytest.approx(1.6)
+        assert pairs[-1][1] == pytest.approx(1.0)
+        for first, second in zip(pairs, pairs[1:]):
+            assert first[1] >= second[1] - 1e-9
+
+    def test_crease_angle_is_validated(self):
+        with pytest.raises(ValueError, match="crease_angle"):
+            build_views([rotated_box(30)], crease_angle=200)
+
+
+class TestHiddenLines:
+    """三视图消隐：只留外轮廓和折边，被挡住的不画。"""
+
+    def edges(self, commands, kind):
+        return [item for item in commands
+                if kind in item["params"].get("name", "")]
+
+    def test_box_front_keeps_outer_frame_only(self):
+        commands, _ = build_views([box_mesh()], width=600, height=700)
+        lines = [item for item in commands
+                 if "轮廓" in item["params"].get("name", "")
+                 or "折边" in item["params"].get("name", "")]
+        assert 4 <= len(lines) <= 14
+
+    def test_default_has_no_hidden_edges(self):
+        commands, _ = build_views([box_mesh()], width=600, height=700)
+        assert not self.edges(commands, "隐藏边")
+
+    def test_hidden_edges_appear_when_switched_on(self):
+        commands, meta = build_views([box_mesh()], width=600, height=700,
+                                    hidden_lines=True)
+        assert self.edges(commands, "隐藏边")
+        assert meta["view_faces"]
+
+    def test_sphere_has_silhouette_and_no_crease(self):
+        from photocraft_draw.mesh import make_sphere
+        commands, _ = build_views([make_sphere(1.0, segments=24, rings=12)],
+                                  width=600, height=700)
+        assert self.edges(commands, "轮廓")
+        assert not self.edges(commands, "折边")
+
+    def test_crease_angle_filters_cylinder_edges(self):
+        from photocraft_draw.mesh import make_cylinder
+        cylinder = make_cylinder(0.5, 1.5, segments=10)
+        low, _ = build_views([cylinder], width=600, height=700,
+                             crease_angle=25.0)
+        high, _ = build_views([cylinder], width=600, height=700,
+                              crease_angle=60.0)
+        assert len(self.edges(low, "折边")) > len(self.edges(high, "折边"))

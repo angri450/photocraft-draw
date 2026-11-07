@@ -14,6 +14,10 @@ ortho_project 只负责坐标映射，返回数学坐标，v 轴向上。render_
 时，每个视图按自身内容的中点对齐画板中点，比例尺和横向对齐都不变；俯视图
 深度大、把正视图和左视图压到面板底部时用这个开关。
 
+视图里的线只画外轮廓和硬折边：背面剔掉，被前面物体挡住的段不画。折边阈值
+用 crease_angle 调，默认 25 度；hidden_lines=True 时把被挡的边画成虚线，
+默认关闭。线宽按深度走，近处 1.6 像素、远处 1.0 像素。
+
 网格只按 vertices 和 faces 两个字段读，不 import mesh.py：传字典也行，传带
 同名属性的对象也行。面的顶点按逆时针写，法向量朝外，背面会自动剔除。
 
@@ -62,6 +66,14 @@ TITLE_BAND = 46
 DEFAULT_OFFSET = 22.0
 # 尺寸文字往物体那一侧收，贴着尺寸线内侧，不往画板边缘跑。
 LABEL_OFFSET = -12.0
+
+# 消隐轮廓：近处粗、远处细；折边超过这个角度才算硬折边。
+EDGE_NEAR = 1.6
+EDGE_FAR = 1.0
+DEFAULT_CREASE = 46.0
+EDGE_STEP = 3.0
+EDGE_COLOR = "ink"
+HIDDEN_COLOR = "muted"
 
 
 def _numbers(point, where: str) -> list[float]:
@@ -285,6 +297,325 @@ def _shade(color: str, factor: float) -> str:
         max(0, min(255, round(channel * factor))) for channel in channels)
 
 
+def edge_width(depth, near_depth, far_depth, near_width=EDGE_NEAR, far_width=EDGE_FAR):
+    """按深度给线宽：最近 near_width，最远 far_width，中间线性插值。"""
+    if far_depth - near_depth <= 1e-9:
+        return float(near_width)
+    ratio = (float(depth) - float(near_depth)) / (float(far_depth) - float(near_depth))
+    ratio = max(0.0, min(1.0, ratio))
+    return float(near_width) + (float(far_width) - float(near_width)) * ratio
+
+
+def _mesh_edges(faces) -> dict:
+    """无向边到相邻面的表。一条边最多被两个面共用，开放边只有一个。"""
+    edges = {}
+    for face_index, face in enumerate(faces):
+        count = len(face)
+        for step in range(count):
+            first = face[step]
+            second = face[(step + 1) % count]
+            key = (first, second) if first < second else (second, first)
+            edges.setdefault(key, []).append(face_index)
+    return edges
+
+
+def _dihedral(first, second) -> float:
+    """两个法向量的夹角，单位度。"""
+    value = max(-1.0, min(1.0, _dot(first, second)))
+    return math.degrees(math.acos(value))
+
+
+class _DepthGrid:
+    """投影平面上的粗略深度缓冲，判断一条边有没有被更近的面挡住。
+
+    网格间距两像素，按屏幕位置查最近表面的深度就够了；只用来做可见性
+    的粗判，不参与上色。
+    """
+
+    def __init__(self, left, top, width, height, step: float = 2.0):
+        self.left = float(left)
+        self.top = float(top)
+        self.step = float(step)
+        self.cols = max(1, int(math.ceil(float(width) / self.step)))
+        self.rows = max(1, int(math.ceil(float(height) / self.step)))
+        self.data = [None] * (self.cols * self.rows)
+
+    def _index(self, px, py):
+        col = int((px - self.left) / self.step)
+        row = int((py - self.top) / self.step)
+        if col < 0 or row < 0 or col >= self.cols or row >= self.rows:
+            return None
+        return row * self.cols + col
+
+    def depth_at(self, px, py):
+        index = self._index(px, py)
+        return None if index is None else self.data[index]
+
+    def _store(self, index, depth):
+        old = self.data[index]
+        if old is None or depth < old:
+            self.data[index] = depth
+
+    def fill(self, screen_points, depths) -> None:
+        """把一块凸多边形按扇形拆成三角形铺进缓冲，只留最近深度。"""
+        if len(screen_points) < 3:
+            return
+        for step in range(1, len(screen_points) - 1):
+            self._fill_triangle(screen_points[0], screen_points[step],
+                                screen_points[step + 1],
+                                depths[0], depths[step], depths[step + 1])
+
+    def _fill_triangle(self, a, b, c, da, db, dc) -> None:
+        ax, ay = a
+        bx, by = b
+        cx, cy = c
+        denominator = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy)
+        if abs(denominator) < 1e-12:
+            return
+        col0 = max(0, int((min(ax, bx, cx) - self.left) / self.step) - 1)
+        col1 = min(self.cols - 1, int((max(ax, bx, cx) - self.left) / self.step) + 1)
+        row0 = max(0, int((min(ay, by, cy) - self.top) / self.step) - 1)
+        row1 = min(self.rows - 1, int((max(ay, by, cy) - self.top) / self.step) + 1)
+        for row in range(row0, row1 + 1):
+            py = self.top + (row + 0.5) * self.step
+            for col in range(col0, col1 + 1):
+                px = self.left + (col + 0.5) * self.step
+                w0 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / denominator
+                if w0 < -1e-9:
+                    continue
+                w1 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / denominator
+                if w1 < -1e-9:
+                    continue
+                w2 = 1.0 - w0 - w1
+                if w2 < -1e-9:
+                    continue
+                self._store(row * self.cols + col, w0 * da + w1 * db + w2 * dc)
+
+    def fill_ellipse(self, cx, cy, rx, ry, depth) -> None:
+        """侧视花是一个扁椭圆，按椭圆覆盖的范围铺深度。"""
+        if rx <= 0 or ry <= 0:
+            return
+        col0 = max(0, int((cx - rx - self.left) / self.step) - 1)
+        col1 = min(self.cols - 1, int((cx + rx - self.left) / self.step) + 1)
+        row0 = max(0, int((cy - ry - self.top) / self.step) - 1)
+        row1 = min(self.rows - 1, int((cy + ry - self.top) / self.step) + 1)
+        for row in range(row0, row1 + 1):
+            py = self.top + (row + 0.5) * self.step
+            for col in range(col0, col1 + 1):
+                px = self.left + (col + 0.5) * self.step
+                nx = (px - cx) / rx
+                ny = (py - cy) / ry
+                if nx * nx + ny * ny <= 1.0:
+                    self._store(row * self.cols + col, depth)
+
+
+def _visibility_runs(start, end, start_depth, end_depth, grid, epsilon):
+    """沿屏幕线段采样，返回 [(起点比例, 终点比例, 是否可见), …]。"""
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    length = math.hypot(dx, dy)
+    if length < 1e-6:
+        return []
+    count = max(2, int(length / EDGE_STEP) + 1)
+    flags = []
+    for step in range(count):
+        ratio = step / (count - 1)
+        px = start[0] + dx * ratio
+        py = start[1] + dy * ratio
+        depth = start_depth + (end_depth - start_depth) * ratio
+        blocker = grid.depth_at(px, py) if grid is not None else None
+        flags.append(blocker is None or blocker >= depth - epsilon)
+
+    runs = []
+    begin = 0
+    for step in range(1, count + 1):
+        if step == count or flags[step] != flags[begin]:
+            runs.append((begin / (count - 1), (step - 1) / (count - 1), flags[begin]))
+            begin = step
+    return runs
+
+
+def _edge_line(pen, start, end, width, color, name) -> None:
+    """画一条消隐线，线宽按像素给，绕开 Pen 的整数取整。"""
+    pen.line(start[0], start[1], end[0], end[1], width=width, color=color, name=name)
+    pen.commands[-1]["params"]["weight"] = max(0.4, round(width * pen.k, 2))
+
+
+def _join_collinear(first, second, tolerance=0.8):
+    """两条线段共线且首尾相接就接成一条，接不上返回 None。"""
+    pairs = (
+        (first["start"], first["end"], second["start"], second["end"]),
+        (first["start"], first["end"], second["end"], second["start"]),
+        (first["end"], first["start"], second["start"], second["end"]),
+        (first["end"], first["start"], second["end"], second["start"]),
+    )
+    for shared_a, far_a, shared_b, far_b in pairs:
+        if math.hypot(shared_a[0] - shared_b[0], shared_a[1] - shared_b[1]) > tolerance:
+            continue
+        ax = far_a[0] - shared_a[0]
+        ay = far_a[1] - shared_a[1]
+        bx = far_b[0] - shared_b[0]
+        by = far_b[1] - shared_b[1]
+        length_a = math.hypot(ax, ay)
+        length_b = math.hypot(bx, by)
+        if length_a < 1e-6 or length_b < 1e-6:
+            continue
+        # 两条线都从接点往外走，方向必须相反，不能是重叠的。
+        if (ax * bx + ay * by) / (length_a * length_b) > -0.995:
+            continue
+        # 远端离第一条线太远就不算共线。
+        if abs(ax * by - ay * bx) / length_a > tolerance * 2.0:
+            continue
+        total = length_a + length_b
+        return {
+            "start": far_a,
+            "end": far_b,
+            "width": (first["width"] * length_a + second["width"] * length_b) / total,
+            "depth": (first["depth"] * length_a + second["depth"] * length_b) / total,
+            "name": first["name"],
+            "kind": first["kind"],
+            "mesh": first["mesh"],
+        }
+    return None
+
+
+def _merge_collinear(segments):
+    """同一件物体、同一种边里，把共线且首尾相接的短线接成长线。"""
+    groups = {}
+    for segment in segments:
+        groups.setdefault((segment["mesh"], segment["kind"]), []).append(segment)
+    merged = []
+    for items in groups.values():
+        remaining = list(items)
+        while remaining:
+            current = remaining.pop()
+            changed = True
+            while changed:
+                changed = False
+                for index, other in enumerate(remaining):
+                    joined = _join_collinear(current, other)
+                    if joined:
+                        current = joined
+                        remaining.pop(index)
+                        changed = True
+                        break
+            merged.append(current)
+    return merged
+
+
+def _dash_edge(pen, start, end, width, color, name, dash=5.0, gap=4.0) -> bool:
+    """把一条线画成短虚线，返回是否画出了至少一段。"""
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    length = math.hypot(dx, dy)
+    if length < 1e-6:
+        return False
+    ux, uy = dx / length, dy / length
+    position = 0.0
+    drew = False
+    while position < length - 1e-6:
+        stop = min(position + dash, length)
+        _edge_line(pen,
+                   (start[0] + ux * position, start[1] + uy * position),
+                   (start[0] + ux * stop, start[1] + uy * stop),
+                   width, color, name)
+        drew = True
+        position += dash + gap
+    return drew
+
+
+def _draw_edges(pen, view, layout, prepared, mesh_edges, mesh_normals, skipped,
+                grid, near_depth, far_depth, epsilon, hidden_lines,
+                crease_angle):
+    """一个视图里的消隐轮廓与折边。返回计数、线宽和深度。"""
+    counts = {"silhouette": 0, "crease": 0, "visible": 0, "hidden": 0}
+    widths = []
+    depths = []
+    solid = []
+    forward = FORWARD[view]
+
+    for mesh_index, (vertices, faces, color, name, blossom) in enumerate(prepared):
+        if blossom or mesh_index in skipped:
+            continue
+        normals = mesh_normals[mesh_index]
+        visible = [_dot(normal, forward) < -1e-9 for normal in normals]
+
+        for (first_index, second_index), face_ids in mesh_edges[mesh_index].items():
+            front_count = sum(1 for face_index in face_ids if visible[face_index])
+            if front_count == 0:
+                if not hidden_lines:
+                    continue
+                kind = "hidden"
+                if len(face_ids) >= 2:
+                    angle = max(_dihedral(normals[face_ids[a]], normals[face_ids[b]])
+                                for a in range(len(face_ids))
+                                for b in range(a + 1, len(face_ids)))
+                    if angle <= crease_angle:
+                        continue
+            elif front_count == len(face_ids):
+                if len(face_ids) < 2:
+                    kind = "silhouette"
+                else:
+                    angle = max(_dihedral(normals[face_ids[a]], normals[face_ids[b]])
+                                for a in range(len(face_ids))
+                                for b in range(a + 1, len(face_ids)))
+                    if angle <= crease_angle:
+                        continue
+                    kind = "crease"
+            else:
+                kind = "silhouette"
+
+            first = vertices[first_index]
+            second = vertices[second_index]
+            start = project_panel(first, view, layout)
+            end = project_panel(second, view, layout)
+            if math.hypot(end[0] - start[0], end[1] - start[1]) < 0.8:
+                continue
+            start_depth = _depth(first, view)
+            end_depth = _depth(second, view)
+            width = edge_width((start_depth + end_depth) / 2.0, near_depth, far_depth)
+            label = "%s·%s" % (name, "折边" if kind == "crease" else "轮廓")
+
+            if kind == "hidden":
+                if _dash_edge(pen, start, end, max(0.6, width * 0.8), HIDDEN_COLOR,
+                              "%s·隐藏边" % name):
+                    counts["hidden"] += 1
+                continue
+
+            counts[kind] += 1
+            runs = _visibility_runs(start, end, start_depth, end_depth, grid, epsilon)
+            dashed = False
+            for begin, stop, ok in runs:
+                if stop - begin < 0.012:
+                    continue
+                from_point = (start[0] + (end[0] - start[0]) * begin,
+                              start[1] + (end[1] - start[1]) * begin)
+                to_point = (start[0] + (end[0] - start[0]) * stop,
+                            start[1] + (end[1] - start[1]) * stop)
+                if ok:
+                    solid.append({
+                        "start": from_point, "end": to_point, "width": width,
+                        "depth": (start_depth + end_depth) / 2.0,
+                        "name": label, "kind": kind, "mesh": mesh_index,
+                    })
+                elif hidden_lines:
+                    if _dash_edge(pen, from_point, to_point, max(0.6, width * 0.8),
+                                  HIDDEN_COLOR, "%s·隐藏边" % name):
+                        dashed = True
+            if dashed:
+                counts["hidden"] += 1
+
+    # 同一条外框可能被折边拆成两段共线的短线，接起来才是图上的一条边。
+    merged = _merge_collinear(solid)
+    for segment in merged:
+        _edge_line(pen, segment["start"], segment["end"], segment["width"],
+                   EDGE_COLOR, segment["name"])
+    counts["visible"] = len(merged)
+    widths = [segment["width"] for segment in merged]
+    depths = [segment["depth"] for segment in merged]
+    return counts, widths, depths
+
+
 def _layout(prepared, width: int, height: int, margin: int, title_band: int,
             center_per_view: bool = False) -> dict:
     """三个画板的位置，和一份全局比例尺。
@@ -440,14 +771,45 @@ def _projected_box(vertices, view, layout):
     return min(xs), min(ys), max(xs), max(ys)
 
 
+def _edge_grid(prepared, items, slivers, view, layout):
+    """按一个视图里实际画出来的面铺一张深度缓冲，给消隐判断用。"""
+    xs = []
+    ys = []
+    for vertices, *_ in prepared:
+        for point in vertices:
+            px, py = project_panel(point, view, layout)
+            xs.append(px)
+            ys.append(py)
+    panel = layout["panels"][AXES.index(view)]
+    left = max(panel["left"], min(xs) - 6)
+    top = max(panel["top"], min(ys) - 6)
+    right = min(panel["left"] + panel["width"], max(xs) + 6)
+    bottom = min(panel["top"] + panel["height"], max(ys) + 6)
+    grid = _DepthGrid(left, top, max(1.0, right - left), max(1.0, bottom - top))
+    for item in items:
+        mesh_index = item[1]
+        face = item[3]
+        vertices = prepared[mesh_index][0]
+        points = [project_panel(vertices[index], view, layout) for index in face]
+        depths = [_depth(vertices[index], view) for index in face]
+        grid.fill(points, depths)
+    for cx, cy, rx, ry, color, name, depth in slivers:
+        grid.fill_ellipse(cx, cy, rx, ry, depth)
+    return grid
+
+
 def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
                 dimensions=None, margin: int = MARGIN, title_band: int = TITLE_BAND,
-                center_per_view: bool = False):
+                center_per_view: bool = False, hidden_lines: bool = False,
+                crease_angle: float = DEFAULT_CREASE):
     """生成三视图的绘制指令，返回 (指令, 摘要)。不写文件，方便测试。
 
     center_per_view 默认关闭，三个视图共用竖向中点，老图不变。打开后每个
     视图按自身内容的中点对齐画板中点，比例尺和横向对齐都不动，只解决
     俯视图深度大、正视图和左视图被压到面板底部的问题。
+
+    hidden_lines 默认关闭：只画外轮廓和折边，被挡住的边不画；打开后把被挡
+    住的边画成虚线。crease_angle 是折边的夹角阈值，默认 25 度。
     """
     if not isinstance(meshes, (list, tuple)) or not meshes:
         raise ValueError("三视图需要至少一个网格")
@@ -455,6 +817,9 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
     height = int(height)
     if width <= 0 or height <= 0:
         raise ValueError("三视图的画板宽高必须大于 0")
+    crease_angle = float(crease_angle)
+    if not 0.0 <= crease_angle <= 180.0:
+        raise ValueError("三视图的 crease_angle 要在 0 到 180 度之间")
 
     prepared = [_mesh_data(mesh, index) for index, mesh in enumerate(meshes)]
     colors = resolve_palette(palette)
@@ -462,6 +827,19 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
     pen = Pen(total_width, height, ref_width=total_width, palette=colors)
     layout = _layout(prepared, width, height, int(margin), int(title_band),
                      bool(center_per_view))
+
+    mesh_edges = []
+    mesh_normals = []
+    for vertices, faces, color, name, blossom in prepared:
+        if blossom:
+            mesh_edges.append({})
+            mesh_normals.append([])
+        else:
+            mesh_normals.append([_normal(vertices, face) for face in faces])
+            mesh_edges.append(_mesh_edges(faces))
+    edge_counts = {}
+    edge_widths = []
+    edge_depths = []
 
     pen.rect(0, 0, total_width, height, fill=PAGE_COLOR, stroke_width=None,
              stroke=None, name="页面")
@@ -487,8 +865,9 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
             # 薄片花侧视会退化成一条线，花瓣尖会拉出长刺；这里按杯状截面
             # 画成一个扁椭圆，宽度和位置照投影包围盒，厚度给长边的十分之一；夹角小于约二十五度就按椭圆画。
             if long_side >= 6 and short_side <= long_side * 0.62:
+                depth = sum(_depth(point, view) for point in vertices) / len(vertices)
                 slivers.append(((x0 + x1) / 2.0, (y0 + y1) / 2.0, long_side / 2.0,
-                                max(2.0, long_side * 0.10), color, name))
+                                max(2.0, long_side * 0.10), color, name, depth))
                 skipped.add(mesh_index)
         for mesh_index, (vertices, faces, color, name, blossom) in enumerate(prepared):
             if mesh_index in skipped:
@@ -524,12 +903,31 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
             drawn_faces += 1
             view_faces[view] += 1
 
-        for cx, cy, rx, ry, color, name in slivers:
+        for cx, cy, rx, ry, color, name, depth in slivers:
             tone = _shade(color_of(colors, color), 0.95)
             pen.ellipse(cx, cy, rx, ry, fill=tone, stroke_width=1, stroke=tone,
                         name="%s·侧视" % name)
             drawn_faces += 1
             view_faces[view] += 1
+
+        # 面画完之后再压轮廓线：先按朝向剔背面，只留外轮廓和硬折边；
+        # 再用深度缓冲把被前面物体挡住的段切掉。
+        view_depths = [_depth(point, view) for vertices, *_ in prepared
+                       for point in vertices]
+        near_depth = min(view_depths)
+        far_depth = max(view_depths)
+        span = far_depth - near_depth
+        # 深度缓冲按两像素格子采样，边又落在面的边界上，半格偏移会带来
+        # 一点深度误差；容差取场景深度的百分之二，既盖住误差，又能分出
+        # 前后两根枝。
+        epsilon = max(1e-4 * max(1.0, span), 0.02 * span)
+        grid = _edge_grid(prepared, items, slivers, view, layout)
+        counts, widths, depths = _draw_edges(
+            pen, view, layout, prepared, mesh_edges, mesh_normals, skipped,
+            grid, near_depth, far_depth, epsilon, bool(hidden_lines), crease_angle)
+        edge_counts[view] = counts
+        edge_widths.extend(widths)
+        edge_depths.extend(depths)
 
     drawn_dimensions = 0
     for index, item in enumerate(dimensions or []):
@@ -559,6 +957,11 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
         "meshes": len(prepared),
         "faces": drawn_faces,
         "view_faces": dict(view_faces),
+        "edge_counts": edge_counts,
+        "edge_widths": edge_widths,
+        "edge_depths": edge_depths,
+        "hidden_lines": bool(hidden_lines),
+        "crease_angle": float(crease_angle),
         "dimensions": drawn_dimensions,
         "commands": len(pen.commands),
     }
@@ -566,13 +969,16 @@ def build_views(meshes, width: int = 900, height: int = 1200, palette="fresco",
 
 
 def render_views(meshes, out_path, width: int = 900, height: int = 1200,
-                 dimensions=None, palette="fresco", center_per_view: bool = False):
+                 dimensions=None, palette="fresco", center_per_view: bool = False,
+                 hidden_lines: bool = False, crease_angle: float = DEFAULT_CREASE):
     """三个视图并排画进一张图，写成 PNG，返回摘要。"""
     from .engine import Engine
 
     commands, meta = build_views(meshes, width=width, height=height,
                                  dimensions=dimensions, palette=palette,
-                                 center_per_view=center_per_view)
+                                 center_per_view=center_per_view,
+                                 hidden_lines=hidden_lines,
+                                 crease_angle=crease_angle)
     target = Path(out_path).expanduser().resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
     with Engine(read_root=Path.cwd(), write_root=target.parent) as engine:

@@ -241,4 +241,72 @@ def taper(n: int, w0: float, w1: float) -> list[float]:
     return [start + (end - start) * index / (n - 1) for index in range(n)]
 
 
-__all__ = ["stroke_path", "taper"]
+def widths_from_depth(depths, near, far, w_near: float = 1.6,
+                      w_far: float = 1.0) -> list[float]:
+    """把一串深度线性映射成线宽，近处取 w_near，远处取 w_far。
+
+    深度小于 near 时按 near 算，大于 far 时按 far 算，两端夹住，
+    避免透视算出来的极端值把线撑爆或细到看不见。
+    """
+    if not isinstance(depths, (list, tuple)) or len(depths) < 2:
+        raise ValueError("widths_from_depth 至少需要两个深度")
+    for value, label in ((near, "near"), (far, "far"), (w_near, "w_near"), (w_far, "w_far")):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"widths_from_depth 的 {label} 要是数字")
+    if float(near) == float(far):
+        raise ValueError("widths_from_depth 的 near 和 far 不能相等")
+    if w_near < 0 or w_far < 0:
+        raise ValueError("widths_from_depth 的 w_near 和 w_far 不能是负数")
+
+    widths = []
+    for depth in depths:
+        if isinstance(depth, bool) or not isinstance(depth, (int, float)):
+            raise ValueError("depths 里每一项都要是数字")
+        ratio = (float(depth) - float(near)) / (float(far) - float(near))
+        ratio = min(max(ratio, 0.0), 1.0)
+        widths.append(float(w_near) + (float(w_far) - float(w_near)) * ratio)
+    return widths
+
+
+def outline(pen: Pen, points, widths, color, closed: bool = False,
+            min_width: float = 0.6, name=None) -> None:
+    """按屏幕坐标画一条变宽轮廓线，端头收圆。
+
+    参数：
+        pen        绘图笔
+        points     [[x, y], …]，屏幕像素坐标，至少两个点
+        widths     每个点的宽度（屏幕像素）：一个数或与 points 等长的数组
+        color      填充色，配色角色名或 #rrggbb
+        closed     true 时首尾相接，不画端头
+        min_width  最小线宽，低于这个值的点按这个值画，默认 0.6，
+                   避免远处细到断开
+        name       形状名，写进 PSD 图层
+
+    内部把屏幕坐标换算回参考坐标，复用 stroke_path 撑轮廓；开口的线
+    在两端各补一个圆，把平头盖成圆头。
+    """
+    if isinstance(min_width, bool) or not isinstance(min_width, (int, float)) or min_width < 0:
+        raise ValueError("outline 的 min_width 不能是负数")
+
+    pts = _read_points(points)
+    widths = [max(value, float(min_width)) for value in _read_widths(widths, len(pts))]
+    factor = pen.k or 1.0
+    stroke_path(
+        pen,
+        [[x / factor, y / factor] for x, y in pts],
+        [value / factor for value in widths],
+        color,
+        closed=closed,
+        name=name,
+    )
+    if closed:
+        return
+
+    for index, (point, value) in enumerate(((pts[0], widths[0]), (pts[-1], widths[-1])), 1):
+        radius = value / 2 / factor
+        pen.ellipse(point[0] / factor, point[1] / factor, radius, radius,
+                    fill=color, stroke_width=None, stroke=None,
+                    name=f"{name} 端头 {index}" if name else None)
+
+
+__all__ = ["stroke_path", "taper", "outline", "widths_from_depth"]

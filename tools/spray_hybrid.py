@@ -210,13 +210,7 @@ def render_three_views(out: Path) -> None:
         base = _add(center, _mul(_unit(axis), -length * 1.80))
         stems.append(tube([base, center], [0.0012, 0.0010], "#6B4A36", name + "·梗"))
     solids = meshes + stems + proxy_meshes(flowers, buds)
-    dimensions = [
-        {"from": (-0.095, -0.062, 0.054), "to": (0.055, 0.080, 0.024),
-         "label": "枝长 19cm", "views": ["front"], "offset": 30},
-        {"from": (-0.095, -0.062, 0.054), "to": (0.055, 0.080, 0.024),
-         "label": "高 15cm", "views": ["left"], "offset": 30},
-    ]
-    summary = render_views(solids, out, width=640, height=820, dimensions=dimensions)
+    summary = render_views(solids, out, width=640, height=820)
     print("三视图：%s" % summary.get("path", out))
 
 

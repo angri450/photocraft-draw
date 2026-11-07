@@ -31,6 +31,8 @@
     rotation_x / rotation_y / rotation_z
     scaling / compose_transform / apply_matrix
     make_box / make_sphere / make_cylinder / make_cone
+    make_capsule / make_lathe / sweep     花苞、瓶罐、枝条
+    bounds / is_watertight               顶点数、面数、包围盒和封闭检查
     mesh_from_dict / camera_from_dict    方案参数转对象
     face_center / face_normal / shade_color
     project_points                       一组点投到画面
@@ -50,7 +52,7 @@ Point = tuple[float, float, float]
 Matrix = list[list[float]]
 
 PROJECTIONS = ("perspective", "ortho")
-PRIMITIVES = ("mesh", "box", "sphere", "cylinder", "cone")
+PRIMITIVES = ("mesh", "box", "sphere", "cylinder", "cone", "capsule", "lathe", "sweep")
 
 # 透视时深度小于这个数的点算在相机后面
 NEAR_PLANE = 0.01
@@ -123,6 +125,28 @@ def _unit(a: Point, label: str = "向量") -> Point:
     if size < 1e-9:
         raise ValueError(f"{label} 长度是 0，没法定方向")
     return (a[0] / size, a[1] / size, a[2] / size)
+
+
+def _rotate_about(vector: Point, axis: Point, angle: float) -> Point:
+    """把向量绕单位轴转一个角度，用罗德里格公式，扫掠时逐点转截面。"""
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    turned = _cross(axis, vector)
+    along = _dot(axis, vector) * (1.0 - cos_a)
+    return (
+        vector[0] * cos_a + turned[0] * sin_a + axis[0] * along,
+        vector[1] * cos_a + turned[1] * sin_a + axis[1] * along,
+        vector[2] * cos_a + turned[2] * sin_a + axis[2] * along,
+    )
+
+
+def _first_frame(tangent: Point) -> tuple[Point, Point]:
+    """给切线配一个起始截面基 (u, v)，满足 u × v 等于切线。"""
+    helper = (0.0, 1.0, 0.0)
+    if abs(_dot(tangent, helper)) > 0.9:
+        helper = (1.0, 0.0, 0.0)
+    u = _unit(_cross(tangent, helper), "扫掠方向")
+    return u, _cross(tangent, u)
 
 
 def identity() -> Matrix:
@@ -459,15 +483,256 @@ def make_cone(radius: float = 1.0, height: float = 1.0, segments: int = 16,
     return Mesh(vertices, faces, color, name)
 
 
+def make_capsule(radius: float = 1.0, height: float = 1.0, segments: int = 16,
+                 rings: int = 8, center: Point = (0.0, 0.0, 0.0),
+                 color: str = "mid", name: str = "胶囊") -> Mesh:
+    """胶囊：中间一段圆柱，两头各一个半球，花苞和果实的基础体。
+
+    height 只算圆柱那一段，不算两个半球；总高是 height + 2·radius。
+    rings 是每个半球分几层；height 为 0 时退化成球。
+    """
+    radius = _num(radius, "radius", 1.0, 0)
+    height = _num(height, "height", 1.0, 0, strict=False)
+    segments = int(_num(segments, "segments", 16, 2))
+    rings = int(_num(rings, "rings", 8, 1))
+    cx, cy, cz = _vec3(center, "center", (0.0, 0.0, 0.0))
+    if height < 1e-9:
+        return make_sphere(radius, segments, 2 * rings, center, color, name)
+
+    half = height / 2.0
+    profile: list[tuple[float, float]] = [(0.0, -half - radius)]
+    for step in range(1, rings):
+        theta = -math.pi / 2.0 + (math.pi / 2.0) * step / rings
+        profile.append((radius * math.cos(theta), -half + radius * math.sin(theta)))
+    profile.append((radius, -half))
+    profile.append((radius, half))
+    for step in range(1, rings):
+        theta = (math.pi / 2.0) * step / rings
+        profile.append((radius * math.cos(theta), half + radius * math.sin(theta)))
+    profile.append((0.0, half + radius))
+    return make_lathe(profile, segments, (cx, cy, cz), color, name)
+
+
+def make_lathe(profile, segments: int = 16, center: Point = (0.0, 0.0, 0.0),
+               color: str = "mid", name: str = "旋转体") -> Mesh:
+    """把一条二维母线绕竖直轴转一圈，花瓶、果子、花萼都用它。
+
+    profile 是一组 [r, y]，y 从下往上只增不减，r 不能是负数；r 为 0 的
+    端点收成一个尖。首尾不在轴上时自动补平面盖，做出来的网格是水密的。
+    """
+    segments = int(_num(segments, "segments", 16, 2))
+    cx, cy, cz = _vec3(center, "center", (0.0, 0.0, 0.0))
+    if not isinstance(profile, (list, tuple)) or len(profile) < 2:
+        raise ValueError("lathe 需要 profile：至少两个 [r, y]")
+
+    shape: list[tuple[float, float]] = []
+    for index, item in enumerate(profile):
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            raise ValueError(f"profile 第 {index + 1} 个点要写成 [r, y]")
+        radius = _num(item[0], f"profile[{index}].r", None, 0, strict=False)
+        level = _num(item[1], f"profile[{index}].y", None)
+        if shape and abs(level - shape[-1][1]) < 1e-12 and abs(radius - shape[-1][0]) < 1e-12:
+            continue
+        shape.append((radius, level))
+    if len(shape) < 2:
+        raise ValueError("lathe 的 profile 去掉重复点以后不足两个")
+    for index in range(len(shape) - 1):
+        if shape[index + 1][1] < shape[index][1] - 1e-12:
+            raise ValueError("lathe 的 profile 要按 y 从下往上写，y 不能回落")
+
+    vertices: list[Point] = []
+    rows: list[list[int]] = []
+    for radius, level in shape:
+        if radius <= 1e-9:
+            rows.append([len(vertices)])
+            vertices.append((cx, cy + level, cz))
+            continue
+        ring = []
+        for segment in range(segments):
+            phi = 2.0 * math.pi * segment / segments
+            ring.append(len(vertices))
+            vertices.append((
+                cx + radius * math.cos(phi),
+                cy + level,
+                cz + radius * math.sin(phi),
+            ))
+        rows.append(ring)
+
+    faces: list[list[int]] = []
+    for index in range(len(rows) - 1):
+        lower, upper = rows[index], rows[index + 1]
+        if len(lower) == 1 and len(upper) == 1:
+            raise ValueError("profile 相邻两点都在轴上，这一段没有体积")
+        if len(lower) == 1:
+            pole = lower[0]
+            for segment in range(segments):
+                faces.append([pole, upper[segment], upper[(segment + 1) % segments]])
+        elif len(upper) == 1:
+            pole = upper[0]
+            for segment in range(segments):
+                faces.append([lower[segment], pole, lower[(segment + 1) % segments]])
+        else:
+            for segment in range(segments):
+                following = (segment + 1) % segments
+                faces.append([lower[segment], upper[segment], upper[following], lower[following]])
+
+    # 两端不在轴上就补平面盖；补了盖才是实心、水密的
+    for row, level, flip in ((rows[0], shape[0][1], False), (rows[-1], shape[-1][1], True)):
+        if len(row) == 1:
+            continue
+        center_index = len(vertices)
+        vertices.append((cx, cy + level, cz))
+        for segment in range(segments):
+            following = (segment + 1) % segments
+            if flip:
+                faces.append([center_index, row[following], row[segment]])
+            else:
+                faces.append([center_index, row[segment], row[following]])
+
+    return Mesh(vertices, faces, color, name).validate()
+
+
+def sweep(points, radii, sides: int = 12, caps: bool = True,
+          color: str = "mid", name: str = "扫掠") -> Mesh:
+    """沿一条三维折线扫出变半径的管，枝条、花梗、藤蔓都用它。
+
+    points 至少两个点；radii 给每个点一个半径，也可以只给一个数表示全程等粗。
+    每一圈的方向用平行传输从上一点转过来，整条线不会突然翻面或拧起来。
+    半径写 0 的点收成一个尖，像枝梢；caps 为真时两头补盖，管子是水密的。
+    """
+    if not isinstance(points, (list, tuple)) or len(points) < 2:
+        raise ValueError("sweep 需要至少两个点")
+    path = [_vec3(item, f"points[{index}]") for index, item in enumerate(points)]
+    for index in range(len(path) - 1):
+        if _length(_sub(path[index + 1], path[index])) < 1e-9:
+            raise ValueError(f"points 第 {index + 1} 和第 {index + 2} 个点重合，没法定方向")
+    sides = int(_num(sides, "sides", 12, 2))
+
+    if isinstance(radii, (int, float)) and not isinstance(radii, bool):
+        weights = [_num(radii, "radii", 0.0, 0, strict=False)] * len(path)
+    else:
+        if not isinstance(radii, (list, tuple)) or len(radii) != len(path):
+            raise ValueError("radii 要和 points 一样长，或者只给一个数")
+        weights = [
+            _num(item, f"radii[{index}]", None, 0, strict=False)
+            for index, item in enumerate(radii)
+        ]
+
+    tangents: list[Point] = []
+    for index in range(len(path)):
+        if index == 0:
+            direction = _sub(path[1], path[0])
+        elif index == len(path) - 1:
+            direction = _sub(path[-1], path[-2])
+        else:
+            direction = _sub(path[index + 1], path[index - 1])
+        tangents.append(_unit(direction, f"第 {index + 1} 个点的切线"))
+
+    frames: list[tuple[Point, Point]] = [_first_frame(tangents[0])]
+    for index in range(1, len(path)):
+        previous = tangents[index - 1]
+        current = tangents[index]
+        axis = _cross(previous, current)
+        sine = _length(axis)
+        u = frames[-1][0]
+        if sine > 1e-9:
+            angle = math.atan2(sine, _dot(previous, current))
+            u = _rotate_about(u, _mul(axis, 1.0 / sine), angle)
+        # 每步重新正交化，误差不会一路积下去
+        u = _unit(_sub(u, _mul(current, _dot(u, current))), "扫掠截面方向")
+        frames.append((u, _cross(current, u)))
+
+    vertices: list[Point] = []
+    rows: list[list[int]] = []
+    for index, (center, radius) in enumerate(zip(path, weights)):
+        if radius <= 1e-9:
+            rows.append([len(vertices)])
+            vertices.append(center)
+            continue
+        u, v = frames[index]
+        ring = []
+        for side in range(sides):
+            angle = 2.0 * math.pi * side / sides
+            cos_a, sin_a = math.cos(angle), math.sin(angle)
+            ring.append(len(vertices))
+            vertices.append((
+                center[0] + radius * (cos_a * u[0] + sin_a * v[0]),
+                center[1] + radius * (cos_a * u[1] + sin_a * v[1]),
+                center[2] + radius * (cos_a * u[2] + sin_a * v[2]),
+            ))
+        rows.append(ring)
+
+    faces: list[list[int]] = []
+    for index in range(len(rows) - 1):
+        lower, upper = rows[index], rows[index + 1]
+        if len(lower) == 1 and len(upper) == 1:
+            raise ValueError(f"points 第 {index + 1} 和第 {index + 2} 个点的半径都是 0，这一段没有体积")
+        if len(lower) == 1:
+            pole = lower[0]
+            for side in range(sides):
+                faces.append([pole, upper[(side + 1) % sides], upper[side]])
+        elif len(upper) == 1:
+            pole = upper[0]
+            for side in range(sides):
+                faces.append([lower[side], lower[(side + 1) % sides], pole])
+        else:
+            for side in range(sides):
+                following = (side + 1) % sides
+                faces.append([lower[side], lower[following], upper[following], upper[side]])
+
+    if caps:
+        first, last = rows[0], rows[-1]
+        if len(first) > 1:
+            center_index = len(vertices)
+            vertices.append(path[0])
+            for side in range(sides):
+                faces.append([center_index, first[(side + 1) % sides], first[side]])
+        if len(last) > 1:
+            center_index = len(vertices)
+            vertices.append(path[-1])
+            for side in range(sides):
+                faces.append([center_index, last[side], last[(side + 1) % sides]])
+
+    return Mesh(vertices, faces, color, name).validate()
+
+
+def bounds(mesh: Mesh) -> dict:
+    """网格世界坐标的包围盒，返回 min、max、size 三个三元组。"""
+    points = mesh.world_vertices()
+    if not points:
+        raise ValueError(f"网格 {mesh.name} 没有顶点，算不出包围盒")
+    low = (min(point[0] for point in points),
+           min(point[1] for point in points),
+           min(point[2] for point in points))
+    high = (max(point[0] for point in points),
+            max(point[1] for point in points),
+            max(point[2] for point in points))
+    size = (high[0] - low[0], high[1] - low[1], high[2] - low[2])
+    return {"min": low, "max": high, "size": size}
+
+
+def is_watertight(mesh: Mesh) -> bool:
+    """每条边都正好被两个面共用，说明网格是封闭的，没有漏洞。"""
+    uses: dict[tuple[int, int], int] = {}
+    for face in mesh.faces:
+        for index, corner in enumerate(face):
+            following = face[(index + 1) % len(face)]
+            key = (corner, following) if corner < following else (following, corner)
+            uses[key] = uses.get(key, 0) + 1
+    return bool(uses) and all(count == 2 for count in uses.values())
+
+
 # 图元的短名字，写代码时按需取用
 box = make_box
 sphere = make_sphere
 cylinder = make_cylinder
 cone = make_cone
+capsule = make_capsule
+lathe = make_lathe
 
 
 def mesh_from_dict(data: dict) -> Mesh:
-    """方案里的一个网格对象转成 Mesh，支持 mesh 和四种图元语法糖。"""
+    """方案里的一个网格对象转成 Mesh，支持 mesh 和七种图元语法糖。"""
     if not isinstance(data, dict):
         raise ValueError("每个网格都要是一个对象")
     kind = str(data.get("type") or data.get("primitive") or "mesh").lower()
@@ -506,6 +771,21 @@ def mesh_from_dict(data: dict) -> Mesh:
         mesh = make_cylinder(
             data.get("radius", 1.0), data.get("height", 1.0), data.get("segments", 16),
             center, data.get("caps", True), color, name,
+        )
+    elif kind == "capsule":
+        mesh = make_capsule(
+            data.get("radius", 1.0), data.get("height", 1.0),
+            data.get("segments", 16), data.get("rings", 8),
+            center, color, name,
+        )
+    elif kind == "lathe":
+        mesh = make_lathe(
+            data.get("profile"), data.get("segments", 16), center, color, name,
+        )
+    elif kind == "sweep":
+        mesh = sweep(
+            data.get("points"), data.get("radii"),
+            data.get("sides", 12), data.get("caps", True), color, name,
         )
     else:
         mesh = make_cone(
@@ -867,7 +1147,7 @@ COMPONENTS = {
         "name": "网格场景",
         "description": "顶点、变换矩阵、透视或正交相机、面排序和背面剔除，画三维白模",
         "params": {
-            "meshes": "[{type, …}, …]，必填；type 写 mesh、box、sphere、cylinder、cone",
+            "meshes": "[{type, …}, …]，必填；type 写 mesh、box、sphere、cylinder、cone、capsule、lathe、sweep",
             "camera": "{position, target, up, focal, frame, projection, ortho_scale}，可选",
             "lighting": "{direction, ambient, diffuse}，可选；写 false 是平涂",
             "seal": "是否补面缝，默认 true",
@@ -884,7 +1164,8 @@ __all__ = [
     "compose_transform", "apply_matrix", "transform_point", "transform_points",
     "face_center", "face_normal", "shade_color",
     "make_box", "make_sphere", "make_cylinder", "make_cone",
-    "box", "sphere", "cylinder", "cone",
+    "make_capsule", "make_lathe", "sweep", "bounds", "is_watertight",
+    "box", "sphere", "cylinder", "cone", "capsule", "lathe",
     "mesh_from_dict", "camera_from_dict",
     "view_camera", "ortho_views", "project_points",
     "render", "build", "build_mesh_scene",
