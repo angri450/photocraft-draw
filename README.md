@@ -183,6 +183,22 @@ photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
 
 `relations` 算兵器和肢体在空间里的关系。拿线段算最近距离、算两件兵器在画面上交叉没有、算兵器有没有从持械者的胳膊和兵器之间的那个缝里穿过去。兵器压在胳膊上而深度在前头三十像素以上，报「从前面扫过去」，那是对的；深度卡在两者中间才报「缝里穿过去」，那是错。另外算每件兵器的地面投影，各段的深度连不成一条直线就报「地面投影是折的」。
 
+## 从三维场景到成图
+
+场景类方案不走组件逐个摆的老路，用两个组件配同一个相机：`mesh_scene` 画能算体积的东西（枝条、瓶罐、果子、建筑），`organic_layer` 把花瓣、叶片、花苞这类二维形状按三维位置和朝向贴到画面上。花枝、静物、风景、室内、街道、名画复刻都是这条路，方案在 `plans/` 下。
+
+```sh
+photocraft-draw draw plans/spray.json --png out/spray.png
+photocraft-draw prompt plans/spray.json --out out/layout.json --compile-to out/prompt.txt
+python3 tools/eval_layout.py out/layout.json ../../imgs/spray_final.png
+```
+
+`prompt` 把方案里的每朵花、每个苞、每片叶、每根枝逐个投影成像素框，拼成 Layout 草稿，再调 `moss-image-prompt-enhancer` 技能的编译器转成模型要的单行格式，框以画面中心为原点。全过程不手填坐标。
+
+`eval_layout` 出图之后量贴合度：按粉色掩膜找每朵花，先腐蚀分开挨在一起的花，再和计划框按交并比一对一分配，逐朵给出计划框、实际框、偏移、面积比和匹配与否，最后给平均交并比、匹配数和多余连通域。平均交并比低于 0.45 或匹配数不到计划数的八成，退出码为 1。整簇矩形的交并比只作参考，它会被花朵尺度带偏。
+
+几何场景可以直接用 `sweep`、`make_capsule`、`make_lathe`、`subdivide`，投影、遮挡、消隐都在 `mesh.py` 和 `ortho.py` 里。动渲染之前先跑 `python3 tools/regression.py`，老场景的轮廓交并比低于 0.97 就判失败。
+
 ## 命令目录
 
 953 条绘制指令分 38 个类别，数据在 `photocraft_draw/catalog.json`，引擎升级后用 `python3 tools/build_catalog.py` 重新生成。
