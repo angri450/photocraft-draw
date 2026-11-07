@@ -88,9 +88,9 @@ SWEEPS = [
     dict(points=MAIN_POINTS, radii=MAIN_RADII, sides=16,
          color="#6b2f24", name="主枝"),
     dict(points=FORK_HIGH_POINTS, radii=FORK_HIGH_RADII, sides=14,
-         color="#8a6a3a", name="左叉"),
+         color="#743526", name="左叉"),
     dict(points=FORK_LOW_POINTS, radii=FORK_LOW_RADII, sides=14,
-         color="#a05a3c", name="右叉"),
+         color="#8a4632", name="右叉"),
 ]
 
 PANELS = [
