@@ -9,6 +9,7 @@ description = "用构图组件和绘制方案驱动 PhotoCraft 出图"
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "Apache-2.0" }
+dependencies = ["pillow>=10"]
 
 [project.scripts]
 photocraft-draw = "photocraft_draw.cli:main"
