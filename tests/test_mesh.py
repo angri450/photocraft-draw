@@ -10,6 +10,7 @@ from photocraft_draw.mesh import (
     bounds,
     build,
     camera_from_dict,
+    clip_near,
     compose_transform,
     face_center,
     face_normal,
@@ -480,6 +481,103 @@ class CameraTest(unittest.TestCase):
             view_camera("back")
 
 
+class ClipNearTest(unittest.TestCase):
+    def test_points_in_front_pass_through(self):
+        points = [(-1, -1, 2), (1, -1, 2), (1, 1, 2), (-1, 1, 2)]
+        self.assertEqual(clip_near(points, 0.1), points)
+
+    def test_points_behind_are_dropped(self):
+        points = [(-1, -1, -2), (1, -1, -2), (1, 1, -2)]
+        self.assertEqual(clip_near(points, 0.1), [])
+
+    def test_one_vertex_behind_makes_five(self):
+        points = [(-1, -1, -0.5), (1, -1, 0.5), (1, 1, 0.5), (-1, 1, 0.5)]
+        clipped = clip_near(points, 0.1)
+        self.assertEqual(len(clipped), 5)
+        for point in clipped:
+            self.assertGreaterEqual(point[2], 0.1 - 1e-9)
+
+    def test_three_vertices_behind_makes_three(self):
+        points = [(-1, -1, -0.5), (1, -1, -0.5), (1, 1, -0.5), (-1, 1, 0.5)]
+        self.assertEqual(len(clip_near(points, 0.1)), 3)
+
+    def test_winding_is_preserved(self):
+        points = [(-1, -1, -0.5), (1, -1, 0.5), (1, 1, 0.5), (-1, 1, 0.5)]
+        before = face_normal(points)
+        after = face_normal(clip_near(points, 0.1))
+        self.assertGreater(sum(a * b for a, b in zip(before, after)), 0.0)
+
+    def test_near_must_be_positive(self):
+        with self.assertRaises(ValueError):
+            clip_near([(0, 0, 1)], 0)
+        with self.assertRaises(ValueError):
+            clip_near([(0, 0, 1)], -0.5)
+
+    def test_whole_mesh_behind_camera_draws_nothing(self):
+        target = pen()
+        camera = Camera(position=(0, 0, 0), target=(0, 0, 1), focal=100)
+        stats = render([make_box(1, 1, 1, center=(0, 0, -2))], camera, target)
+        self.assertEqual(stats["drawn"], 0)
+        self.assertEqual(stats["commands"], 0)
+        self.assertEqual(len(paths(target)), 0)
+
+    def test_crossing_face_is_clipped_and_drawn(self):
+        quad = Mesh([(-1, -1, -0.5), (1, -1, 0.5), (1, 1, 0.5), (-1, 1, 0.5)],
+                    [[0, 1, 2, 3]], color="#8a6a3a")
+        quad.cull = False
+        camera = Camera(position=(0, 0, 0), target=(0, 0, 1), focal=100,
+                        frame=(200, 100), near=0.1)
+        target = pen()
+        stats = render([quad], camera, target)
+        self.assertEqual(stats["drawn"], 1)
+        knots = paths(target)[0]["params"]["path"]["subpaths"][0]["knots"]
+        self.assertEqual(len(knots), 5)
+
+    def test_near_plane_is_adjustable(self):
+        quad = Mesh([(-1, -1, -0.5), (1, -1, 0.5), (1, 1, 0.5), (-1, 1, 0.5)],
+                    [[0, 1, 2, 3]], color="#8a6a3a")
+        quad.cull = False
+        tight = Camera(position=(0, 0, 0), target=(0, 0, 1), focal=100,
+                       frame=(200, 100), near=0.1)
+        wide = Camera(position=(0, 0, 0), target=(0, 0, 1), focal=100,
+                      frame=(200, 100), near=0.6)
+        first = pen()
+        second = pen()
+        self.assertEqual(render([quad], tight, first)["drawn"], 1)
+        self.assertEqual(render([quad], wide, second)["drawn"], 0)
+        self.assertEqual(Camera().near, 0.001)
+        self.assertEqual(camera_from_dict({"near": 0.05}).near, 0.05)
+        with self.assertRaises(ValueError):
+            camera_from_dict({"near": 0})
+
+    def test_vertex_at_camera_origin_does_not_divide_by_zero(self):
+        triangle = Mesh([(0, 0, 0), (1, 0, 1), (0, 1, 1)], [[0, 1, 2]],
+                        color="#8a6a3a")
+        triangle.cull = False
+        camera = Camera(position=(0, 0, 0), target=(0, 0, 1), focal=100,
+                        frame=(200, 100))
+        target = pen()
+        stats = render([triangle], camera, target)
+        self.assertEqual(stats["drawn"], 1)
+        for item in paths(target):
+            for x, y in item["params"]["path"]["subpaths"][0]["knots"]:
+                self.assertTrue(math.isfinite(x) and math.isfinite(y))
+
+    def test_empty_face_is_dropped(self):
+        # 零面积的面、完全在近平面后的面都不画
+        flat = Mesh([(0, 0, 1), (1, 0, 1), (2, 0, 1)], [[0, 1, 2]], color="#8a6a3a")
+        flat.cull = False
+        behind = Mesh([(-1, -1, -2), (1, -1, -2), (0, 1, -2)], [[0, 1, 2]],
+                      color="#8a6a3a")
+        behind.cull = False
+        camera = Camera(position=(0, 0, 0), target=(0, 0, 1), focal=100,
+                        frame=(200, 100))
+        target = pen()
+        stats = render([flat, behind], camera, target)
+        self.assertEqual(stats["drawn"], 0)
+        self.assertEqual(stats["culled"], 2)
+
+
 class RenderTest(unittest.TestCase):
     def test_straight_on_box_shows_one_face(self):
         target = pen()
@@ -555,11 +653,14 @@ class RenderTest(unittest.TestCase):
         self.assertGreaterEqual(params["stroke"]["width"], 1)
         self.assertEqual(params["stroke"]["join"], "round")
 
-    def test_partly_behind_camera_is_dropped(self):
+    def test_camera_inside_box_keeps_inner_walls(self):
+        # 相机在盒子里，六面墙只有一面在身后；另外五面裁完继续画，不能整块剔光
         target = pen()
         camera = Camera(position=(0, 0, 0), target=(0, 0, 1), focal=100)
         stats = render([make_box(2, 2, 2, center=(0, 0, 0))], camera, target)
-        self.assertEqual(stats["drawn"], 0)
+        self.assertEqual(stats["drawn"], 5)
+        self.assertEqual(stats["culled"], 1)
+        self.assertEqual(len(paths(target)), 5)
 
     def test_shade_color(self):
         light = {"direction": [0, -1, 0], "ambient": 0.5, "diffuse": 0.5}

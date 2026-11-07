@@ -7,7 +7,7 @@
 一条渲染链分五步，和蓝图 4.1 一致：
     1. 顶点乘变换矩阵，从模型坐标进世界坐标；
     2. 顶点乘相机基，进相机坐标；
-    3. 透视除以深度，正交只乘比例，得到画面坐标；
+    3. 透视先按近平面裁剪，再除以深度；正交只乘比例；
     4. 面法向量朝着相机才留，背对相机的剔掉；
     5. 按面中心深度从远到近排好，逐个画成多边形。
 
@@ -36,6 +36,7 @@
     mesh_from_dict / camera_from_dict    方案参数转对象
     face_center / face_normal / shade_color
     project_points                       一组点投到画面
+    clip_near                            按近平面切多边形，透视前用
     render / build                       渲染
     ortho_views / view_camera            三视图的正交相机
 """
@@ -55,7 +56,7 @@ PROJECTIONS = ("perspective", "ortho")
 PRIMITIVES = ("mesh", "box", "sphere", "cylinder", "cone", "capsule", "lathe", "sweep")
 
 # 透视时深度小于这个数的点算在相机后面
-NEAR_PLANE = 0.01
+NEAR_PLANE = 0.001
 
 # 平涂时颜色不动；开了光照也不许掉到死黑
 MIN_BRIGHTNESS = 0.30
@@ -816,7 +817,8 @@ class Camera:
 
     position/target/up 决定朝向；focal 是像素焦距；frame 是画幅；
     ortho_scale 是正交时每世界单位多少像素，不给就按目标距离折算，
-    切换投影时主体大小基本不变。
+    切换投影时主体大小基本不变。near 是透视的近平面，默认 0.001 米，
+    贴着相机走的面会被裁掉，不参与除法。
     """
 
     position: Point = (0.0, 1.2, -6.0)
@@ -877,6 +879,41 @@ class Camera:
             True,
         )
 
+    def to_camera(self, point: Point) -> Point:
+        """世界坐标转相机坐标：x 向右，y 向上，z 向前。"""
+        right, up, forward = self.basis()
+        relative = _sub(point, self.position)
+        return (
+            _dot(relative, right),
+            _dot(relative, up),
+            _dot(relative, forward),
+        )
+
+    def project_view(self, view: Point) -> Projection:
+        """相机坐标投到画面。传进来的点应该已经过了近平面裁剪。
+
+        裁剪后的点正好落在 near 上也要能画，所以这里只挡 depth <= 0，
+        除法的分母仍然有下界。
+        """
+        view_x, view_y, depth = view
+        cx, cy = self.principal()
+
+        if self.projection == "perspective":
+            if depth <= 0.0:
+                return Projection(0.0, 0.0, depth, False)
+            scale = self.focal / depth
+        elif self.projection == "ortho":
+            scale = self.scale()
+        else:
+            raise ValueError(f"projection 只能是 {'、'.join(PROJECTIONS)}，收到 {self.projection!r}")
+
+        return Projection(
+            cx + scale * view_x,
+            cy - scale * view_y,
+            depth,
+            True,
+        )
+
     def project_points(self, points: Iterable[Point]) -> list[Projection]:
         return [self.project(point) for point in points]
 
@@ -890,6 +927,91 @@ class Camera:
 
 def project_points(points: Iterable[Point], camera: Camera) -> list[Projection]:
     return camera.project_points(points)
+
+
+def _drop_repeats(points: Sequence[Point]) -> list[Point]:
+    """去掉相邻重合的点，顺便把首尾重复也收掉。"""
+    cleaned: list[Point] = []
+    for point in points:
+        if not cleaned or _length(_sub(point, cleaned[-1])) > 1e-12:
+            cleaned.append(point)
+    if len(cleaned) > 1 and _length(_sub(cleaned[0], cleaned[-1])) <= 1e-12:
+        cleaned.pop()
+    return cleaned
+
+
+def clip_near(points: Sequence[Point], near: float = NEAR_PLANE) -> list[Point]:
+    """把相机空间里的多边形按 z = near 切一刀，只留近平面之前的部分。
+
+    points 是相机坐标（x 向右、y 向上、z 向前），不要传世界坐标。
+    完全在近平面后的返回空表；完全在前的原样返回；跨平面的按交点切开，
+    四个点可能切成三个或五个。逐边裁剪，顶点顺序不翻，绕向保持不变。
+    """
+    if isinstance(near, bool) or not isinstance(near, (int, float)):
+        raise ValueError("near 必须是数字")
+    near = float(near)
+    if near <= 0:
+        raise ValueError("near 必须大于 0")
+    if not points:
+        return []
+
+    result: list[Point] = []
+    count = len(points)
+    for index in range(count):
+        current = points[index]
+        following = points[(index + 1) % count]
+        current_in = current[2] >= near
+        following_in = following[2] >= near
+        if current_in:
+            result.append(current)
+        if current_in != following_in:
+            span = following[2] - current[2]
+            ratio = (near - current[2]) / span
+            result.append((
+                current[0] + (following[0] - current[0]) * ratio,
+                current[1] + (following[1] - current[1]) * ratio,
+                near,
+            ))
+    return _drop_repeats(result)
+
+
+def _ray_hits_triangle(origin: Point, direction: Point, a: Point, b: Point,
+                       c: Point) -> bool:
+    """从 origin 沿 direction 打的射线有没有穿过三角形，用 Möller–Trumbore。"""
+    edge1 = _sub(b, a)
+    edge2 = _sub(c, a)
+    h = _cross(direction, edge2)
+    det = _dot(edge1, h)
+    if abs(det) < 1e-12:
+        return False
+    inv = 1.0 / det
+    s = _sub(origin, a)
+    u = _dot(s, h) * inv
+    if u < 0.0 or u > 1.0:
+        return False
+    q = _cross(s, edge1)
+    v = _dot(direction, q) * inv
+    if v < 0.0 or u + v > 1.0:
+        return False
+    t = _dot(edge2, q) * inv
+    return t > 1e-9
+
+
+# 判断相机在不在物体里面时用的斜射线，故意挑一个不和常见轴对齐的方向
+_INSIDE_RAY = _unit((1.0, 0.5773502691896258, 0.2391073544210927))
+
+
+def _inside_mesh(world: Sequence[Point], faces: Sequence[Sequence[int]],
+                 point: Point) -> bool:
+    """相机在不在网格里面：向斜上方打一条射线，穿过奇数个面就是在里面。"""
+    hits = 0
+    for face in faces:
+        first = world[face[0]]
+        for index in range(1, len(face) - 1):
+            if _ray_hits_triangle(point, _INSIDE_RAY, first, world[face[index]],
+                                  world[face[index + 1]]):
+                hits += 1
+    return hits % 2 == 1
 
 
 def camera_from_dict(data: dict | None, pen: Pen | None = None) -> Camera:
@@ -1054,6 +1176,8 @@ def render(meshes: Sequence[Mesh], camera: Camera, pen: Pen,
            lighting=None, named: bool = False, seal: bool = True) -> dict:
     """把一组网格画进画笔，远的面先画，背对相机的剔掉。
 
+    透视时每个面先在相机空间里按相机 near 裁剪，跨过近平面的面切开继续画；
+    相机整个在物体里面时自动放开剔除，画内壁。正交不做近平面裁剪。
     seal 给每个面补一圈同色描边，盖住相邻面共边处露出的白缝；
     不要可以把 seal 关掉，但相邻面之间会透出底下的颜色。
 
@@ -1070,6 +1194,20 @@ def render(meshes: Sequence[Mesh], camera: Camera, pen: Pen,
         mesh.validate()
         matrix = mesh.matrix()
         world = [apply_matrix(matrix, point) for point in mesh.vertices]
+
+        # 相机钻到物体里面时，外法线全都背对相机，正常剔除会把整块剔光；
+        # 这时放开剔除，画内壁。先看包围盒，绝大多数情况一步就排除。
+        from_inside = False
+        if mesh.cull:
+            low = (min(point[0] for point in world),
+                   min(point[1] for point in world),
+                   min(point[2] for point in world))
+            high = (max(point[0] for point in world),
+                    max(point[1] for point in world),
+                    max(point[2] for point in world))
+            if all(low[axis] <= camera.position[axis] <= high[axis] for axis in range(3)):
+                from_inside = _inside_mesh(world, mesh.faces, camera.position)
+
         for face_index, face in enumerate(mesh.faces):
             total += 1
             points = [world[index] for index in face]
@@ -1081,10 +1219,20 @@ def render(meshes: Sequence[Mesh], camera: Camera, pen: Pen,
             if _length(normal) < 1e-9:
                 culled += 1
                 continue
-            if mesh.cull and not camera.facing(normal, center):
+            if mesh.cull and not from_inside and not camera.facing(normal, center):
                 culled += 1
                 continue
-            projections = [camera.project(point) for point in points]
+
+            if camera.projection == "perspective":
+                # 透视要先在相机空间里按近平面切一刀，再除以深度，
+                # 否则贴着相机或跨过相机的面会把坐标甩到几万像素外。
+                view = clip_near([camera.to_camera(point) for point in points], camera.near)
+                if len(view) < 3:
+                    culled += 1
+                    continue
+                projections = [camera.project_view(item) for item in view]
+            else:
+                projections = [camera.project(point) for point in points]
             if not all(item.visible for item in projections):
                 culled += 1
                 continue
@@ -1148,7 +1296,7 @@ COMPONENTS = {
         "description": "顶点、变换矩阵、透视或正交相机、面排序和背面剔除，画三维白模",
         "params": {
             "meshes": "[{type, …}, …]，必填；type 写 mesh、box、sphere、cylinder、cone、capsule、lathe、sweep",
-            "camera": "{position, target, up, focal, frame, projection, ortho_scale}，可选",
+            "camera": "{position, target, up, focal, frame, projection, ortho_scale, near}，可选；near 默认 0.001",
             "lighting": "{direction, ambient, diffuse}，可选；写 false 是平涂",
             "seal": "是否补面缝，默认 true",
             "named_faces": "是否给每个面起名，默认 false",
@@ -1167,6 +1315,6 @@ __all__ = [
     "make_capsule", "make_lathe", "sweep", "bounds", "is_watertight",
     "box", "sphere", "cylinder", "cone", "capsule", "lathe",
     "mesh_from_dict", "camera_from_dict",
-    "view_camera", "ortho_views", "project_points",
+    "view_camera", "ortho_views", "project_points", "clip_near",
     "render", "build", "build_mesh_scene",
 ]
