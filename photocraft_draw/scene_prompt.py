@@ -188,6 +188,20 @@ def _clamp(box, width, height):
     return [x0, y0, x1, y1]
 
 
+def _meta(plan: dict) -> list:
+    """画种按场景里有什么定，别让静物和风景也顶着花鸟画的标签。"""
+    kinds = caption_from_plan(plan).lower()
+    if "blossom" in kinds:
+        return ["botanical illustration", "gongbi"]
+    if "tree" in kinds or "grove" in kinds:
+        return ["landscape painting", "gongbi"]
+    if "building" in kinds or "street" in kinds:
+        return ["night scene", "gongbi"]
+    if "interior" in kinds:
+        return ["interior scene", "gongbi"]
+    return ["still life", "gongbi"]
+
+
 def layout_from_plan(plan: dict, width: int, height: int, caption: str) -> dict:
     """把方案里的物体逐个投影成像素框，返回 Layout 草稿。"""
     canvas = plan.get("canvas") or [width, height]
@@ -210,6 +224,8 @@ def layout_from_plan(plan: dict, width: int, height: int, caption: str) -> dict:
                     items.append({"label": "object", "caption": label,
                                   "bbox": [round(v, 1) for v in box]})
             for mesh_data in params.get("meshes") or []:
+                if mesh_data.get("layout") is False:
+                    continue   # 背景板和桌面这种，出图要，但不该占提示词的框
                 mesh = mesh_from_dict(mesh_data)
                 box = _box(mesh.vertices, camera, scale_x, scale_y)
                 box = _clamp(box, width, height)
@@ -238,7 +254,7 @@ def layout_from_plan(plan: dict, width: int, height: int, caption: str) -> dict:
         raise ValueError("方案里没有可以投影的物体")
     return {"width": width, "height": height,
             "bbox_coord_space": "abs", "bbox_format": "xyxy",
-            "summary": {"meta": ["botanical illustration", "gongbi"],
+            "summary": {"meta": _meta(plan),
                         "canvas": "single", "caption": caption},
             "items": items}
 
@@ -287,6 +303,8 @@ def caption_from_plan(plan: dict) -> str:
                 if count:
                     components[cid] = components.get(cid, 0) + count
             for mesh_data in params.get("meshes") or []:
+                if mesh_data.get("layout") is False:
+                    continue
                 subject = mesh_data.get("subject")
                 if subject:
                     subjects[str(subject)] = subjects.get(str(subject), 0) + 1
@@ -326,7 +344,7 @@ def caption_from_plan(plan: dict) -> str:
         scene = "a flowering grove under soft spring light"
     elif any("building" in name for name in subjects):
         scene = "a quiet night street receding to one vanishing point"
-    elif "lathe" in shapes:
+    elif "lathe" in shapes or subjects:
         scene = "a still life on a plain table"
     else:
         scene = "a simple geometric study"

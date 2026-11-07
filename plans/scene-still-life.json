@@ -74,7 +74,8 @@
                   0.12
                 ],
                 "color": "#8A6A4A",
-                "name": "桌面"
+                "name": "桌面",
+                "layout": false
               },
               {
                 "type": "lathe",
@@ -107,7 +108,9 @@
                     0.1764,
                     0.441
                   ]
-                ]
+                ],
+                "caption": "a turned terracotta vase with a narrow neck",
+                "subject": "terracotta vase"
               },
               {
                 "type": "sphere",
@@ -120,7 +123,9 @@
                   -0.02
                 ],
                 "color": "#B23A48",
-                "name": "果一"
+                "name": "果一",
+                "caption": "a deep red apple with a small stem",
+                "subject": "deep red apple"
               },
               {
                 "type": "sphere",
@@ -133,7 +138,9 @@
                   0.08
                 ],
                 "color": "#C25A4A",
-                "name": "果二"
+                "name": "果二",
+                "caption": "a deep red apple with a small stem",
+                "subject": "deep red apple"
               },
               {
                 "type": "sphere",
@@ -146,7 +153,9 @@
                   -0.16
                 ],
                 "color": "#A8333F",
-                "name": "果三"
+                "name": "果三",
+                "caption": "a deep red apple with a small stem",
+                "subject": "deep red apple"
               }
             ]
           }
