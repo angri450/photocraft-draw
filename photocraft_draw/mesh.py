@@ -33,6 +33,7 @@
     make_box / make_sphere / make_cylinder / make_cone
     make_capsule / make_lathe / sweep     花苞、瓶罐、枝条
     bounds / is_watertight               顶点数、面数、包围盒和封闭检查
+    subdivide                            Catmull-Clark 细分，低面数曲面变顺
     mesh_from_dict / camera_from_dict    方案参数转对象
     face_center / face_normal / shade_color
     project_points                       一组点投到画面
@@ -721,6 +722,132 @@ def is_watertight(mesh: Mesh) -> bool:
             key = (corner, following) if corner < following else (following, corner)
             uses[key] = uses.get(key, 0) + 1
     return bool(uses) and all(count == 2 for count in uses.values())
+
+
+def _mean(points: Sequence[Point]) -> Point:
+    count = len(points)
+    return (
+        sum(point[0] for point in points) / count,
+        sum(point[1] for point in points) / count,
+        sum(point[2] for point in points) / count,
+    )
+
+
+def _subdivide_once(mesh: Mesh) -> Mesh:
+    """细分一次，所有面都变成四边形。"""
+    vertices = mesh.vertices
+    faces = mesh.faces
+    face_points = [_mean([vertices[index] for index in face]) for face in faces]
+
+    # 同名边只登记一次；owner 是一个面就是边界边，两个面是内部边
+    edge_faces: dict[tuple[int, int], list[int]] = {}
+    for face_index, face in enumerate(faces):
+        count = len(face)
+        for index in range(count):
+            first = face[index]
+            second = face[(index + 1) % count]
+            key = (first, second) if first < second else (second, first)
+            edge_faces.setdefault(key, []).append(face_index)
+    edge_order = list(edge_faces)
+    edge_index = {key: index for index, key in enumerate(edge_order)}
+
+    edge_points: list[Point] = []
+    for key, owners in edge_faces.items():
+        first, second = key
+        if len(owners) == 2:
+            edge_points.append(_mean([
+                vertices[first], vertices[second],
+                face_points[owners[0]], face_points[owners[1]],
+            ]))
+        else:
+            edge_points.append(_mean([vertices[first], vertices[second]]))
+
+    vertex_faces: dict[int, list[int]] = {index: [] for index in range(len(vertices))}
+    vertex_edges: dict[int, list[tuple[int, int]]] = {index: [] for index in range(len(vertices))}
+    for face_index, face in enumerate(faces):
+        for vertex in face:
+            vertex_faces[vertex].append(face_index)
+    for key in edge_order:
+        vertex_edges[key[0]].append(key)
+        vertex_edges[key[1]].append(key)
+
+    # 边界顶点的两个邻居：只沿边界走，不借面点，边界不会被内部拽进去
+    boundary_neighbours: dict[int, list[int]] = {}
+    for key, owners in edge_faces.items():
+        if len(owners) == 2:
+            continue
+        first, second = key
+        boundary_neighbours.setdefault(first, []).append(second)
+        boundary_neighbours.setdefault(second, []).append(first)
+
+    positions: list[Point] = list(vertices)
+    for index, point in enumerate(vertices):
+        neighbours = boundary_neighbours.get(index)
+        if neighbours is not None:
+            if len(neighbours) == 2:
+                before = vertices[neighbours[0]]
+                after = vertices[neighbours[1]]
+                positions[index] = (
+                    (6.0 * point[0] + before[0] + after[0]) / 8.0,
+                    (6.0 * point[1] + before[1] + after[1]) / 8.0,
+                    (6.0 * point[2] + before[2] + after[2]) / 8.0,
+                )
+            # 边界上出现三个以上邻居是坏拓扑，钉住不动
+            continue
+        incident = vertex_edges[index]
+        count = len(incident)
+        if count == 0:
+            continue
+        around = _mean([face_points[face_index] for face_index in vertex_faces[index]])
+        middle = _mean([_mean([vertices[a], vertices[b]]) for a, b in incident])
+        positions[index] = (
+            (around[0] + 2.0 * middle[0] + (count - 3.0) * point[0]) / count,
+            (around[1] + 2.0 * middle[1] + (count - 3.0) * point[1]) / count,
+            (around[2] + 2.0 * middle[2] + (count - 3.0) * point[2]) / count,
+        )
+
+    edge_base = len(vertices)
+    face_base = edge_base + len(edge_order)
+    new_faces: list[list[int]] = []
+    for face_index, face in enumerate(faces):
+        count = len(face)
+        for index in range(count):
+            current = face[index]
+            following = face[(index + 1) % count]
+            previous = face[(index - 1) % count]
+            next_key = (current, following) if current < following else (following, current)
+            prev_key = (previous, current) if previous < current else (current, previous)
+            new_faces.append([
+                current,
+                edge_base + edge_index[next_key],
+                face_base + face_index,
+                edge_base + edge_index[prev_key],
+            ])
+    return Mesh(positions + edge_points + face_points, new_faces,
+                mesh.color, mesh.name, dict(mesh.transform), mesh.cull)
+
+
+def subdivide(mesh: Mesh, levels: int = 1) -> Mesh:
+    """Catmull-Clark 细分，低面数的曲面变顺，返回新网格，不改原网格。
+
+    四边形按面点、边点、顶点点三套规则生成；三角形和任意多边形走同一条
+    路径，每个角生成一个四边形。边界边（只被一个面共用）的边点取中点，
+    边界顶点只和两个相邻边界点做 6/8 平均，不看面点，所以边界只沿自己
+    的方向平滑，不会被内部拽进去。levels 支持 0、1、2，超过 2 级直接报错，
+    每升一级面数大约乘四。
+    """
+    mesh.validate()
+    if isinstance(levels, bool) or not isinstance(levels, int):
+        raise ValueError("levels 必须是整数")
+    if levels < 0:
+        raise ValueError("levels 不能是负数")
+    if levels > 2:
+        raise ValueError("levels 最多 2 级，再多面数涨得太快")
+    result = Mesh(list(mesh.vertices), [list(face) for face in mesh.faces],
+                  mesh.color, mesh.name, dict(mesh.transform), mesh.cull)
+    for _ in range(levels):
+        result = _subdivide_once(result)
+    return result.validate()
 
 
 # 图元的短名字，写代码时按需取用

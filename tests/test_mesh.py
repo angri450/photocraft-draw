@@ -32,6 +32,7 @@ from photocraft_draw.mesh import (
     rotation_z,
     scaling,
     shade_color,
+    subdivide,
     sweep,
     translation,
     view_camera,
@@ -726,3 +727,56 @@ class RenderTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SubdivideTest(unittest.TestCase):
+    """Catmull-Clark 细分：面数、水密、边界和级数上限。"""
+
+    def test_cube_becomes_twenty_four_quads(self):
+        mesh = subdivide(make_box(1, 1, 1), 1)
+        self.assertEqual(len(mesh.faces), 24)
+        self.assertEqual(len(mesh.vertices), 26)
+        self.assertTrue(all(len(face) == 4 for face in mesh.faces))
+
+    def test_two_levels_and_watertight(self):
+        mesh = subdivide(make_box(1, 1, 1), 2)
+        self.assertEqual(len(mesh.faces), 96)
+        self.assertTrue(is_watertight(mesh))
+
+    def test_bounding_box_shrinks_but_stays_close(self):
+        base = make_box(1, 1, 1)
+        mesh = subdivide(base, 2)
+        before = bounds(base)
+        after = bounds(mesh)
+        for axis in range(3):
+            self.assertGreaterEqual(after["min"][axis], before["min"][axis] - 1e-9)
+            self.assertLessEqual(after["max"][axis], before["max"][axis] + 1e-9)
+            self.assertGreater(after["max"][axis] - after["min"][axis], 0.8)
+
+    def test_boundary_vertices_stay_on_the_boundary(self):
+        plane = mesh_from_dict({
+            "vertices": [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+            "faces": [[0, 1, 2, 3]],
+        })
+        mesh = subdivide(plane, 2)
+        for point in mesh.vertices:
+            self.assertAlmostEqual(point[2], 0.0, places=9)
+            self.assertGreaterEqual(point[0], -1e-9)
+            self.assertLessEqual(point[0], 1 + 1e-9)
+            self.assertGreaterEqual(point[1], -1e-9)
+            self.assertLessEqual(point[1], 1 + 1e-9)
+
+    def test_triangle_input_becomes_quads(self):
+        tri = mesh_from_dict({
+            "vertices": [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
+            "faces": [[0, 1, 2]],
+        })
+        mesh = subdivide(tri, 1)
+        self.assertTrue(all(len(face) == 4 for face in mesh.faces))
+        self.assertEqual(len(mesh.faces), 3)
+
+    def test_levels_are_limited(self):
+        with self.assertRaises(ValueError):
+            subdivide(make_box(1, 1, 1), 3)
+        with self.assertRaises(ValueError):
+            subdivide(make_box(1, 1, 1), -1)
