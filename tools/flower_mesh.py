@@ -49,33 +49,9 @@ def frame_from(axis, hint=(0.0, 1.0, 0.0)):
 
 
 def tube(points, radii, color, name="枝", sides=10):
-    """沿折线扫出一根管，每点一个半径，两端封口。"""
-    vertices = []
-    rings = []
-    for index, (point, radius) in enumerate(zip(points, radii)):
-        if index == 0:
-            axis = tuple(points[1][i] - points[0][i] for i in range(3))
-        elif index == len(points) - 1:
-            axis = tuple(points[-1][i] - points[-2][i] for i in range(3))
-        else:
-            axis = tuple(points[index + 1][i] - points[index - 1][i] for i in range(3))
-        u, v, _ = frame_from(axis)
-        ring = []
-        for k in range(sides):
-            angle = 2 * math.pi * k / sides
-            offset = _add(_mul(u, math.cos(angle) * radius), _mul(v, math.sin(angle) * radius))
-            ring.append(len(vertices))
-            vertices.append(_add(point, offset))
-        rings.append(ring)
-
-    faces = []
-    for a, b in zip(rings, rings[1:]):
-        for k in range(sides):
-            k2 = (k + 1) % sides
-            faces.append([a[k], a[k2], b[k2], b[k]])
-    faces.append(list(reversed(rings[0])))
-    faces.append(list(rings[-1]))
-    return Mesh(vertices=vertices, faces=faces, color=color, name=name)
+    """沿折线扫一根管，交给网格管线的 sweep，平行传输不会扭转。"""
+    from photocraft_draw.mesh import sweep
+    return sweep(points, radii, sides=sides, caps=True, color=color, name=name)
 
 
 def petal(origin, axis, side, length, width, cup=0.35, bend=0.25, notch=0.12,

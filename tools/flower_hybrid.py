@@ -86,7 +86,7 @@ def petal_knots(camera, center, axis, radial, length, width):
         tx, ty = nxt[0] - prev[0], nxt[1] - prev[1]
         norm = math.hypot(tx, ty) or 1.0
         tx, ty = tx / norm, ty / norm
-        span = 0.33 * (math.dist(point, nxt) + math.dist(point, prev)) * 0.5
+        span = 0.20 * (math.dist(point, nxt) + math.dist(point, prev)) * 0.5
         knots.append({
             "anchor": [point[0], point[1]],
             "in": [point[0] - tx * span, point[1] - ty * span],
@@ -104,7 +104,7 @@ def _smooth(points, closed=True):
         tx, ty = nxt[0] - prev[0], nxt[1] - prev[1]
         norm = math.hypot(tx, ty) or 1.0
         tx, ty = tx / norm, ty / norm
-        span = 0.33 * (math.dist(point, nxt) + math.dist(point, prev)) * 0.5
+        span = 0.20 * (math.dist(point, nxt) + math.dist(point, prev)) * 0.5
         knots.append({
             "anchor": [point[0], point[1]],
             "in": [point[0] - tx * span, point[1] - ty * span],
