@@ -17,7 +17,7 @@
           "params": {
             "width": 900,
             "height": 1200,
-            "horizon": 0.56,
+            "horizon": 0.7,
             "seed": 7
           }
         }
@@ -32,30 +32,37 @@
           "component": "crabapple_tree",
           "params": {
             "root": [
-              490,
-              668
+              625,
+              900
             ],
-            "height": 420,
-            "seed": 3,
-            "bloom": 0.9,
-            "fade": 0.18,
-            "crown": 0.23,
-            "trunk": 0.46
+            "height": 304,
+            "seed": 13,
+            "bloom": 0.88,
+            "fade": 0.3,
+            "crown": 0.26,
+            "trunk": 0.52
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "中景树",
+      "depth": 1.5,
+      "z": 150,
+      "components": [
         {
           "component": "crabapple_tree",
           "params": {
             "root": [
-              660,
-              675
+              470,
+              930
             ],
-            "height": 310,
-            "seed": 5,
-            "bloom": 1.0,
-            "fade": 0.34,
-            "crown": 0.22,
-            "trunk": 0.44
+            "height": 494,
+            "seed": 7,
+            "bloom": 0.95,
+            "fade": 0.12,
+            "crown": 0.3,
+            "trunk": 0.42
           }
         }
       ]
@@ -69,85 +76,65 @@
           "component": "crabapple_tree",
           "params": {
             "root": [
-              300,
-              672
+              240,
+              975
             ],
-            "height": 560,
+            "height": 760,
             "seed": 1,
             "bloom": 1.0,
-            "fade": 0.0,
-            "crown": 0.24,
-            "trunk": 0.5
+            "fade": 0,
+            "crown": 0.3,
+            "trunk": 0.36
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "前景坡地",
+      "depth": 0.5,
+      "z": 50,
+      "components": [
         {
-          "component": "custom_shape",
+          "component": "foreground_rocks",
           "params": {
-            "subpaths": [
-              {
-                "closed": true,
-                "knots": [
-                  {
-                    "anchor": [
-                      0,
-                      1010
-                    ],
-                    "in": [
-                      0,
-                      1010
-                    ],
-                    "out": [
-                      0,
-                      1010
-                    ]
-                  },
-                  {
-                    "anchor": [
-                      900,
-                      985
-                    ],
-                    "in": [
-                      900,
-                      985
-                    ],
-                    "out": [
-                      900,
-                      985
-                    ]
-                  },
-                  {
-                    "anchor": [
-                      900,
-                      1200
-                    ],
-                    "in": [
-                      900,
-                      1200
-                    ],
-                    "out": [
-                      900,
-                      1200
-                    ]
-                  },
-                  {
-                    "anchor": [
-                      0,
-                      1200
-                    ],
-                    "in": [
-                      0,
-                      1200
-                    ],
-                    "out": [
-                      0,
-                      1200
-                    ]
-                  }
-                ]
-              }
+            "rocks": [
+              [
+                70,
+                1165,
+                150,
+                55
+              ],
+              [
+                280,
+                1150,
+                185,
+                62
+              ],
+              [
+                500,
+                1160,
+                170,
+                55
+              ],
+              [
+                720,
+                1148,
+                195,
+                60
+              ],
+              [
+                880,
+                1162,
+                130,
+                48
+              ]
             ],
-            "fill": "#D6CB96",
-            "name": "前景"
+            "colors": {
+              "stone": "#9AA57B",
+              "light": "#BCC59C",
+              "dark": "#7C8862",
+              "shadow": "#8B9668"
+            }
           }
         }
       ]
