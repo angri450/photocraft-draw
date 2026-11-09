@@ -41,7 +41,11 @@ photocraft_draw/
   catalog.json     命令目录数据，由 tools/build_catalog.py 生成
   checker.py       结构检查：部件齐全、位置合规
   envelope.py      包络检查：部件是不是落在人形或马形里
-  colorize.py      配色检查：相邻部件颜色太近就报
+  colorize.py      配色检查：颜色差距、同组与豁免
+  grouping.py      部件归组：同件物体与同类物件
+  geometry.py      将绘制形状转成多边形，判断真实相交
+  pixel_colors.py  按形状相交检查相邻颜色
+  solver.py        局部或全局的配色求解
   occlusion.py     遮挡分析：分层文件里谁挡住谁
   contact.py       接触点与穿帮检查：交叠在哪、关节压住谁、兵器穿没穿过去
   depth.py         立体关系：层序翻译成深度表和三维坐标
@@ -162,6 +166,7 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 ```sh
 photocraft-draw verify plans/xxx.json --expect horse --envelope horse
 photocraft-draw colors plans/xxx.json
+photocraft-draw colors plans/xxx.json --pixel
 photocraft-draw occlusion out/xxx.psd
 photocraft-draw contact out/xxx.psd --plan plans/xxx.json --map out/contact-map.png
 photocraft-draw depth out/xxx.psd
@@ -174,6 +179,23 @@ photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
 ```
 
 `verify` 查部件齐不齐、有没有出画、姿态对不对，`--envelope` 再用人形或马形的椭圆包络卡一遍；`colors` 查相邻部件同色或颜色太近；`occlusion` 读分层文件，列出谁挡住谁、挡了多少像素；`contact` 在遮挡之上再走一步，报交叠发生在哪个坐标、方案的关节压住哪些部件、有没有兵器从手或头上穿过去；`depth` 把层序翻译成深度表和三维坐标，带 `--plan` 就用方案里声明的 `depth` 算 z，再逐层对照方案和成品；`brief` 按图层顺序把方案串成中文稿和英文稿，中文稿给人确认，英文稿直接喂生图模型。
+
+## 配色分组、色参与几何检查
+
+直接安排颜色时，组件的 `colors` 优先于同一组件里的旧颜色参数。比如胶囊马可以写 `{"body": "mid", "colors": {"body": "#B27D4B", "dark": "#362C26"}}`，马身实际采用 `colors.body`；鬃毛和蹄采用 `colors.dark`。胶囊骑手支持 `horse、rider、skin、dark`，人物组件支持 `robe、trim、shade、skin、hair、collar` 中适用的几项，具体以 `photocraft-draw components` 的输出为准。`soft_shadow` 的 `fill` 优先于旧的 `color`。
+
+同色或近色不一定需要拆开。同一件衣物的衣身与袖子、同一物体上的各块面、天空的连续色带，应该先声明归属。`custom_shape` 和 `mesh_scene` 的参数可以写 `group`；要按部件主体词归组时写 `group_by`。组件代码里可以用 `pen.group("名称")` 和 `pen.group_by("前缀")` 声明同样的事。图层之间有意接近的渐变可以写 `exempt`，列出另一层的名字；`exempt` 只处理已经明确的同一片景，不拿来盖住尚未判断的颜色问题。
+
+```sh
+photocraft-draw colors plans/xxx.json --pixel
+photocraft-draw colors plans/xxx.json --pixel --fix
+photocraft-draw colors plans/xxx.json --pixel --fix --apply
+photocraft-draw colors plans/xxx.json --pixel --fix --global-fix --apply
+```
+
+`colors` 默认按包围盒判断，速度快但会把距离远的部件算进来。`--pixel` 将路径、椭圆和矩形转换成多边形，按形状是否真实相交判定，不对每个部件重复渲染图片。`--fix` 默认只局部调整；`--global-fix` 会重新排整幅画的相邻色，只有需要整体改色时才使用。`--apply` 才可以把求解结果写回方案。
+
+求解器用于发现可行色值，画面颜色仍由方案作者决定。先确定前景、主体、远景的明度关系，再检查颜色差距；不要把部件推到近乎纯黑或纯白只为得到通过标记。形状相交也不等于两个颜色在成品中直接相邻，中间有第三个形状遮挡、透明区域、描边和阴影时，还要结合 PNG 或 PSD 复核。`verify` 负责结构、包络和出画检查，与配色、实际出图是三件不同的事。
 
 `motion` 查每个角色往哪个方向使劲。它读绘制方案里的 `motion` 声明，核对意图向量、骨段方向和兵器主轴三者的关系：兵器和意图反向报拿反了，手离兵器太远报手没有握在兵器上，两个交战角色的意图向量夹角太小报对抗读不出来，两件兵器的交叉角太小报画面上叠成一条线。这一层要在写方案的时候就过一遍，动作含糊的话遮挡关系照样能算对，画出来的东西不对。
 
@@ -303,6 +325,20 @@ with Engine(read_root=".", write_root="out") as engine:
 | 通用形状 | soft_shadow | 地面投影 | center、rx、ry |
 
 新增组件：在 `photocraft_draw/components/` 写 `build(params, pen)`，只画形状和文字，不建图层；图层由绘制方案负责。再到 `registry.py` 登记编号、名称、说明和参数。
+
+## 测试与当前样例的状态
+
+```sh
+python3 -m pytest tests -q
+photocraft-draw colors plans/scene-landscape.json --pixel
+photocraft-draw draw plans/scene-landscape.json --out-dir out
+```
+
+当前测试结果：611 项通过，1 条第三方 pytest 插件的弃用警告。最近精修的 15 份样例均通过 `colors --pixel`，并且成功生成 PNG 和 PSD。这组样例包括 `mona-lisa`、`scene-landscape`、`dining-hall`、`framework`、`supper-demo`、`last-supper`、`scene-street`、`alpine-crossing`、`dawn-scene`、`dawn-napoleon`、`dawn-napoleon3d`、`mountain-horse`、`spray`、`scene-interior`、`scene-still-life`。
+
+其中 11 份在额外的 `verify` 中仍报告画布边缘裁切。裁切来自原有的前景石头、四角暗角、花枝、右侧建筑或透视桌面，本轮配色精修没有调整它们的布局。颜色检查通过、实际出图成功、全部结构检查通过，这三个结果不要混为一谈。
+
+配色规则的详细说明见 [docs/color-rules.md](docs/color-rules.md)，本轮重构与参数约定见 [docs/color-refactor-notes.md](docs/color-refactor-notes.md)。
 
 ## 批注页
 

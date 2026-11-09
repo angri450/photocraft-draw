@@ -22,7 +22,12 @@
             "pose": "stand",
             "body": "surface",
             "joint": "line",
-            "head": "surface"
+            "head": "surface",
+            "colors": {
+              "body": "#8A5A38",
+              "joint": "#6E4520",
+              "head": "#A8703C"
+            }
           }
         }
       ]
@@ -42,7 +47,12 @@
             "pose": "walk",
             "body": "surface",
             "joint": "line",
-            "head": "surface"
+            "head": "surface",
+            "colors": {
+              "body": "#8A5A38",
+              "joint": "#6E4520",
+              "head": "#A8703C"
+            }
           }
         }
       ]
@@ -62,7 +72,12 @@
             "pose": "point",
             "body": "surface",
             "joint": "line",
-            "head": "surface"
+            "head": "surface",
+            "colors": {
+              "body": "#8A5A38",
+              "joint": "#6E4520",
+              "head": "#A8703C"
+            }
           }
         }
       ]
@@ -82,7 +97,12 @@
             "pose": "sit",
             "body": "surface",
             "joint": "line",
-            "head": "surface"
+            "head": "surface",
+            "colors": {
+              "body": "#8A5A38",
+              "joint": "#6E4520",
+              "head": "#A8703C"
+            }
           }
         }
       ]
@@ -102,7 +122,12 @@
             "pose": "ride",
             "body": "surface",
             "joint": "line",
-            "head": "surface"
+            "head": "surface",
+            "colors": {
+              "body": "#8A5A38",
+              "joint": "#6E4520",
+              "head": "#A8703C"
+            }
           }
         }
       ]

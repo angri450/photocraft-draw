@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -142,14 +143,63 @@ def cmd_shade(args) -> int:
     return 0
 
 
+def _apply_colors(plan_path: Path, colors: list[dict]) -> int:
+    """把求解出来的配色写回方案文件。"""
+    raw = json.loads(plan_path.read_text(encoding="utf-8"))
+    wanted = {item["name"]: item["hex"] for item in colors if item.get("changed")}
+    written = 0
+    for layer in raw.get("layers") or []:
+        for comp in layer.get("components") or []:
+            params = comp.get("params") or {}
+            name = params.get("name")
+            if name in wanted:
+                params["fill"] = wanted[name]
+                written += 1
+    plan_path.write_text(json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+    return written
+
+
 def cmd_colors(args) -> int:
     from .colorize import check_colors, parts_from_commands, report
     from .palette import resolve_palette
 
     plan = load_plan(args.plan)
     commands, meta = compose_plan(plan)
-    result = check_colors(parts_from_commands(commands), resolve_palette(plan.get("palette")),
-                          min_gap=args.gap)
+    parts = parts_from_commands(commands)
+    palette = resolve_palette(plan.get("palette"))
+
+    if getattr(args, "fix", False):
+        # 求解模式：给出一组能过线的配色，只在撞色的地方挪明度
+        from .solver import report as solve_report, solve, solve_local, touching_pairs
+
+        pairs = None
+        if getattr(args, "pixel", False):
+            pairs = touching_pairs(commands, parts)
+        if getattr(args, "global_fix", False):
+            # 全局优化：所有相邻对一起满足。改得多。
+            solved = solve(parts, min_gap=args.gap, pairs=pairs)
+        else:
+            # 局部修复：只动真正撞色的地方，别的部件保持原样。
+            solved = solve_local(parts, min_gap=args.gap, pairs=pairs)
+        print(solve_report(solved))
+        if args.verbose:
+            for item in solved["colors"]:
+                mark = " 改了" if item["changed"] else ""
+                print(f"  {item['name']}  {item['hex']}{mark}")
+        if getattr(args, "apply", False):
+            written = _apply_colors(Path(args.plan), solved["colors"])
+            print(f"已写回 {written} 个部件的颜色")
+        return 0 if solved["ok"] else 1
+
+    if getattr(args, "pixel", False):
+        # 几何模式：按形状本身判断相邻，不看包围盒
+        from .pixel_colors import check_colors_touching, report as pixel_report
+
+        result = check_colors_touching(commands, parts, palette, min_gap=args.gap)
+        print(pixel_report(result))
+        return 0 if result["ok"] else 1
+
+    result = check_colors(parts, palette, min_gap=args.gap)
     print(report(result))
     if args.verbose:
         for item in result["colors"]:
@@ -361,18 +411,41 @@ def cmd_brief(args) -> int:
 
 
 def cmd_check(args) -> int:
+    from .colorize import check_colors, parts_from_commands, report
+    from .palette import resolve_palette
+
     plan = load_plan(args.plan)
     commands, meta = compose_plan(plan)
-    print(
-        f"ok | {meta['width']}x{meta['height']} | {meta.get('layers', 1)} 个图层 | "
-        f"{meta['components']} 个构图组件 | {len(commands)} 条绘制指令"
-    )
+    parts = parts_from_commands(commands)
+    palette = resolve_palette(plan.get("palette"))
+
+    # 配色一起查。check 是方案能不能用的总闸，配色有问题就该在这里拦下。
+    if getattr(args, "pixel", False):
+        from .pixel_colors import check_colors_touching, report as pixel_report
+
+        colors = check_colors_touching(commands, parts, palette, min_gap=args.gap)
+        colors_text = pixel_report(colors)
+    else:
+        colors = check_colors(parts, palette, min_gap=args.gap)
+        colors_text = report(colors)
+
+    if colors["ok"]:
+        print(
+            f"ok | {meta['width']}x{meta['height']} | {meta.get('layers', 1)} 个图层 | "
+            f"{meta['components']} 个构图组件 | {len(commands)} 条绘制指令"
+        )
+    else:
+        print(
+            f"结构 ok | {meta['width']}x{meta['height']} | {meta.get('layers', 1)} 个图层 | "
+            f"{meta['components']} 个构图组件 | {len(commands)} 条绘制指令"
+        )
+        print(colors_text)
     if args.verbose:
         for index, command in enumerate(commands, 1):
             params = command.get("params") or {}
             name = params.get("name") or params.get("text") or params.get("kind") or ""
             print(f"  {index:>3} {command['command']} {name}")
-    return 0
+    return 0 if colors["ok"] else 1
 
 
 def cmd_draw(args) -> int:
@@ -514,7 +587,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     colors = sub.add_parser("colors", help="检查相邻部件的颜色冲突")
     colors.add_argument("plan", help="绘制方案文件")
-    colors.add_argument("--gap", type=float, default=0.08, help="相邻部件的最小亮度差")
+    colors.add_argument("--gap", type=float, default=0.12, help="相邻部件的最小亮度差")
+    colors.add_argument("--pixel", action="store_true",
+                        help="按真实像素接触判定相邻，不看包围盒")
+    colors.add_argument("--fix", action="store_true",
+                        help="给出一组能过线的配色，只在撞色处挪明度")
+    colors.add_argument("--apply", action="store_true",
+                        help="把 --fix 算出来的配色写回方案文件")
+    colors.add_argument("--global-fix", action="store_true",
+                        help="--fix 用全局优化，改动多；默认只修真正撞色的地方")
     colors.add_argument("--verbose", action="store_true", help="列出每个部件的颜色和亮度")
     colors.set_defaults(func=cmd_colors)
 
@@ -607,6 +688,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     check = sub.add_parser("check", help="校验绘制方案并统计绘制指令")
     check.add_argument("plan", help="绘制方案文件")
+    check.add_argument("--gap", type=float, default=0.12, help="相邻部件的最小亮度差")
+    check.add_argument("--pixel", action="store_true",
+                       help="按真实像素接触判定相邻，不看包围盒")
     check.add_argument("--verbose", action="store_true", help="逐条列出绘制指令")
     check.set_defaults(func=cmd_check)
 

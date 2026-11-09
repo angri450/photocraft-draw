@@ -80,12 +80,16 @@
             "colors": {
               "far": "soft",
               "near": "soft"
-            }
+            },
+            "offset": 0
           }
         }
       ],
       "describe_zh": "一排覆雪的远峰，浅米白，轮廓柔和，被空气冲淡",
-      "describe_en": "a distant range of snow-covered peaks in pale cream, soft outlines, hazy with atmosphere"
+      "describe_en": "a distant range of snow-covered peaks in pale cream, soft outlines, hazy with atmosphere",
+      "exempt": [
+        "天空"
+      ]
     },
     {
       "name": "近山",
@@ -118,12 +122,17 @@
             "colors": {
               "far": "muted",
               "near": "muted"
-            }
+            },
+            "offset": 6
           }
         }
       ],
       "describe_zh": "三座更近的雪峰，蓝灰色，压在中景，山脊陡峭",
-      "describe_en": "three nearer snow peaks in slate blue-grey in the middle distance, steep ridges"
+      "describe_en": "three nearer snow peaks in slate blue-grey in the middle distance, steep ridges",
+      "exempt": [
+        "天空",
+        "远山"
+      ]
     },
     {
       "name": "岩地",
@@ -140,15 +149,20 @@
             ],
             "tone": "mid",
             "colors": {
-              "base": "line",
-              "light": "line",
-              "dark": "ink"
+              "base": "#485058",
+              "light": "#606873",
+              "dark": "#343B43"
             }
           }
         }
       ],
       "describe_zh": "裸露的岩石坡，深蓝灰，向画面下方倾斜，散落着碎石",
-      "describe_en": "a bare rocky slope in deep blue-grey, tilting down toward the viewer, scattered with loose stones"
+      "describe_en": "a bare rocky slope in deep blue-grey, tilting down toward the viewer, scattered with loose stones",
+      "exempt": [
+        "天空",
+        "远山",
+        "近山"
+      ]
     },
     {
       "name": "河流",
@@ -167,16 +181,21 @@
             "amplitude": 8,
             "cycles": 3,
             "colors": {
-              "water": "bg",
+              "water": "#6E8DA2",
               "light": "surface",
               "foam": "soft",
-              "dark": "line"
+              "dark": "#8AA4B4"
             }
           }
         }
       ],
       "describe_zh": "山涧溪流横过画面下方，深蓝水面，五道起伏的白色波浪，波峰带小水花",
-      "describe_en": "a mountain stream running across the lower edge, deep blue water cut by five wavy white ripples with small splashes"
+      "describe_en": "a mountain stream running across the lower edge, deep blue water cut by five wavy white ripples with small splashes",
+      "exempt": [
+        "天空",
+        "远山",
+        "近山"
+      ]
     },
     {
       "name": "马影",
@@ -192,12 +211,16 @@
             "rx": 132,
             "ry": 18,
             "color": "bg",
-            "name": "马影"
+            "name": "马影",
+            "fill": "#10151A"
           }
         }
       ],
       "describe_zh": "马脚下的一块深色地面投影",
-      "describe_en": "a dark contact shadow under the horse"
+      "describe_en": "a dark contact shadow under the horse",
+      "exempt": [
+        "骑手"
+      ]
     },
     {
       "name": "骑手",
@@ -255,7 +278,14 @@
         }
       ],
       "describe_zh": "几块深色巨石压在画面底部，把画面收住",
-      "describe_en": "several dark boulders anchoring the bottom edge"
+      "describe_en": "several dark boulders anchoring the bottom edge",
+      "exempt": [
+        "天空",
+        "远山",
+        "近山",
+        "岩地",
+        "河流"
+      ]
     }
   ],
   "brief_zh": {

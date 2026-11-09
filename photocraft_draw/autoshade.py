@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import colorsys
-import re
 
 from .checker import parts_of
 from .palette import resolve_palette
@@ -20,18 +19,7 @@ COOL = ("ink", "bg", "line", "muted")
 WARM = ("deep", "mid", "accent", "soft")
 STEPS = 4
 
-_PART_WORDS = ("脚", "腰", "顶", "雪尖", "雪", "左脊", "右脊", "亮边")
-
-
-def group_of(name: str) -> str:
-    """同一个物体的部件归成一组，比如山 1 的脚、腰、顶。"""
-    text = str(name).strip()
-    text = re.sub(r"[\s\-\d]+$", "", text).strip()
-    for word in _PART_WORDS:
-        if text.endswith(word):
-            text = text[: -len(word)].strip()
-            break
-    return re.sub(r"[\s\-\d]+$", "", text).strip()
+from .grouping import group as group_of
 
 
 def _overlap(a, b) -> float:

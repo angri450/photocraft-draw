@@ -1295,7 +1295,7 @@ def _emit_face(pen: Pen, points, color: str, name, seal: bool) -> None:
             "cap": "round",
         }
     if name:
-        params["name"] = str(name)
+        params.update(pen._named(name))
     pen.commands.append({"command": "shape.create", "params": params})
 
 
@@ -1405,6 +1405,17 @@ def build(params: dict, pen: Pen) -> dict:
         raise ValueError("网格场景需要 meshes：一个非空的网格列表")
     meshes = [mesh_from_dict(item) for item in items]
     camera = camera_from_dict(params.get("camera"), pen)
+    # group_by 按网格名归组。同一类网格的各个实例归成一组，
+    # 它们的部件之间不查色差。
+    group_by = params.get("group_by")
+    if group_by is not None:
+        with pen.group_by(str(group_by)):
+            return render(
+                meshes, camera, pen,
+                lighting=params.get("lighting"),
+                named=bool(params.get("named_faces", False)),
+                seal=bool(params.get("seal", True)),
+            )
     return render(
         meshes, camera, pen,
         lighting=params.get("lighting"),
@@ -1427,6 +1438,7 @@ COMPONENTS = {
             "lighting": "{direction, ambient, diffuse}，可选；写 false 是平涂",
             "seal": "是否补面缝，默认 true",
             "named_faces": "是否给每个面起名，默认 false",
+            "group_by": "按网格名归组，同一类网格的各个实例归成一组",
         },
         "build": build,
     },

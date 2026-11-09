@@ -33,7 +33,7 @@
           "component": "custom_shape",
           "params": {
             "name": "月晕",
-            "fill": "#1B2740",
+            "fill": "#293D58",
             "subpaths": [
               {
                 "closed": true,
@@ -195,7 +195,7 @@
           "component": "custom_shape",
           "params": {
             "name": "人行道",
-            "fill": "#333844",
+            "fill": "#404756",
             "subpaths": [
               {
                 "closed": true,
@@ -225,7 +225,7 @@
           "component": "custom_shape",
           "params": {
             "name": "车道",
-            "fill": "#1F222A",
+            "fill": "#353B45",
             "subpaths": [
               {
                 "closed": true,
@@ -634,8 +634,8 @@
                 -0.8,
                 -0.5
               ],
-              "ambient": 0.55,
-              "diffuse": 0.45
+              "ambient": 1.35,
+              "diffuse": 0.55
             },
             "camera": {
               "position": [
@@ -827,7 +827,8 @@
                 "caption": "a glowing street lamp head",
                 "subject": "glowing street lamp"
               }
-            ]
+            ],
+            "group_by": ""
           }
         }
       ]

@@ -19,7 +19,11 @@
               640
             ],
             "length": 260,
-            "pose": "stand"
+            "pose": "stand",
+            "colors": {
+              "body": "#A8703C",
+              "dark": "#6E4520"
+            }
           }
         }
       ]
@@ -36,7 +40,11 @@
               640
             ],
             "length": 260,
-            "pose": "rear"
+            "pose": "rear",
+            "colors": {
+              "body": "#A8703C",
+              "dark": "#6E4520"
+            }
           }
         }
       ]

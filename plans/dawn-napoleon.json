@@ -22,8 +22,8 @@
             ],
             "bands": 24,
             "colors": {
-              "top": "bg",
-              "bottom": "accent"
+              "top": "#2E4258",
+              "bottom": "#74889C"
             }
           }
         }
@@ -76,11 +76,15 @@
             ],
             "snow": false,
             "colors": {
-              "far": "muted",
-              "near": "muted"
-            }
+              "far": "#4E6072",
+              "near": "#44566A"
+            },
+            "offset": 0
           }
         }
+      ],
+      "exempt": [
+        "天空"
       ]
     },
     {
@@ -112,11 +116,16 @@
             ],
             "snow": false,
             "colors": {
-              "far": "line",
-              "near": "line"
-            }
+              "far": "#3C4C5C",
+              "near": "#334252"
+            },
+            "offset": 6
           }
         }
+      ],
+      "exempt": [
+        "天空",
+        "远山"
       ]
     },
     {
@@ -134,12 +143,17 @@
             ],
             "tone": "mid",
             "colors": {
-              "base": "line",
-              "light": "muted",
-              "dark": "ink"
+              "base": "#2E3640",
+              "light": "#3E4854",
+              "dark": "#242A32"
             }
           }
         }
+      ],
+      "exempt": [
+        "天空",
+        "远山",
+        "近山"
       ]
     },
     {
@@ -159,13 +173,18 @@
             "amplitude": 8,
             "cycles": 3,
             "colors": {
-              "water": "bg",
-              "light": "surface",
-              "foam": "soft",
-              "dark": "line"
+              "water": "#6E8DA2",
+              "light": "#5E7488",
+              "foam": "#8EA4B4",
+              "dark": "#8AA4B4"
             }
           }
         }
+      ],
+      "exempt": [
+        "天空",
+        "远山",
+        "近山"
       ]
     },
     {
@@ -183,7 +202,13 @@
             "pose": "stand",
             "horse": "mid",
             "rider": "deep",
-            "skin": "soft"
+            "skin": "soft",
+            "colors": {
+              "horse": "#A8703C",
+              "rider": "#7C3A2C",
+              "skin": "#E4A77E",
+              "dark": "#895935"
+            }
           }
         }
       ]
@@ -216,13 +241,20 @@
               ]
             ],
             "colors": {
-              "stone": "line",
-              "light": "muted",
-              "dark": "ink",
-              "shadow": "ink"
+              "stone": "#222830",
+              "light": "#30363E",
+              "dark": "#1A1E24",
+              "shadow": "#14171C"
             }
           }
         }
+      ],
+      "exempt": [
+        "天空",
+        "远山",
+        "近山",
+        "岩地",
+        "河流"
       ]
     }
   ]

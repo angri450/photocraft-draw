@@ -21,7 +21,11 @@
               500
             ],
             "bands": 24,
-            "clouds": []
+            "clouds": [],
+            "colors": {
+              "top": "#637F9B",
+              "bottom": "#C8DFE9"
+            }
           }
         }
       ],
@@ -75,14 +79,18 @@
             ],
             "snow": false,
             "colors": {
-              "far": "muted",
-              "near": "muted"
-            }
+              "far": "#7A8C86",
+              "near": "#6E8078"
+            },
+            "offset": 0
           }
         }
       ],
       "describe_zh": "一排覆雪的远峰，冷灰蓝，轮廓柔和，被空气冲淡",
-      "describe_en": "a distant range of snow-streaked peaks in pale slate blue, soft outlines, hazy with atmosphere"
+      "describe_en": "a distant range of snow-streaked peaks in pale slate blue, soft outlines, hazy with atmosphere",
+      "exempt": [
+        "天空"
+      ]
     },
     {
       "name": "近山",
@@ -113,14 +121,19 @@
             ],
             "snow": false,
             "colors": {
-              "far": "line",
-              "near": "line"
-            }
+              "far": "#5E6F62",
+              "near": "#526255"
+            },
+            "offset": 6
           }
         }
       ],
       "describe_zh": "两座更暗的雪山压在中景，山脊陡峭，山脚有积雪",
-      "describe_en": "two darker snow-covered peaks in the middle distance with steep ridges and snow at their feet"
+      "describe_en": "two darker snow-covered peaks in the middle distance with steep ridges and snow at their feet",
+      "exempt": [
+        "天空",
+        "远山"
+      ]
     },
     {
       "name": "岩地",
@@ -188,15 +201,20 @@
             ],
             "colors": {
               "stone": "line",
-              "light": "line",
-              "dark": "line",
+              "light": "#5E675C",
+              "dark": "#3A4038",
               "shadow": "ink"
             }
           }
         }
       ],
       "describe_zh": "裸露的岩石坡，灰褐色，从山脚向画面下方倾斜，散落着碎石",
-      "describe_en": "a bare rocky slope in grey-brown, tilting down toward the viewer, scattered with loose stones"
+      "describe_en": "a bare rocky slope in grey-brown, tilting down toward the viewer, scattered with loose stones",
+      "exempt": [
+        "天空",
+        "远山",
+        "近山"
+      ]
     },
     {
       "name": "河流",
@@ -215,16 +233,21 @@
             "amplitude": 7,
             "cycles": 3,
             "colors": {
-              "water": "bg",
-              "light": "soft",
-              "foam": "soft",
-              "dark": "muted"
+              "water": "#93AEB4",
+              "light": "#B9CDCC",
+              "foam": "#DCE8E4",
+              "dark": "#6E8A92"
             }
           }
         }
       ],
       "describe_zh": "山涧溪流横过画面下方，水面深蓝，五道起伏的白色波纹，波峰带小水花",
-      "describe_en": "a mountain stream running across the lower edge, deep blue water cut by five wavy white ripples with small splashes on the crests"
+      "describe_en": "a mountain stream running across the lower edge, deep blue water cut by five wavy white ripples with small splashes on the crests",
+      "exempt": [
+        "天空",
+        "远山",
+        "近山"
+      ]
     },
     {
       "name": "人物",
@@ -241,9 +264,14 @@
               580,
               710
             ],
-            "horse": "surface",
-            "rider": "deep",
-            "skin": "soft"
+            "horse": "#A8703C",
+            "rider": "#7C3A2C",
+            "skin": "#F0C29A",
+            "colors": {
+              "horse": "#A8703C",
+              "rider": "#7C3A2C",
+              "skin": "#945D44"
+            }
           }
         }
       ]
@@ -300,16 +328,23 @@
               ]
             ],
             "colors": {
-              "stone": "line",
-              "light": "line",
-              "dark": "line",
-              "shadow": "ink"
+              "stone": "#3A3A34",
+              "light": "#4C4C44",
+              "dark": "#282823",
+              "shadow": "#1C1C18"
             }
           }
         }
       ],
       "describe_zh": "几块深色巨石压在画面底部两侧，岩石有投影和明显的明暗面",
-      "describe_en": "several dark boulders anchoring the bottom corners, each with a cast shadow and clear light and dark faces"
+      "describe_en": "several dark boulders anchoring the bottom corners, each with a cast shadow and clear light and dark faces",
+      "exempt": [
+        "天空",
+        "远山",
+        "近山",
+        "岩地",
+        "河流"
+      ]
     }
   ],
   "brief_zh": {

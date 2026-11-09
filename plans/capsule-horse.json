@@ -21,7 +21,11 @@
             "length": 300,
             "pose": "stand",
             "body": "mid",
-            "dark": "line"
+            "dark": "line",
+            "colors": {
+              "body": "#A8703C",
+              "dark": "#6E4520"
+            }
           }
         }
       ]
@@ -40,7 +44,11 @@
             "length": 300,
             "pose": "walk",
             "body": "mid",
-            "dark": "line"
+            "dark": "line",
+            "colors": {
+              "body": "#A8703C",
+              "dark": "#6E4520"
+            }
           }
         }
       ]
@@ -59,7 +67,11 @@
             "length": 300,
             "pose": "gallop",
             "body": "mid",
-            "dark": "line"
+            "dark": "line",
+            "colors": {
+              "body": "#A8703C",
+              "dark": "#6E4520"
+            }
           }
         }
       ]

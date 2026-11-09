@@ -28,6 +28,12 @@
             ]
           }
         }
+      ],
+      "exempt": [
+        "拱形窗户",
+        "窗光",
+        "长条餐桌",
+        "建筑结构"
       ]
     },
     {
@@ -68,9 +74,19 @@
                 252
               ]
             ],
-            "cast_shadow": true
+            "cast_shadow": true,
+            "colors": {
+              "cloth": "#4D2835",
+              "fold": "#30202A",
+              "highlight": "#7B4850",
+              "rod": "#38262A",
+              "shadow": "#816646"
+            }
           }
         }
+      ],
+      "exempt": [
+        "室内背景"
       ]
     },
     {
@@ -100,9 +116,17 @@
                 112
               ]
             ],
-            "mullions": true
+            "mullions": true,
+            "colors": {
+              "frame": "#71553B",
+              "glass": "#A8B7BC",
+              "light": "#D2E1E4"
+            }
           }
         }
+      ],
+      "exempt": [
+        "室内背景"
       ]
     },
     {
@@ -120,12 +144,16 @@
             ],
             "glow_steps": 3,
             "colors": {
-              "glow": "bg",
-              "hot": "surface",
-              "halo": "bg"
+              "glow": "#A6B3B4",
+              "hot": "#C0CFCE",
+              "halo": "#A5B5B8"
             }
           }
         }
+      ],
+      "exempt": [
+        "室内背景",
+        "拱形窗户"
       ]
     },
     {
@@ -142,8 +170,14 @@
               100
             ],
             "pose": "side",
-            "robe": "muted",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -156,8 +190,14 @@
               100
             ],
             "pose": "front",
-            "robe": "deep",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -170,8 +210,14 @@
               100
             ],
             "pose": "open",
-            "robe": "mid",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -184,8 +230,14 @@
               100
             ],
             "pose": "grip",
-            "robe": "ink",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -198,8 +250,14 @@
               100
             ],
             "pose": "side",
-            "robe": "deep",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -212,8 +270,14 @@
               100
             ],
             "pose": "front",
-            "robe": "muted",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -226,8 +290,14 @@
               100
             ],
             "pose": "open",
-            "robe": "mid",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -240,8 +310,14 @@
               100
             ],
             "pose": "side",
-            "robe": "deep",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -254,8 +330,14 @@
               100
             ],
             "pose": "point",
-            "robe": "muted",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -268,8 +350,14 @@
               100
             ],
             "pose": "grip",
-            "robe": "mid",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -282,8 +370,14 @@
               100
             ],
             "pose": "open",
-            "robe": "ink",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -296,8 +390,14 @@
               100
             ],
             "pose": "side",
-            "robe": "muted",
-            "trim": "soft"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         },
         {
@@ -310,8 +410,14 @@
               106
             ],
             "pose": "front",
-            "robe": "deep",
-            "trim": "accent"
+            "robe": "#864831",
+            "trim": "#E3CBA7",
+            "colors": {
+              "robe": "#864831",
+              "trim": "#78909E",
+              "shade": "#A15E3E",
+              "collar": "#E9C7A2"
+            }
           }
         }
       ]
@@ -328,7 +434,12 @@
               154
             ],
             "size": 40,
-            "turn": "right"
+            "turn": "right",
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -340,7 +451,12 @@
             ],
             "size": 40,
             "turn": "right",
-            "beard": true
+            "beard": true,
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -351,7 +467,12 @@
               154
             ],
             "size": 40,
-            "turn": "right"
+            "turn": "right",
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -362,7 +483,12 @@
               151
             ],
             "size": 40,
-            "turn": "right"
+            "turn": "right",
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -374,7 +500,12 @@
             ],
             "size": 40,
             "turn": "right",
-            "beard": true
+            "beard": true,
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -385,7 +516,12 @@
               154
             ],
             "size": 40,
-            "turn": "right"
+            "turn": "right",
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -396,7 +532,12 @@
               151
             ],
             "size": 40,
-            "turn": "left"
+            "turn": "left",
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -408,7 +549,12 @@
             ],
             "size": 40,
             "turn": "left",
-            "beard": true
+            "beard": true,
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -419,7 +565,12 @@
               154
             ],
             "size": 40,
-            "turn": "left"
+            "turn": "left",
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -430,7 +581,12 @@
               151
             ],
             "size": 40,
-            "turn": "left"
+            "turn": "left",
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -442,7 +598,12 @@
             ],
             "size": 40,
             "turn": "left",
-            "beard": true
+            "beard": true,
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -453,7 +614,12 @@
               154
             ],
             "size": 40,
-            "turn": "left"
+            "turn": "left",
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         },
         {
@@ -465,7 +631,12 @@
             ],
             "size": 46,
             "turn": "front",
-            "beard": true
+            "beard": true,
+            "colors": {
+              "hair": "#3A2A20",
+              "skin": "#D5A276",
+              "shade": "#BF9469"
+            }
           }
         }
       ]
@@ -483,7 +654,12 @@
               720,
               26
             ],
-            "front": 34
+            "front": 34,
+            "colors": {
+              "cloth": "#E3D2AE",
+              "front": "#BB9D73",
+              "edge": "#8D7356"
+            }
           }
         },
         {
@@ -502,12 +678,16 @@
               0.86
             ],
             "colors": {
-              "cloth": "surface",
-              "fold": "line",
-              "light": "line"
+              "cloth": "#E1CFAD",
+              "fold": "#B39770",
+              "light": "#F4E5C9"
             }
           }
         }
+      ],
+      "exempt": [
+        "室内背景",
+        "桌面器物"
       ]
     },
     {
@@ -704,6 +884,9 @@
             "height": 20
           }
         }
+      ],
+      "exempt": [
+        "长条餐桌"
       ]
     },
     {
@@ -785,7 +968,11 @@
                 "rest"
               ]
             ],
-            "size": 14
+            "size": 14,
+            "colors": {
+              "skin": "#D69A6D",
+              "shade": "#C29471"
+            }
           }
         }
       ]

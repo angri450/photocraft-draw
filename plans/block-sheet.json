@@ -19,7 +19,11 @@
               760
             ],
             "height": 400,
-            "pose": "stand"
+            "pose": "stand",
+            "colors": {
+              "body": "#8A5A38",
+              "skin": "#D8B58C"
+            }
           }
         }
       ]
@@ -36,7 +40,11 @@
               760
             ],
             "height": 400,
-            "pose": "walk"
+            "pose": "walk",
+            "colors": {
+              "body": "#8A5A38",
+              "skin": "#D8B58C"
+            }
           }
         }
       ]
@@ -53,7 +61,11 @@
               760
             ],
             "height": 400,
-            "pose": "point"
+            "pose": "point",
+            "colors": {
+              "body": "#8A5A38",
+              "skin": "#D8B58C"
+            }
           }
         }
       ]

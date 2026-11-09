@@ -1,6 +1,9 @@
 {
   "name": "网格管线 · 方球柱锥与一棵树",
-  "canvas": [900, 1200],
+  "canvas": [
+    900,
+    1200
+  ],
   "ref_width": 900,
   "document_background": "transparent",
   "brief_zh": {
@@ -31,24 +34,135 @@
           "component": "mesh_scene",
           "params": {
             "named_faces": true,
-            "lighting": { "direction": [0.5, -1.0, 0.5], "ambient": 0.85, "diffuse": 0.28 },
+            "lighting": {
+              "direction": [
+                0.5,
+                -1.0,
+                0.5
+              ],
+              "ambient": 0.85,
+              "diffuse": 0.28
+            },
             "camera": {
-              "position": [0, 1.6, 0],
-              "target": [0, 1.6, 1],
+              "position": [
+                0,
+                1.6,
+                0
+              ],
+              "target": [
+                0,
+                1.6,
+                1
+              ],
               "focal": 965,
-              "frame": [900, 1200],
-              "center": [450, 660],
+              "frame": [
+                900,
+                1200
+              ],
+              "center": [
+                450,
+                660
+              ],
               "projection": "perspective"
             },
             "meshes": [
-              { "type": "box", "size": [0.6, 0.6, 0.6], "center": [1.2, 0.3, 3.5], "color": "#88B4B9", "name": "小方块" },
-              { "type": "box", "size": [1.0, 1.0, 1.0], "center": [-1.0, 0.5, 4.0], "color": "#C9A227", "name": "大方块" },
-              { "type": "sphere", "radius": 0.6, "segments": 28, "rings": 16, "center": [0.0, 0.6, 6.0], "color": "#C8455F", "name": "球" },
-              { "type": "cylinder", "radius": 0.45, "height": 1.6, "segments": 28, "center": [1.2, 0.8, 8.0], "color": "#7A9A5B", "name": "柱" },
-              { "type": "cone", "radius": 0.6, "height": 1.7, "segments": 28, "center": [2.2, 0.85, 11.0], "color": "#B3324C", "name": "锥" },
-              { "type": "cylinder", "radius": 0.12, "height": 2.75, "segments": 16, "center": [-1.0, 1.375, 14.0], "color": "#6B4A36", "name": "树干" },
-              { "type": "sphere", "radius": 0.9, "segments": 28, "rings": 16, "center": [-1.0, 3.2, 14.0], "color": "#E3AEC4", "name": "树冠" }
-            ]
+              {
+                "type": "box",
+                "size": [
+                  0.6,
+                  0.6,
+                  0.6
+                ],
+                "center": [
+                  1.2,
+                  0.3,
+                  3.5
+                ],
+                "color": "#88B4B9",
+                "name": "小方块"
+              },
+              {
+                "type": "box",
+                "size": [
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "center": [
+                  -1.0,
+                  0.5,
+                  4.0
+                ],
+                "color": "#C9A227",
+                "name": "大方块"
+              },
+              {
+                "type": "sphere",
+                "radius": 0.6,
+                "segments": 28,
+                "rings": 16,
+                "center": [
+                  0.0,
+                  0.6,
+                  6.0
+                ],
+                "color": "#C8455F",
+                "name": "球"
+              },
+              {
+                "type": "cylinder",
+                "radius": 0.45,
+                "height": 1.6,
+                "segments": 28,
+                "center": [
+                  1.2,
+                  0.8,
+                  8.0
+                ],
+                "color": "#7A9A5B",
+                "name": "柱"
+              },
+              {
+                "type": "cone",
+                "radius": 0.6,
+                "height": 1.7,
+                "segments": 28,
+                "center": [
+                  2.2,
+                  0.85,
+                  11.0
+                ],
+                "color": "#B3324C",
+                "name": "锥"
+              },
+              {
+                "type": "cylinder",
+                "radius": 0.12,
+                "height": 2.75,
+                "segments": 16,
+                "center": [
+                  -1.0,
+                  1.375,
+                  14.0
+                ],
+                "color": "#6B4A36",
+                "name": "树干"
+              },
+              {
+                "type": "sphere",
+                "radius": 0.9,
+                "segments": 28,
+                "rings": 16,
+                "center": [
+                  -1.0,
+                  3.2,
+                  14.0
+                ],
+                "color": "#E3AEC4",
+                "name": "树冠"
+              }
+            ],
+            "group_by": ""
           }
         }
       ]

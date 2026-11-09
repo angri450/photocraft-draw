@@ -176,7 +176,7 @@ def check_commands(commands, canvas, expect=None) -> dict:
 
 def report_text(result: dict) -> str:
     lines = []
-    status = "通过" if result["ok"] else "不通过"
+    status = "检查通过" if result["ok"] else "检查未通过"
     lines.append(f"{status} | {result['parts']} 个部件 | {result['detail']}")
     for problem in result["problems"]:
         lines.append(f"  - {problem}")

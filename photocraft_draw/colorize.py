@@ -9,8 +9,6 @@
 """
 from __future__ import annotations
 
-import re
-
 from .palette import resolve_palette
 from .checker import parts_of
 
@@ -55,27 +53,56 @@ def parts_from_commands(commands) -> list[dict]:
             "name": item["name"],
             "bounds": [x1, y1, x2 - x1, y2 - y1],
             "color": params.get("fill") or "mid",
+            "group": params.get("group"),
+            "group_by": params.get("group_by"),
+            "layer": params.get("layer"),
+            "exempt": params.get("exempt") or [],
         })
     return parts
 
 
-_PART_WORDS = ("脚", "腰", "顶", "雪尖", "雪", "左脊", "右脊", "亮边")
+from .grouping import PART_WORDS as _PART_WORDS
+from .grouping import group as _group
+from .grouping import cross_group_for, subject_of
 
 
-def _group(name: str) -> str:
-    """把同一个物体的部件归成一组。
+def exempt_pair(a: dict, b: dict) -> bool:
+    # 这两个部件要不要跳过色差检查。
+    # 同一个组：同一个物体的部件，颜色接近是正常的
+    # 同一层：一层里的部件是同一片东西的不同部分
+    # 声明过豁免：远山和天空是同一片景的两部分
+    if _part_group(a) == _part_group(b):
+        return True
+    layer_a = a.get('layer')
+    layer_b = b.get('layer')
+    if layer_a and layer_b and layer_a == layer_b:
+        return True
+    if layer_a and layer_b and layer_a != layer_b:
+        if layer_b in (a.get('exempt') or []) or layer_a in (b.get('exempt') or []):
+            return True
+    return False
 
-    天空 1 到天空 24 是同一片渐变；山 1 的脚、腰、顶是同一座山。
-    同组内部颜色接近是正常的，不该报冲突。
+
+def _part_group(part: dict) -> str:
+    """取一个部件所属的组。
+
+    方案里显式声明的 group 优先。声明了 group_by 的，按主体词归组：
+    同类的物件归成一组，不管实例号。
     """
-    text = str(name).strip()
-    text = re.sub(r"[\s\-\d]+$", "", text).strip()
-    for word in _PART_WORDS:
-        if text.endswith(word):
-            text = text[: -len(word)].strip()
-            break
-    text = re.sub(r"[\s\-\d]+$", "", text).strip()
-    return text
+    # 跨组件归组。同类的物件在不同层里时归一组：
+    # 前后的石头都是石头。同一层里的不同实例不合并，
+    # 山 1 和山 2 要能看出边界。
+    cross = cross_group_for(part.get("name"), part.get("layer"))
+    if cross:
+        return cross
+    declared = part.get("group")
+    if declared:
+        return _group(part.get("name"), declared)
+    group_by = part.get("group_by")
+    if group_by:
+        subject = subject_of(part.get("name"))
+        return f"{group_by} {subject}" if group_by else subject
+    return _group(part.get("name"))
 
 
 def check_colors(parts, palette=None, min_gap: float = 0.12) -> dict:
@@ -94,10 +121,20 @@ def check_colors(parts, palette=None, min_gap: float = 0.12) -> dict:
     for i in range(len(resolved)):
         for j in range(i + 1, len(resolved)):
             a, b = resolved[i], resolved[j]
+            if exempt_pair(a, b):
+                continue
+                continue
+            # 声明过豁免的层之间不查色差。天空和远山是同一片景的两部分，
+            # 远山要融进天空，颜色本来就该接近。
+            layer_a = a.get("layer")
+            layer_b = b.get("layer")
+            if layer_a and layer_b and layer_a != layer_b:
+                if layer_b in (a.get("exempt") or []) or layer_a in (b.get("exempt") or []):
+                    continue
             area = _overlap(a["bounds"], b["bounds"])
             if area <= 0:
                 continue
-            if _group(a["name"]) == _group(b["name"]):
+            if _part_group(a) == _part_group(b):
                 continue
             if a["hex"].lower() == b["hex"].lower():
                 problems.append(
@@ -119,7 +156,9 @@ def check_colors(parts, palette=None, min_gap: float = 0.12) -> dict:
 
 
 def report(result: dict) -> str:
-    status = "通过" if result["ok"] else "不通过"
+    # 状态词用「检查通过」和「检查未通过」。「不通过」里含「通过」两个字，
+    # 拿输出做子串匹配的脚本会把它当成通过。
+    status = "检查通过" if result["ok"] else "检查未通过"
     lines = [f"{status} | {result['parts']} 个部件"]
     for item in result["problems"]:
         lines.append(f"  - {item}")

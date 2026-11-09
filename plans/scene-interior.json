@@ -1,6 +1,9 @@
 {
   "name": "室内一角 · 窗光、长桌与陶瓶",
-  "canvas": [900, 1200],
+  "canvas": [
+    900,
+    1200
+  ],
   "ref_width": 900,
   "palette": "fresco",
   "document_background": "#E3D3B4",
@@ -28,10 +31,32 @@
         {
           "component": "indoor_backdrop",
           "params": {
-            "wall": [0, 0, 900, 1200],
-            "floor": [0, 909, 900, 291],
-            "ceiling": [0, 0, 900, 354],
-            "tapestries": [[300, 380, 84, 320]],
+            "wall": [
+              0,
+              0,
+              900,
+              1200
+            ],
+            "floor": [
+              0,
+              909,
+              900,
+              291
+            ],
+            "ceiling": [
+              0,
+              0,
+              900,
+              354
+            ],
+            "tapestries": [
+              [
+                300,
+                380,
+                84,
+                320
+              ]
+            ],
             "colors": {
               "wall": "#DDC9A4",
               "floor": "#A9895F",
@@ -41,6 +66,12 @@
             }
           }
         }
+      ],
+      "exempt": [
+        "拱形窗户",
+        "窗光",
+        "长条餐桌",
+        "建筑结构"
       ]
     },
     {
@@ -51,9 +82,29 @@
           "component": "custom_shape",
           "params": {
             "name": "左侧墙",
-            "fill": "#C3A67C",
+            "fill": "#5d482b",
             "subpaths": [
-              {"closed": true, "knots": [[0, 120], [260, 354], [260, 909], [0, 1100]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    0,
+                    120
+                  ],
+                  [
+                    260,
+                    354
+                  ],
+                  [
+                    260,
+                    909
+                  ],
+                  [
+                    0,
+                    1100
+                  ]
+                ]
+              }
             ]
           }
         },
@@ -63,7 +114,31 @@
             "name": "天顶斜面",
             "fill": "#F2E6CC",
             "subpaths": [
-              {"closed": true, "knots": [[0, 0], [900, 0], [900, 354], [260, 354], [0, 120]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    900,
+                    0
+                  ],
+                  [
+                    900,
+                    354
+                  ],
+                  [
+                    260,
+                    354
+                  ],
+                  [
+                    0,
+                    120
+                  ]
+                ]
+              }
             ]
           }
         },
@@ -71,9 +146,33 @@
           "component": "custom_shape",
           "params": {
             "name": "地面透视",
-            "fill": "#A9895F",
+            "fill": "#bea687",
             "subpaths": [
-              {"closed": true, "knots": [[0, 1100], [260, 909], [900, 909], [900, 1200], [0, 1200]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    0,
+                    1100
+                  ],
+                  [
+                    260,
+                    909
+                  ],
+                  [
+                    900,
+                    909
+                  ],
+                  [
+                    900,
+                    1200
+                  ],
+                  [
+                    0,
+                    1200
+                  ]
+                ]
+              }
             ]
           }
         },
@@ -81,9 +180,29 @@
           "component": "custom_shape",
           "params": {
             "name": "墙角",
-            "fill": "#8F7A5C",
+            "fill": "#1f1b14",
             "subpaths": [
-              {"closed": true, "knots": [[259, 354], [261, 354], [261, 909], [259, 909]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    259,
+                    354
+                  ],
+                  [
+                    261,
+                    354
+                  ],
+                  [
+                    261,
+                    909
+                  ],
+                  [
+                    259,
+                    909
+                  ]
+                ]
+              }
             ]
           }
         },
@@ -93,7 +212,27 @@
             "name": "后墙踢脚线",
             "fill": "#8F7A5C",
             "subpaths": [
-              {"closed": true, "knots": [[261, 908], [900, 908], [900, 910], [261, 910]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    261,
+                    908
+                  ],
+                  [
+                    900,
+                    908
+                  ],
+                  [
+                    900,
+                    910
+                  ],
+                  [
+                    261,
+                    910
+                  ]
+                ]
+              }
             ]
           }
         },
@@ -105,7 +244,19 @@
             "stroke": "#8F7A5C",
             "stroke_width": 2,
             "subpaths": [
-              {"closed": false, "knots": [[0, 1098], [260, 908]]}
+              {
+                "closed": false,
+                "knots": [
+                  [
+                    0,
+                    1098
+                  ],
+                  [
+                    260,
+                    908
+                  ]
+                ]
+              }
             ]
           }
         }
@@ -118,25 +269,42 @@
         {
           "component": "window_glow",
           "params": {
-            "window": [470, 405, 180, 220],
+            "window": [
+              470,
+              405,
+              180,
+              220
+            ],
             "glow_steps": 1,
-            "halo": [560, 590, 90, 50],
+            "halo": [
+              560,
+              590,
+              90,
+              50
+            ],
             "colors": {
-              "glow": "#E9D9B8",
-              "hot": "#F6E6BD",
-              "halo": "#EFE0C4"
+              "glow": "#ECF2F2",
+              "hot": "#D9E6E8",
+              "halo": "#ECF2F2"
             }
           }
         },
         {
           "component": "arched_windows",
           "params": {
-            "windows": [[470, 405, 180, 220]],
+            "windows": [
+              [
+                470,
+                405,
+                180,
+                220
+              ]
+            ],
             "mullions": true,
             "colors": {
-              "frame": "#8F7A5C",
-              "glass": "#F8ECC9",
-              "light": "#FDF6DD"
+              "frame": "#7A5C38",
+              "glass": "#B7C0C1",
+              "light": "#FFF4E0"
             }
           }
         }
@@ -150,9 +318,29 @@
           "component": "custom_shape",
           "params": {
             "name": "窗光光带",
-            "fill": "#F6E6BD",
+            "fill": "#F8DEA0",
             "subpaths": [
-              {"closed": true, "knots": [[470, 625], [650, 625], [500, 1000], [220, 1000]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    470,
+                    625
+                  ],
+                  [
+                    650,
+                    625
+                  ],
+                  [
+                    500,
+                    1000
+                  ],
+                  [
+                    220,
+                    1000
+                  ]
+                ]
+              }
             ]
           }
         }
@@ -166,21 +354,46 @@
           "component": "custom_shape",
           "params": {
             "name": "桌面透视",
-            "fill": "#E6D7B8",
+            "fill": "#C5A16D",
             "subpaths": [
-              {"closed": true, "knots": [[300, 750], [840, 750], [707, 700], [467, 700]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    300,
+                    750
+                  ],
+                  [
+                    840,
+                    750
+                  ],
+                  [
+                    707,
+                    700
+                  ],
+                  [
+                    467,
+                    700
+                  ]
+                ]
+              }
             ]
           }
         },
         {
           "component": "long_table",
           "params": {
-            "table": [300, 750, 540, 60],
+            "table": [
+              300,
+              750,
+              540,
+              60
+            ],
             "front": 26,
             "colors": {
-              "cloth": "#E6D7B8",
-              "front": "#C9B48A",
-              "edge": "#9C8A6E",
+              "cloth": "#CDB489",
+              "front": "#B89B71",
+              "edge": "#8E6D45",
               "plate": "#DDC9A4",
               "bread": "#8A6A3A"
             }
@@ -194,7 +407,19 @@
             "stroke": "#9C8A6E",
             "stroke_width": 2,
             "subpaths": [
-              {"closed": false, "knots": [[300, 750], [467, 700]]}
+              {
+                "closed": false,
+                "knots": [
+                  [
+                    300,
+                    750
+                  ],
+                  [
+                    467,
+                    700
+                  ]
+                ]
+              }
             ]
           }
         },
@@ -206,7 +431,19 @@
             "stroke": "#9C8A6E",
             "stroke_width": 2,
             "subpaths": [
-              {"closed": false, "knots": [[840, 750], [707, 700]]}
+              {
+                "closed": false,
+                "knots": [
+                  [
+                    840,
+                    750
+                  ],
+                  [
+                    707,
+                    700
+                  ]
+                ]
+              }
             ]
           }
         },
@@ -214,9 +451,29 @@
           "component": "custom_shape",
           "params": {
             "name": "左桌腿",
-            "fill": "#8A6A3A",
+            "fill": "#0e0b06",
             "subpaths": [
-              {"closed": true, "knots": [[330, 836], [348, 836], [348, 966], [330, 966]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    330,
+                    836
+                  ],
+                  [
+                    348,
+                    836
+                  ],
+                  [
+                    348,
+                    966
+                  ],
+                  [
+                    330,
+                    966
+                  ]
+                ]
+              }
             ]
           }
         },
@@ -224,31 +481,81 @@
           "component": "custom_shape",
           "params": {
             "name": "右桌腿",
-            "fill": "#8A6A3A",
+            "fill": "#0e0b06",
             "subpaths": [
-              {"closed": true, "knots": [[792, 836], [810, 836], [810, 966], [792, 966]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    792,
+                    836
+                  ],
+                  [
+                    810,
+                    836
+                  ],
+                  [
+                    810,
+                    966
+                  ],
+                  [
+                    792,
+                    966
+                  ]
+                ]
+              }
             ]
           }
         },
         {
           "component": "dinner_plate",
-          "params": {"center": [390, 792], "size": 34}
+          "params": {
+            "center": [
+              390,
+              792
+            ],
+            "size": 34
+          }
         },
         {
           "component": "dinner_plate",
-          "params": {"center": [500, 798], "size": 32}
+          "params": {
+            "center": [
+              500,
+              798
+            ],
+            "size": 32
+          }
         },
         {
           "component": "dinner_plate",
-          "params": {"center": [610, 790], "size": 30}
+          "params": {
+            "center": [
+              610,
+              790
+            ],
+            "size": 30
+          }
         },
         {
           "component": "wine_goblet",
-          "params": {"center": [455, 792], "height": 42}
+          "params": {
+            "center": [
+              455,
+              792
+            ],
+            "height": 42
+          }
         },
         {
           "component": "wine_goblet",
-          "params": {"center": [665, 788], "height": 36}
+          "params": {
+            "center": [
+              665,
+              788
+            ],
+            "height": 36
+          }
         }
       ]
     },
@@ -260,9 +567,45 @@
           "component": "custom_shape",
           "params": {
             "name": "桌面亮部",
-            "fill": "#F6E6BD",
+            "fill": "#dda81e",
             "subpaths": [
-              {"closed": true, "knots": [[690, 735], [652.0, 747.7], [560, 752], [468.0, 747.7], [430, 735], [468.0, 722.3], [560, 718], [652.0, 722.3]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    690,
+                    735
+                  ],
+                  [
+                    652.0,
+                    747.7
+                  ],
+                  [
+                    560,
+                    752
+                  ],
+                  [
+                    468.0,
+                    747.7
+                  ],
+                  [
+                    430,
+                    735
+                  ],
+                  [
+                    468.0,
+                    722.3
+                  ],
+                  [
+                    560,
+                    718
+                  ],
+                  [
+                    652.0,
+                    722.3
+                  ]
+                ]
+              }
             ]
           }
         }
@@ -276,9 +619,45 @@
           "component": "custom_shape",
           "params": {
             "name": "瓶影",
-            "fill": "#CBB189",
+            "fill": "#6d5530",
             "subpaths": [
-              {"closed": true, "knots": [[652, 732], [636.8, 739.1], [600, 742], [563.2, 739.1], [548, 732], [563.2, 724.9], [600, 722], [636.8, 724.9]]}
+              {
+                "closed": true,
+                "knots": [
+                  [
+                    652,
+                    732
+                  ],
+                  [
+                    636.8,
+                    739.1
+                  ],
+                  [
+                    600,
+                    742
+                  ],
+                  [
+                    563.2,
+                    739.1
+                  ],
+                  [
+                    548,
+                    732
+                  ],
+                  [
+                    563.2,
+                    724.9
+                  ],
+                  [
+                    600,
+                    722
+                  ],
+                  [
+                    636.8,
+                    724.9
+                  ]
+                ]
+              }
             ]
           }
         },
@@ -287,16 +666,38 @@
           "params": {
             "named_faces": true,
             "lighting": {
-              "direction": [-0.5, -0.9, 0.3],
+              "direction": [
+                -0.5,
+                -0.9,
+                0.3
+              ],
               "ambient": 0.8,
               "diffuse": 0.35
             },
             "camera": {
-              "position": [0, 0, -5],
-              "target": [0, 0, 0],
-              "up": [0, 1, 0],
-              "frame": [900, 1200],
-              "center": [600, 730],
+              "position": [
+                0,
+                0,
+                -5
+              ],
+              "target": [
+                0,
+                0,
+                0
+              ],
+              "up": [
+                0,
+                1,
+                0
+              ],
+              "frame": [
+                900,
+                1200
+              ],
+              "center": [
+                600,
+                730
+              ],
               "projection": "ortho",
               "ortho_scale": 150
             },
@@ -307,16 +708,46 @@
                 "color": "#A85E45",
                 "segments": 24,
                 "profile": [
-                  [0.0, 0.0],
-                  [0.28, 0.0],
-                  [0.28, 0.06],
-                  [0.22, 0.16],
-                  [0.20, 0.42],
-                  [0.16, 0.55],
-                  [0.10, 0.60],
-                  [0.10, 0.78],
-                  [0.13, 0.82],
-                  [0.13, 0.90]
+                  [
+                    0.0,
+                    0.0
+                  ],
+                  [
+                    0.28,
+                    0.0
+                  ],
+                  [
+                    0.28,
+                    0.06
+                  ],
+                  [
+                    0.22,
+                    0.16
+                  ],
+                  [
+                    0.2,
+                    0.42
+                  ],
+                  [
+                    0.16,
+                    0.55
+                  ],
+                  [
+                    0.1,
+                    0.6
+                  ],
+                  [
+                    0.1,
+                    0.78
+                  ],
+                  [
+                    0.13,
+                    0.82
+                  ],
+                  [
+                    0.13,
+                    0.9
+                  ]
                 ]
               }
             ]

@@ -459,6 +459,7 @@ def ordered_units(plan: dict) -> list[dict]:
                 "name": layer["name"],
                 "depth": float(layer.get("depth", 0.0)),
                 "components": layer["components"],
+                "exempt": layer.get("exempt"),
             })
             continue
         axis = axis_of(layer["components"], layer.get("axis"))
@@ -467,6 +468,7 @@ def ordered_units(plan: dict) -> list[dict]:
                 "name": layer["name"],
                 "depth": float(layer.get("depth", 0.0)),
                 "components": layer["components"],
+                "exempt": layer.get("exempt"),
             })
             continue
         for segment in segments:
@@ -512,7 +514,7 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
     if layers:
         units = ordered_units(plan)
         for unit in units:
-            pen.stage(unit["name"])
+            pen.stage(unit["name"], exempt=unit.get("exempt"))
             for item in unit["components"]:
                 component = get_component(item["component"])
                 pen.stage(component.name, nested=True)

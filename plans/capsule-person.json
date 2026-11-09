@@ -20,7 +20,10 @@
             ],
             "height": 500,
             "pose": "stand",
-            "body": "surface"
+            "body": "surface",
+            "colors": {
+              "body": "#8A5A38"
+            }
           }
         }
       ]
@@ -38,7 +41,10 @@
             ],
             "height": 500,
             "pose": "walk",
-            "body": "surface"
+            "body": "surface",
+            "colors": {
+              "body": "#8A5A38"
+            }
           }
         }
       ]
@@ -56,7 +62,10 @@
             ],
             "height": 500,
             "pose": "point",
-            "body": "surface"
+            "body": "surface",
+            "colors": {
+              "body": "#8A5A38"
+            }
           }
         }
       ]

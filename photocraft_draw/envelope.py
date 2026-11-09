@@ -123,7 +123,7 @@ def check_envelope(parts, kind: str, origin, scale: float) -> dict:
 
 
 def envelope_text(result: dict) -> str:
-    status = "通过" if result["ok"] else "不通过"
+    status = "检查通过" if result["ok"] else "检查未通过"
     return (f"{status} | {result['kind']} 包络 | {result['parts']} 个部件 | "
             f"{result['inner_hits']} 个落在内层" +
             ("".join(f"\n  - {item}" for item in result["problems"])))

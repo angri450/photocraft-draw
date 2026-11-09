@@ -18,7 +18,10 @@
             "width": 900,
             "height": 1200,
             "horizon": 0.7,
-            "seed": 7
+            "seed": 7,
+            "colors": {
+              "sky": "#A8C2C9"
+            }
           }
         }
       ]
@@ -40,7 +43,10 @@
             "bloom": 0.88,
             "fade": 0.3,
             "crown": 0.26,
-            "trunk": 0.52
+            "trunk": 0.52,
+            "colors": {
+              "shadow": "#B5A082"
+            }
           }
         }
       ]
@@ -62,7 +68,10 @@
             "bloom": 0.95,
             "fade": 0.12,
             "crown": 0.3,
-            "trunk": 0.42
+            "trunk": 0.42,
+            "colors": {
+              "shadow": "#B5A082"
+            }
           }
         }
       ]
@@ -84,7 +93,10 @@
             "bloom": 1.0,
             "fade": 0,
             "crown": 0.3,
-            "trunk": 0.36
+            "trunk": 0.36,
+            "colors": {
+              "shadow": "#B5A082"
+            }
           }
         }
       ]

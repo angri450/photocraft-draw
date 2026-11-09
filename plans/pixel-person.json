@@ -27,7 +27,14 @@
               "surface",
               "muted",
               "line"
-            ]
+            ],
+            "colors": {
+              "tones": [
+                "#C9B48A",
+                "#8A6A4A",
+                "#6E4520"
+              ]
+            }
           }
         }
       ]

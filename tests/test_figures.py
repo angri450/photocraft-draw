@@ -107,6 +107,17 @@ class FiguresTest(unittest.TestCase):
             fill = str(item["params"].get("fill", "")).upper()
             self.assertNotIn(fill, ("#000000", "#FFFFFF", "BLACK", "WHITE"))
 
+    def test_colour_parameters_reach_shapes(self):
+        pen = Recorder()
+        figures.build_seated_figure({
+            'seat': [100, 180, 50, 128],
+            'colors': {'robe': '#80452F', 'trim': '#E2C7A0', 'collar': '#C48E62'},
+        }, pen)
+        fills = {item['params'].get('name'): item['params'].get('fill') for item in pen.commands}
+        self.assertEqual(fills['袍身'], '#80452F')
+        self.assertEqual(fills['内袍'], '#E2C7A0')
+        self.assertEqual(fills['领口'], '#C48E62')
+
     def test_single_figure_within_budget(self):
         pen = Recorder()
         figures.build_seated_figure({"seat": [100, 180, 50, 128], "pose": "point"}, pen)

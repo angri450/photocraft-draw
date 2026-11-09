@@ -197,9 +197,10 @@ def build_brief(plan: dict) -> dict:
         en_lines.append(f"{index + 1}. {entry['en']}")
     if scene_en:
         en_lines.append(f"Staging: {scene_en}. ")
+    # 最前面那层的描述已经在层序清单里，这里只说层名，不再抄一遍
     en_lines.append(
         "Occlusion: the layers stack back to front, each nearer layer covering the one behind it; "
-        f"the closest is {entries[-1]['en']}. "
+        f"the closest is {names[-1]}. "
     )
     if plan.get("canvas"):
         width, height = plan["canvas"]
