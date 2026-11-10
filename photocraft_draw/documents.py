@@ -28,8 +28,24 @@ class DocumentBook:
 
     def place(self, path: str | Path, x: float | None = None,
               y: float | None = None, scale: float | None = None) -> dict:
-        """置入一张图片，作为智能对象图层。"""
+        """置入一张图片，作为智能对象图层。
+
+        serve 会话里的 doc.place 只按画布中心落图，x、y 会被忽略；
+        要精确摆放，用 run_once 走一次性模式，调 file.placeEmbedded 的
+        center、scale、fit、smartObject。
+        """
         return self.engine.place(path, x=x, y=y, scale=scale)
+
+    def run_once(self, commands, out: str | Path, *, source: str | Path | None = None,
+                 new: dict | None = None, fmt: str | None = None,
+                 timeout: float = 600.0) -> dict:
+        """不经过当前会话，另起一个一次性进程执行命令并保存。
+
+        file.placeEmbedded 这类被 serve 拦下的路径命令走这条路。
+        """
+        return self.engine.run_once(
+            commands, out, source=source, new=new, fmt=fmt, timeout=timeout,
+        )
 
     def render_to(self, path: str | Path, max_side: int | None = None) -> dict:
         """渲染当前文档并写文件，不把 base64 带出来。"""

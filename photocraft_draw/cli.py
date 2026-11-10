@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""命令行入口：check、draw、apply、commands、components、doctor。"""
+"""命令行入口：check、draw、quick、apply、commands、components、doctor。"""
 from __future__ import annotations
 
 import argparse
@@ -471,6 +471,101 @@ def cmd_apply(args) -> int:
     return _render(meta, commands, outputs, extras=[(args.command, params)], verbose=args.verbose)
 
 
+def run_quick(spec_path, png=None, psd=None, out_dir="out", no_roots=False,
+              verbose=False) -> dict:
+    """按一份命令序列直接出图，不经过绘制方案和构图组件。
+
+    命令序列里每一项要么写 id（命令目录里的编号，走 CommandBook），要么写
+    method（文档层方法，走 engine.call）。返回尺寸、命令数、层数和耗时。
+    """
+    from .commandbook import CommandBook
+
+    source = Path(spec_path)
+    if not source.is_file():
+        raise FileNotFoundError(f"找不到命令序列：{source}")
+    try:
+        spec = json.loads(source.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"命令序列不是合法 JSON：{error}") from error
+    if not isinstance(spec, dict):
+        raise ValueError("命令序列顶层必须是一个对象")
+
+    canvas = spec.get("canvas")
+    if not isinstance(canvas, (list, tuple)) or len(canvas) != 2:
+        raise ValueError("命令序列需要 canvas：[宽, 高]")
+    width, height = (int(value) for value in canvas)
+    if width <= 0 or height <= 0:
+        raise ValueError("命令序列的 canvas 宽高必须大于 0")
+
+    commands = spec.get("commands")
+    if not isinstance(commands, list) or not commands:
+        raise ValueError("命令序列需要 commands：一个非空数组")
+
+    outputs = spec.get("outputs") or {}
+    png_path = Path(png or outputs.get("png") or (Path(out_dir) / f"{source.stem}.png"))
+    psd_path = Path(psd or outputs.get("psd") or (Path(out_dir) / f"{source.stem}.psd"))
+    png_path = png_path.expanduser().resolve()
+    psd_path = psd_path.expanduser().resolve()
+    if png_path.parent != psd_path.parent:
+        raise ValueError("PNG 和 PSD 要放在同一个目录，绘制服务一次只给一个写入目录")
+    write_root = png_path.parent
+    write_root.mkdir(parents=True, exist_ok=True)
+
+    if no_roots:
+        read_root = scoped_root = None
+    else:
+        raw_root = spec.get("read_root")
+        read_root = Path(raw_root).expanduser() if raw_root else Path.cwd()
+        scoped_root = write_root
+
+    started = time.time()
+    with Engine(read_root=read_root, write_root=scoped_root) as engine:
+        engine.new_document(width, height, spec.get("name") or source.stem,
+                            background=spec.get("background"))
+        book = CommandBook(engine)
+        for index, item in enumerate(commands, 1):
+            if not isinstance(item, dict):
+                raise ValueError(f"commands 第 {index} 条必须是一个对象")
+            params = item.get("params") or {}
+            if not isinstance(params, dict):
+                raise ValueError(f"commands 第 {index} 条的 params 必须是对象")
+            if "method" in item:
+                label = str(item["method"])
+                reply = engine.call(label, params)
+                if not reply.get("ok"):
+                    raise EngineError(f"{label} 失败：{reply.get('error')}")
+                result = reply.get("result")
+            elif "id" in item:
+                label = str(item["id"])
+                describe_command(label)
+                result = book.run(label, params)
+            else:
+                raise ValueError(f"commands 第 {index} 条要写 id 或 method")
+            if verbose:
+                print(f"  {index:>3} {label} -> {result}")
+        engine.save(png_path, "png")
+        engine.save(psd_path, "psd")
+        info = DocumentBook(engine).inspect()
+
+    return {
+        "width": width,
+        "height": height,
+        "commands": len(commands),
+        "layers": info.get("layers"),
+        "elapsed": time.time() - started,
+        "png": png_path,
+        "psd": psd_path,
+    }
+
+
+def cmd_quick(args) -> int:
+    info = run_quick(args.spec, png=args.png, psd=args.psd, out_dir=args.out_dir,
+                     no_roots=args.no_roots, verbose=args.verbose)
+    print(f"ok | {info['width']}x{info['height']} | {info['commands']} 条命令 | "
+          f"{info['elapsed']:.1f}s | {info['layers']} 层 | {info['png']}, {info['psd']}")
+    return 0
+
+
 def cmd_annotate(args) -> int:
     plan_path = Path(args.plan)
     plan = load_plan(plan_path)
@@ -550,13 +645,29 @@ def cmd_commands(args) -> int:
     if args.describe:
         item = describe_command(args.describe)
         print(f"{item['id']}  {item['label']}")
-        print(f"类别：{item['category_name']}（{item['category']}）")
-        if item.get("menu"):
-            print(f"菜单：{item['menu']}")
-        if item.get("shortcut"):
-            print(f"快捷键：{item['shortcut']}")
-        print(f"需要文档：{'是' if item.get('needs_document') else '否'}")
-        print(f"参数：{item['params'] or '无'}")
+        # 已知字段排在前面方便读，其余字段按 describe 返回的顺序补在后面，
+        # 目录新增的字段不用改这里就会自动出现。
+        preferred = ("category_name", "menu", "shortcut", "needs_document", "params")
+        keys = [key for key in preferred if key in item]
+        keys += [key for key in item
+                 if key not in preferred and key not in ("id", "label", "category")]
+        labels = {"category_name": "类别", "menu": "菜单", "shortcut": "快捷键",
+                  "needs_document": "需要文档", "params": "参数"}
+        for key in keys:
+            value = item[key]
+            if key == "category_name":
+                group = item.get("category")
+                print(f"类别：{value}" + (f"（{group}）" if group else ""))
+                continue
+            if key == "params":
+                print(f"参数：{value or '无'}")
+                continue
+            if key == "needs_document":
+                print(f"需要文档：{'是' if value else '否'}")
+                continue
+            if value is None or value == "" or value == [] or value == {}:
+                continue
+            print(f"{labels.get(key, key)}：{value}")
         return 0
     if args.count:
         catalog = load_catalog()
@@ -705,6 +816,16 @@ def build_parser() -> argparse.ArgumentParser:
         node.add_argument("--out-dir", default="out", help="默认输出目录，默认 out")
         node.add_argument("--verbose", action="store_true", help="打印每条指令的执行摘要")
         node.set_defaults(func=cmd_draw if name == "draw" else cmd_apply)
+
+    quick = sub.add_parser("quick", help="不写绘制方案，按命令序列直接出图")
+    quick.add_argument("spec", help="命令序列 JSON")
+    quick.add_argument("--png", help="PNG 输出路径，默认用序列里的 outputs.png")
+    quick.add_argument("--psd", help="PSD 输出路径，默认用序列里的 outputs.psd")
+    quick.add_argument("--out-dir", default="out", help="序列没写输出时用的目录，默认 out")
+    quick.add_argument("--no-roots", action="store_true",
+                       help="不起 automation 读写根，放开 ambient 路径类命令")
+    quick.add_argument("--verbose", action="store_true", help="逐条打印执行结果")
+    quick.set_defaults(func=cmd_quick)
 
     annotate = sub.add_parser("annotate", help="生成图层批注页")
     annotate.add_argument("plan", help="绘制方案文件")

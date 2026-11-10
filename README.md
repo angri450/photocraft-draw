@@ -117,6 +117,20 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 
 要看每条指令的结果加 `--verbose`，平时不要开。
 
+## 中间稿与最终成品的分工
+
+出图分两段，手段不能混着用。中间稿只回答位置摆得对不对：谁在前谁在后、留多少边距、文字排在哪一行。这一段能省则省，由 `quick` 直接把一串命令交给绘制服务，不必准备绘制方案：
+
+```sh
+photocraft-draw quick out/whitebox_experiment.commands.json --verbose
+```
+
+命令序列是一份 JSON，写明画布、背景和要执行的条目。条目带 `id` 的走命令目录，编号的参数由 `photocraft-draw commands --describe` 给出；带 `method` 的走文档层方法，比如 `doc.place`。条目按顺序执行，最后同时输出 PNG 和 PSD。完整示例见 `docs/whitebox-quick-experiment.md`。
+
+白模确认之后进入最终阶段，要把图片素材、文字和组件组合成可交付的成品，这一段的手续一件都不能省：由绘制方案把位置和层序固定成图层组，缺的结构新增构图组件并登记进 `registry.py`，照片转绘、羽化、调色这类位图素材预处理该上就上，最后走 `draw` 交给引擎输出 PSD，文字仍是文字层、形状仍是形状层，交付之后还能改。七步工作流管的是这一段，`quick` 只管前一段。
+
+PIL 在最终阶段管位图素材本身，比如裁切、羽化、调色和拼长条；图层之间的组合交给绘制方案和引擎。把各层焊成一张位图，文字层和形状层就都没了，PSD 交付后能改这个好处也跟着没了。
+
 ## 绘制方案
 
 ```json
@@ -225,12 +239,23 @@ python3 tools/eval_layout.py out/layout.json ../../imgs/spray_final.png
 
 953 条绘制指令分 38 个类别，数据在 `photocraft_draw/catalog.json`，引擎升级后用 `python3 tools/build_catalog.py` 重新生成。
 
+每条命令除了编号、名称和参数，还带一组会话可用性标注，说明它在绘制服务里能不能直接跑。serve 常驻会话会拦下带环境文件系统路径的命令，一次性执行模式没有这层限制，先查这一组字段，省得调下去才报错。
+
+1. `session_state` 取「可执行」「看上下文」「会话禁用」三种，分别表示随时能跑、要等文档或选区满足条件、serve 会话一律拒绝。
+2. `session_evidence` 标明判断的来路，「实测-调用」是真的执行过并收到拒绝，「实测-查询」是查询 `engine.commands` 得到的空文档基线；`session_reason` 给出引擎报的原始原因。
+3. `session_alternative` 是被拦下时改用的文档层方法，`session_alternative_note` 说明替代方法少了哪些参数；没有等价方法时值为「无」，只能改走一次性执行模式。
+4. `path_root` 说明路径要相对哪个根，`path_params` 列出哪几个参数是路径。
+
+会话可用性跟着当前文档状态走，引擎当场返回的 `engine.commands` 才是最终依据，目录里记的是新建 800×600 空文档的基线，`session_baseline()` 可以读出它。`blocked()` 一次列出全部被拦命令，当前基线是 66 条。
+
 ```sh
 photocraft-draw commands --count
 photocraft-draw commands --search 曲线
 photocraft-draw commands --search 锐化 --limit 10
 photocraft-draw commands --category 滤镜效果 --limit 20
 photocraft-draw commands --describe image.adjustments.curves
+photocraft-draw commands --describe file.placeEmbedded
+photocraft-draw commands --search 会话禁用 --limit 10
 ```
 
 命令可以接在方案的后面执行，用来做后期：
@@ -408,7 +433,7 @@ photocraft-draw draw plans/scene-landscape.json --out-dir out
 
 ## 边界
 
-1. 引擎单边渲染上限 1024 像素，要更大的成品只能出图后再放大。
+1. 引擎没有 1024 像素的单边上限，那是早期记错的一条。实测 1080×3600（约 388 万像素）能正常出 PNG 和 PSD，1600×900 的示例也一直能出；更大的尺寸没有逐档测过，不写成无上限。`doc.render --max-side` 是预览图的最长边限制，只影响预览，不影响正式出图。
 2. 引擎是 early alpha，PSD 能否在 Adobe Photoshop 里正常打开没有验证过，只保证引擎自己能读、第三方 psd-tools 能解析。
 3. 引擎的渐变是近似，带滤镜的组会被栅格化，复杂画面要逐张看。
 4. 一张画面超过一百条指令，先想能不能拆组件或简化，不要硬堆。

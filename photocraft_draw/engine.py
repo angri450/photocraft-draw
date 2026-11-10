@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-"""绘制服务：管理 photocraft-cli 的 serve 会话，只回执行摘要。"""
+"""绘制服务：管理 photocraft-cli 的 serve 会话，另带一次性执行模式。
+
+serve 会话适合连续交互，但会拦下带环境文件系统路径的命令
+（file.placeEmbedded、file.open 这类）；一次性模式走 photocraft-cli run，
+不常驻、跑完就退出，路径类命令在它下面可用，代价是每次都要重新起进程。
+"""
 from __future__ import annotations
 
 import base64
@@ -73,7 +78,13 @@ def summarize(value):
 
 
 class Engine:
-    """一个常驻的绘制服务，同一份文档可以连续执行多条绘制指令。"""
+    """绘制服务入口，两种执行模式。
+
+    常驻会话（start / execute）：同一份文档连续执行多条指令，适合反复改稿；
+    带环境文件系统路径的命令会被会话拒绝。
+    一次性执行（run_once）：另起一个 photocraft-cli run 进程，跑完就退出，
+    路径类命令可用，适合脚本一次成图。
+    """
 
     def __init__(self, cli: Path | str | None = None, read_root: Path | str | None = None,
                  write_root: Path | str | None = None, startup_timeout: float = 30.0):
@@ -223,6 +234,77 @@ class Engine:
             "bounds": result.get("bounds"),
             "scale": result.get("scale"),
             "smart_object": result.get("smartObject"),
+        }
+
+    def run_once(self, commands, out, *, source: Path | str | None = None,
+                 new: dict | None = None, fmt: str | None = None,
+                 timeout: float = 600.0) -> dict:
+        """一次性执行模式：不常驻，用 photocraft-cli run 跑完就退出。
+
+        serve 会话会拒绝带环境文件系统路径的命令，file.placeEmbedded 就在
+        其列；这条路径不经过会话，命令直接交给引擎，置入、打开这类命令都
+        能用。适合脚本一次成图；要反复改同一份文档还是用 serve。
+
+        source 打开已有文档，new 新建文档（{"width","height","name",
+        "background"}），两者给一个。commands 写成 [(命令, 参数), …] 或
+        [{"command": …, "params": {…}}, …]，参数按命令目录里的签名字段写。
+        """
+        if source is not None and new is not None:
+            raise ValueError("source 和 new 只能给一个")
+        if source is None and new is None:
+            raise ValueError("要么给 source 打开文档，要么给 new 新建文档")
+        if not isinstance(commands, (list, tuple)) or not commands:
+            raise ValueError("一次性模式至少要一条命令")
+        args = [str(self.cli), "run"]
+        if source is not None:
+            args.append(str(Path(source).expanduser().resolve()))
+        else:
+            if not isinstance(new, dict):
+                raise ValueError("new 必须是对象，写 width、height 这些参数")
+            args += ["--new", json.dumps(new, ensure_ascii=False)]
+        for item in commands:
+            if isinstance(item, dict):
+                command = item.get("command") or item.get("id")
+                params = item.get("params") or {}
+            elif isinstance(item, (list, tuple)) and len(item) == 2:
+                command, params = item
+            else:
+                raise ValueError("每条命令写成 (命令, 参数) 或 {command, params}")
+            if not command:
+                raise ValueError("命令名不能为空")
+            args += [
+                "--cmd", str(command),
+                "--params", json.dumps(params or {}, ensure_ascii=False),
+            ]
+        target = Path(out).expanduser().resolve()
+        args += ["--out", str(target)]
+        if fmt:
+            args += ["--format", str(fmt)]
+        try:
+            result = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired as error:
+            raise EngineError(f"一次性执行超时（{timeout:.0f} 秒）") from error
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            raise EngineError(
+                f"一次性执行失败，退出码 {result.returncode}"
+                + (f"：{detail}" if detail else "")
+            )
+        entries = []
+        for line in (result.stdout or "").splitlines():
+            line = line.strip()
+            if not line.startswith("{"):
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        warnings = [line for line in (result.stderr or "").splitlines() if line.strip()]
+        return {
+            "path": str(target),
+            "commands": len(commands),
+            "entries": entries,
+            "warnings": warnings,
         }
 
     def render(self, max_side: int | None = None) -> bytes:

@@ -3,7 +3,7 @@ name: photocraft-draw
 description: 用三维坐标设计白模，压成 2.5 维画面，再把结构翻译成生图提示词交给模型出图。适合需要准确遮挡关系的人物、动物、场景，也支持分层 PSD 和原生文字层。触发词：PhotoCraft、白模、三维摆位、遮挡关系、2.5D、轴测投影、画面稿、生图提示词。
 ---
 
-> 随时更新，修正 skill。本机引擎在 `D:\agent2\opt\photocraft\photocraft-cli.exe`，项目在 `D:\agent2\photocraft-draw`，引擎路径已写进用户环境变量 `PHOTOCRAFT_CLI`。命令行工具已 pip 安装，直接敲 `photocraft-draw` 即可，不需要 `python -m photocraft_draw`。
+> 随时更新，修正 skill。本机引擎在 `/home/wanli/opt/photocraft/0.19.0/bin/photocraft-cli`，项目在 `/home/wanli/cb-cwd-20261007/code/photocraft-draw`。程序按环境变量 `PHOTOCRAFT_CLI`、PATH、`~/opt/photocraft` 的顺序找引擎；本机没设这个变量，PATH 上也没有，最后按 `~/opt/photocraft` 里的版本找到了。命令行工具已 pip 安装，直接敲 `photocraft-draw` 即可，不需要 `python -m photocraft_draw`。
 
 # PhotoCraft-Draw
 
@@ -11,7 +11,7 @@ description: 用三维坐标设计白模，压成 2.5 维画面，再把结构�
 
 这个技能不是「画图工具」，是**白模设计器**。画笔只负责把结构摆对，质感和光影交给生图模型。
 
-项目在 `D:\agent2\photocraft-draw`，引擎是 `photocraft-cli`。普通示意图、论文图、PPT 仍走 `svg-code-drawing`。
+项目在 `/home/wanli/cb-cwd-20261007/code/photocraft-draw`，引擎是 `photocraft-cli`。普通示意图、论文图、PPT 仍走 `svg-code-drawing`。
 
 ## 路由表
 
@@ -27,7 +27,16 @@ description: 用三维坐标设计白模，压成 2.5 维画面，再把结构�
 | 接触点与穿帮提示 | [接触点与穿帮检查](references/接触点与穿帮检查.md) |
 | 画人物、配色、场景构图规则 | [人物与场景画法](references/人物与场景画法.md) |
 | 画多格连环画、人物兵器 | [四格连环画白模做法](references/四格连环画白模做法.md) |
+| 中间快速试位置关系 | quick 命令序列，见下面「中间稿与最终成品的分工」 |
 | 直接开画 | 参照下面「核心思想」和「结构验证与画面稿翻译」 |
+
+## 中间稿与最终成品的分工
+
+中间稿只确认位置关系，能省则省：由 `quick` 读一份命令序列直接出图，不必准备绘制方案、不必新增构图组件，十几条原生命令几秒就能出一张分层白模，用来定谁在前谁在后、留多少边距、文字排在哪一行。命令序列里带 `id` 的条目走命令目录，带 `method` 的条目走文档层方法，示例见 `docs/whitebox-quick-experiment.md`。
+
+白模确认之后要把图片素材、文字和组件组合成成品，这一段的手续一件都不能省：绘制方案把位置和层序固定成图层组，缺的结构新增构图组件并登记进 `registry.py`，照片转绘、羽化、调色这类位图素材预处理该上就上，最后走 `draw` 输出 PSD，文字仍是文字层、形状仍是形状层。七步工作流管的是这一段。
+
+PIL 管位图素材本身，比如裁切、羽化、调色和拼长条；图层之间的组合交给绘制方案和引擎。把各层焊成一张位图，文字层和形状层就都没了，交付后还能改这个好处也跟着没了。
 
 ## 核心思想三维定结构
 
@@ -183,11 +192,11 @@ for index in range(4):
 strip.save("长条.png")
 ```
 
-生成器的完整范例在 `D:\agent2\comic\build.py`，一份文件写方案、跑 `verify`、跑 `draw`、跑 `occlusion`、跑 `brief`、拼长条，改参数重跑。人物兵器、屋脊、兽类剪影的具体做法见 [四格连环画白模做法](references/四格连环画白模做法.md)。
+生成器的完整范例是把 verify、draw、occlusion、brief 和拼长条写进同一个 Python 脚本，改参数重跑。人物兵器、屋脊、兽类剪影的具体做法见 [四格连环画白模做法](references/四格连环画白模做法.md)。
 
 ## 本机可跑的示例方案
 
-`D:\agent2\photocraft-draw\plans\` 下有 24 份方案，都是能跑通的。新手先看这三个：
+`/home/wanli/cb-cwd-20261007/code/photocraft-draw/plans/` 下有 39 份顶层方案，另有 `apple-comic/` 和 `iced-tea-comic/` 两个子目录共 12 份分格方案。新手先看这三个：
 
 | 方案 | 场景 |
 |---|---|
