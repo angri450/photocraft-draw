@@ -20,10 +20,8 @@
             ],
             "height": 430,
             "pose": "stand",
-            "colors": {
-              "body": "#8A5A38",
-              "skin": "#D8B58C"
-            }
+            "body": "#8A5A38",
+            "skin": "#D8B58C"
           }
         }
       ]
@@ -41,10 +39,8 @@
             ],
             "height": 430,
             "pose": "walk",
-            "colors": {
-              "body": "#8A5A38",
-              "skin": "#D8B58C"
-            }
+            "body": "#8A5A38",
+            "skin": "#D8B58C"
           }
         }
       ]
@@ -62,10 +58,8 @@
             ],
             "height": 430,
             "pose": "run",
-            "colors": {
-              "body": "#8A5A38",
-              "skin": "#D8B58C"
-            }
+            "body": "#8A5A38",
+            "skin": "#D8B58C"
           }
         }
       ]
@@ -83,10 +77,8 @@
             ],
             "height": 430,
             "pose": "point",
-            "colors": {
-              "body": "#8A5A38",
-              "skin": "#D8B58C"
-            }
+            "body": "#8A5A38",
+            "skin": "#D8B58C"
           }
         }
       ]

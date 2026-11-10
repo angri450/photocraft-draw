@@ -7,8 +7,8 @@ from typing import Callable
 
 from . import mesh, organic
 from .components import (alpine, architecture, arched_windows, block, box3d, crabapple,
-                         figures, indoor_backdrop, long_table, perspective, rider3d, rig,
-                         tableware)
+                         figures, indoor_backdrop, long_table, modern, perspective,
+                         rider3d, rig, tableware)
 
 
 @dataclass(frozen=True)
@@ -117,6 +117,7 @@ _SPECS.update(crabapple.COMPONENTS)
 _SPECS.update(perspective.COMPONENTS)
 _SPECS.update(mesh.COMPONENTS)
 _SPECS.update(organic.COMPONENTS)
+_SPECS.update(modern.COMPONENTS)
 
 REGISTRY: dict[str, Component] = {
     key: Component(

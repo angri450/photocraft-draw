@@ -47,6 +47,21 @@ class ColourParamsTest(unittest.TestCase):
                                    'color': 'bg', 'fill': '#10151A'}, pen)
         self.assertEqual(pen.commands[0]['params']['fill'], '#10151A')
 
+    def test_rig_person_accepts_colors_dict_and_top_level(self):
+        def fills(colour_params):
+            target = self.pen()
+            block.build_rig_person(dict({'root': [400, 600], 'height': 300},
+                                       **colour_params), target)
+            return {cmd['params'].get('name'): cmd['params'].get('fill')
+                    for cmd in target.commands}
+        via_dict = fills({'colors': {'body': '#2C3E5C', 'skin': '#D8B58C'}})
+        via_top = fills({'body': '#2C3E5C', 'skin': '#D8B58C'})
+        self.assertEqual(via_dict['躯干'], '#2C3E5C')
+        self.assertEqual(via_top['躯干'], '#2C3E5C')
+        self.assertEqual(via_dict['头'], '#D8B58C')
+        self.assertEqual(via_top['头'], '#D8B58C')
+        self.assertEqual(via_dict['躯干'], via_top['躯干'])
+
 
 if __name__ == '__main__':
     unittest.main()

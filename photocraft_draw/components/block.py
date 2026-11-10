@@ -249,8 +249,9 @@ def build_rig_person(params: dict, pen: Pen) -> None:
         pose = str(params.get('pose', 'stand'))
         if pose not in PERSON_POSES:
             raise ValueError(f"方块人 pose 只能是 {'、'.join(PERSON_POSES)}，收到 {pose}")
-        body = params.get('body', 'mid')
-        skin = params.get('skin', 'soft')
+        colors = params.get('colors') or {}
+        body = colors.get('body') or params.get('body', 'mid')
+        skin = colors.get('skin') or params.get('skin', 'soft')
         flip = bool(params.get('flip', False))
         sx, sy = (float(root[0]), float(root[1]))
         u = float(total) / 32.0
@@ -267,7 +268,7 @@ def build_rig_person(params: dict, pen: Pen) -> None:
         for side, key in ((-1, 'leg_l'), (1, 'leg_r')):
             angle = angles[key] if not flip else angles['leg_r' if key == 'leg_l' else 'leg_l']
             _segment(pen, sx + side * torso_w * 0.25, sy + torso_h, angle, leg_h, leg_w, body, '左腿' if side < 0 else '右腿', taper=1.0)
-COMPONENTS['rig_person'] = {'name': '方块人', 'description': '六个长方体的方块人，照 Minecraft 比例，手臂腿可摆动', 'params': {'root': '[x, y]，肩部位置，必填', 'height': '总身高像素，必填', 'pose': 'stand / walk / run / point / sit', 'body': '身体颜色，默认 mid', 'skin': '头部颜色，默认 soft', 'flip': '是否左右翻转，默认 false'}, 'build': build_rig_person}
+COMPONENTS['rig_person'] = {'name': '方块人', 'description': '六个长方体的方块人，照 Minecraft 比例，手臂腿可摆动', 'params': {'root': '[x, y]，肩部位置，必填', 'height': '总身高像素，必填', 'pose': 'stand / walk / run / point / sit', 'body': '身体颜色，默认 mid', 'skin': '头部颜色，默认 soft', 'colors': '{body, skin}，可选，优先于顶层同名参数', 'flip': '是否左右翻转，默认 false'}, 'build': build_rig_person}
 __all__ = ['build_block_figure', 'build_block_horse', 'build_custom_shape', 'build_ascii_art', 'build_rig_horse', 'build_rig_person', 'POSES', 'HORSE_POSES', 'PERSON_POSES', 'ORDER', 'COMPONENTS']
 
 def build_scatter_shape(params: dict, pen: Pen) -> None:

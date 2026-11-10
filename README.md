@@ -282,7 +282,7 @@ with Engine(read_root=".", write_root="out") as engine:
 
 ## 组件目录
 
-一共 37 个，`photocraft-draw components` 输出完整参数。画法约定在 `docs/component-references.md`，人物和马的比例配方在 `docs/figure-recipes.md`，遮挡规则在 `docs/occlusion-rules.md`。
+一共 51 个，`photocraft-draw components` 输出完整参数。画法约定在 `docs/component-references.md`，人物和马的比例配方在 `docs/figure-recipes.md`，遮挡规则在 `docs/occlusion-rules.md`。
 
 | 分组 | 编号 | 名称 | 必填参数 |
 |---|---|---|---|
@@ -323,6 +323,20 @@ with Engine(read_root=".", write_root="out") as engine:
 | 通用形状 | ascii_art | 字符画 | art |
 | 通用形状 | scatter_shape | 撒点填充 | box |
 | 通用形状 | soft_shadow | 地面投影 | center、rx、ry |
+| 现代题材 | bottle | 饮料瓶 | base |
+| 现代题材 | apple | 苹果 | center |
+| 现代题材 | apple_tree | 苹果树 | root |
+| 现代题材 | truck | 厢式货车 | origin |
+| 现代题材 | display_stand | 梯形货台 | frame |
+| 现代题材 | holding_hand | 握持的手 | center |
+| 花林包装 | grove_backdrop | 花林背景 | 无 |
+| 花林包装 | crabapple_tree | 海棠树 | root |
+| 花林包装 | crabapple_grove | 海棠花林 | trees |
+| 花林包装 | crabapple_spray | 海棠花枝特写 | 无 |
+| 花林包装 | grove_label | 包装文字 | 无 |
+| 三维场景 | perspective_scene | 透视场景 | 无 |
+| 网格有机 | mesh_scene | 网格场景 | meshes |
+| 网格有机 | organic_layer | 有机形状层 | camera |
 
 新增组件：在 `photocraft_draw/components/` 写 `build(params, pen)`，只画形状和文字，不建图层；图层由绘制方案负责。再到 `registry.py` 登记编号、名称、说明和参数。
 
