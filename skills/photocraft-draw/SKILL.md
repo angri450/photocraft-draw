@@ -3,7 +3,7 @@ name: photocraft-draw
 description: 用三维坐标设计白模，压成 2.5 维画面，再把结构翻译成生图提示词交给模型出图。适合需要准确遮挡关系的人物、动物、场景，也支持分层 PSD 和原生文字层。触发词：PhotoCraft、白模、三维摆位、遮挡关系、2.5D、轴测投影、画面稿、生图提示词。
 ---
 
-> 随时更新，修正 skill。本机引擎在 `/home/wanli/opt/photocraft/0.19.0/bin/photocraft-cli`，项目在 `/home/wanli/cb-cwd-20261007/code/photocraft-draw`。程序按环境变量 `PHOTOCRAFT_CLI`、PATH、`~/opt/photocraft` 的顺序找引擎；本机没设这个变量，PATH 上也没有，最后按 `~/opt/photocraft` 里的版本找到了。命令行工具已 pip 安装，直接敲 `photocraft-draw` 即可，不需要 `python -m photocraft_draw`。
+> 随时更新，修正 skill。引擎按环境变量 `PHOTOCRAFT_CLI`、PATH、`~/opt/photocraft` 的顺序查找，跑 `photocraft-draw doctor` 会显示本机认到的引擎路径和版本；找不到引擎时把可执行文件加进 PATH，或者设置 `PHOTOCRAFT_CLI` 给出它的位置。命令行工具已 pip 安装，直接敲 `photocraft-draw` 即可，不需要 `python -m photocraft_draw`。
 
 # PhotoCraft-Draw
 
@@ -11,7 +11,7 @@ description: 用三维坐标设计白模，压成 2.5 维画面，再把结构�
 
 这个技能不是「画图工具」，是**白模设计器**。画笔只负责把结构摆对，质感和光影交给生图模型。
 
-项目在 `/home/wanli/cb-cwd-20261007/code/photocraft-draw`，引擎是 `photocraft-cli`。普通示意图、论文图、PPT 仍走 `svg-code-drawing`。
+项目文件都在这个仓库里，绘制方案、构图组件、参考文档都在仓库根目录下，引擎是 `photocraft-cli`。普通示意图、论文图、PPT 仍走 `svg-code-drawing`。
 
 ## 路由表
 
@@ -192,16 +192,14 @@ for index in range(4):
 strip.save("长条.png")
 ```
 
-生成器的完整范例是把 verify、draw、occlusion、brief 和拼长条写进同一个 Python 脚本，改参数重跑。人物兵器、屋脊、兽类剪影的具体做法见 [四格连环画白模做法](references/四格连环画白模做法.md)。
+生成器的做法是在同一份 Python 脚本里完成方案、`verify`、`draw`、`occlusion`、`brief` 和拼长条，改参数就能重跑；四格共用一套人物关节表和配色，每格单独一份方案 JSON。人物兵器、屋脊、兽类剪影的具体做法见 [四格连环画白模做法](references/四格连环画白模做法.md)。
 
-## 本机可跑的示例方案
+## 仓库里可跑的示例方案
 
-`/home/wanli/cb-cwd-20261007/code/photocraft-draw/plans/` 下有 39 份顶层方案，另有 `apple-comic/` 和 `iced-tea-comic/` 两个子目录共 12 份分格方案。新手先看这三个：
+`plans/` 下收录了 32 份示例方案，都是能跑通的 JSON，覆盖盒子遮挡、完整场景、人物部件表、名画复刻等题材。准备新方案前先找一份相近的照着改，改动时先复制到自己的目录，不要动仓库里的原件。新手先看这三份：
 
 | 方案 | 场景 |
 |---|---|
-| `box3d-test.json` | 三个盒子按 z 叠放，最小样例，遮挡关系最直观 |
-| `mountain-horse.json` | 完整场景，7 层：天空、远山、近山、岩地、河流、马、前景 |
-| `horse-sheet.json` | 积木马部件表，练 `verify --expect horse` |
-
-改动方案时先复制到自己的目录再改，不要动 `plans/` 里的原件。
+| `plans/box3d-test.json` | 三个盒子按 z 叠放，最小样例，遮挡关系最直观 |
+| `plans/mountain-horse.json` | 完整场景，7 层：天空、远山、近山、岩地、河流、马、前景 |
+| `plans/horse-sheet.json` | 积木马部件表，练 `verify --expect horse` |

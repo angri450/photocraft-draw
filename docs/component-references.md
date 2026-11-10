@@ -5,7 +5,7 @@
 
 ## 一、参考来源与许可
 
-1. 《最后的晚餐》高清图，Wikimedia Commons，公有领域（CC0/PD）。本地文件在 `docs/references/`：`overview.jpg`、`left-group.jpg`、`center-jesus.jpg`、`right-group.jpg`、`table-detail.jpg`、`faces-left.jpg`、`faces-right.jpg`。
+1. 《最后的晚餐》高清图，Wikimedia Commons，公有领域（CC0/PD）。仓库的 `docs/references/` 收录了全图和七张局部裁图：`overview.jpg` 是整体构图，`left-group.jpg`、`center-jesus.jpg`、`right-group.jpg` 是三组人物，`table-detail.jpg` 是桌面，`faces-left.jpg`、`faces-right.jpg` 是两侧脸部。
 2. Open Peeps，Pablo Stanley，CC0。只参考它把人物拆成头、发、五官、手、姿态的做法，不要照搬它的卡通线稿风格。
 3. Humaaans，可商用但不是 CC0。不要直接复制它的文件。
 4. unDraw，许可明确禁止打包再分发、程序化嵌入和用于训练。不要把它接进组件库，只能当视觉参考。

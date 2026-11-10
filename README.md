@@ -119,13 +119,27 @@ ok | 1600x900 | 3 个图层 | 3 个构图组件 | 56 条绘制指令 | 3.9s | ou
 
 ## 中间稿与最终成品的分工
 
-出图分两段，手段不能混着用。中间稿只回答位置摆得对不对：谁在前谁在后、留多少边距、文字排在哪一行。这一段能省则省，由 `quick` 直接把一串命令交给绘制服务，不必准备绘制方案：
+出图分两段，手段不能混着用。中间稿只回答位置摆得对不对：谁在前谁在后、留多少边距、文字排在哪一行。这一段能省则省，由 `quick` 直接把一串命令交给绘制服务，不必准备绘制方案。把下面这份 JSON 存成任意名字的文件，交给 `quick` 就能出图：
 
-```sh
-photocraft-draw quick out/whitebox_experiment.commands.json --verbose
+```json
+{
+  "name": "位置关系草稿",
+  "canvas": [800, 600],
+  "background": "transparent",
+  "commands": [
+    {"id": "layer.newFillLayer.solidColor", "params": {"color": "#E8DCC8"}},
+    {"id": "shape.create", "params": {"kind": "rect", "rect": [0, 400, 800, 200], "fill": "#A8B8C0", "stroke": null, "name": "远山"}},
+    {"id": "type.create", "params": {"x": 400, "y": 160, "text": "标题", "font": "Noto Sans CJK SC", "size": 48, "color": "#2A2A2E", "align": "center", "name": "标题"}},
+    {"id": "file.scripts.deleteAllEmptyLayers", "params": {}}
+  ]
+}
 ```
 
-命令序列是一份 JSON，写明画布、背景和要执行的条目。条目带 `id` 的走命令目录，编号的参数由 `photocraft-draw commands --describe` 给出；带 `method` 的走文档层方法，比如 `doc.place`。条目按顺序执行，最后同时输出 PNG 和 PSD。完整示例见 `docs/whitebox-quick-experiment.md`。
+```sh
+photocraft-draw quick whitebox.json --verbose
+```
+
+命令序列写明画布、背景和要执行的条目。条目带 `id` 的走命令目录，编号的参数由 `photocraft-draw commands --describe` 给出；带 `method` 的走文档层方法，比如 `doc.place`。字体名按本机装的中文字体改。条目按顺序执行，最后同时输出 PNG 和 PSD，默认落在 `out/` 下，也可以用 `--png` 和 `--psd` 另指定。这套做法的实测数据和阶段边界的完整说明收在 `docs/whitebox-quick-experiment.md`。
 
 白模确认之后进入最终阶段，要把图片素材、文字和组件组合成可交付的成品，这一段的手续一件都不能省：由绘制方案把位置和层序固定成图层组，缺的结构新增构图组件并登记进 `registry.py`，照片转绘、羽化、调色这类位图素材预处理该上就上，最后走 `draw` 交给引擎输出 PSD，文字仍是文字层、形状仍是形状层，交付之后还能改。七步工作流管的是这一段，`quick` 只管前一段。
 
@@ -226,8 +240,10 @@ photocraft-draw colors plans/xxx.json --pixel --fix --global-fix --apply
 ```sh
 photocraft-draw draw plans/spray.json --png out/spray.png
 photocraft-draw prompt plans/spray.json --out out/layout.json --compile-to out/prompt.txt
-python3 tools/eval_layout.py out/layout.json ../../imgs/spray_final.png
+python3 tools/eval_layout.py out/layout.json <模型出图后存下的成品图>
 ```
+
+第二个参数换成模型出图后存下来的图片，脚本按粉色掩膜找出每朵花，再和 Layout 草稿里的计划框逐个比对。
 
 `prompt` 把方案里的每朵花、每个苞、每片叶、每根枝逐个投影成像素框，拼成 Layout 草稿，再调 `moss-image-prompt-enhancer` 技能的编译器转成模型要的单行格式，框以画面中心为原点。全过程不手填坐标。
 
@@ -285,12 +301,12 @@ photocraft-draw apply plans/framework.json image.adjustments.brightnessContrast 
 ```sh
 photocraft-draw doc inspect out/framework.psd
 photocraft-draw doc render out/framework.psd --png out/preview.png --max-side 1200
-photocraft-draw doc place out/framework.psd imgs/logo.png --x 40 --y 40 --scale 20 --out out/placed.psd
+photocraft-draw doc place out/framework.psd <要置入的图片> --x 40 --y 40 --scale 20 --out out/placed.psd
 photocraft-draw doc jobs
 photocraft-draw doc cancel <任务编号>
 ```
 
-`doc.open` 和 `doc.place` 读的文件必须在绘制服务的读取根里，命令行默认用项目当前目录；`doc.save` 写在目标文件所在目录。`doc.render` 的 base64 不会进模型，命令行只回路径和字节数；`doc.inspect` 只回摘要，不拉整棵图层树。
+示例里的 `<要置入的图片>` 换成自己手上的图片文件。`doc.open` 和 `doc.place` 读的文件必须在绘制服务的读取根里，命令行默认用项目当前目录；`doc.save` 写在目标文件所在目录。`doc.render` 的 base64 不会进模型，命令行只回路径和字节数；`doc.inspect` 只回摘要，不拉整棵图层树。
 
 Python 里用 `DocumentBook`：
 
