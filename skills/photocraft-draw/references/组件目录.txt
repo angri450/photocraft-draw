@@ -1,16 +1,3 @@
-# 组件目录
-
-这份是 `photocraft-draw components` 的完整输出快照，2026-11-02 从 photocraft-draw 0.1.0 导出。
-
-组件增减后重新生成：
-
-```sh
-photocraft-draw components > references/组件目录.txt
-```
-
-输出格式：组件名加中文说明，然后是必填参数和可选参数的列表。必填参数标「必填」，其余是可选。
-
-```text
 indoor_backdrop  室内背景
   墙面、地面、天顶和两侧帷幔，给室内场景打底
   - wall：[x, y, 宽, 高]，必填
@@ -170,12 +157,7 @@ figure_rig  人物白模
   - joint：关节颜色，默认 line
   - head：头部颜色，默认 surface
   - flip：是否左右翻转，默认 false
-  - face：朝向，front / left / right / back，默认不画；写上以后白模的头会点上五官
-  - 关节表格式：{关节名: [x, y]}，14 个关节，原点在髋部，向上为负 y，数值按身高归一到 1.0
-  - 关节表可以写三个数 [x, y, z]，z 是这一节深度在人物自己身上的偏移，单位像素，正数离观众更远
-  - 关节名：hip chest neck head shoulder_l shoulder_r elbow_l elbow_r hand_l hand_r knee_l knee_r foot_l foot_r
-  - 关节球实画直径约 45 像素，排多人时横向间距留 70 像素以上才不叠
-  - 关节天然同色，不适合走 colors 检查，改用 verify 配 occlusion
+  - face：朝向，front / left / right / back，默认不画
 block_figure  积木人
   八个长方形和椭圆拼的人，头、躯干、两臂、两腿、两脚，五种姿态
   - root：[x, y]，髋部位置，必填
@@ -190,10 +172,6 @@ custom_shape  自定义路径
   - fill：填充色，默认 surface
   - stroke：描边色，可选
   - stroke_width：描边宽度，可选
-  - knots 每项写 [x, y]，或写 {anchor: [x, y], in: [x, y], out: [x, y]} 给贝塞尔控制点
-  - subpaths 必须是扁平列表，多一层嵌套会报 'list' object has no attribute 'get'
-  - 同一层里多个组件按列表顺序压盖，后面的盖住前面的，可拿底色形状叠出镂空
-  - 包围盒按锚点算，不按贝塞尔控制点算，verify 不报控制点出画
 ascii_art  字符画
   把多行字符画转成矩形，连续字符合并成一段
   - art：多行字符串，必填
@@ -221,6 +199,7 @@ rig_person  方块人
   - pose：stand / walk / run / point / sit
   - body：身体颜色，默认 mid
   - skin：头部颜色，默认 soft
+  - colors：{body, skin}，可选，优先于顶层同名参数
   - flip：是否左右翻转，默认 false
 scatter_shape  撒点填充
   在人形或马形轮廓里随机撒方块，一条指令出一片
@@ -284,5 +263,105 @@ rider3d  三维骑手
   - pose：stand / walk / gallop
   - skew_x：z 的横向偏移，默认 0.42
   - skew_y：z 的纵向偏移，默认 0.22
-
-```
+grove_backdrop  花林背景
+  天光、地平线远树影和地面平涂，给海棠花林打底
+  - width：画面宽，默认 800
+  - height：画面高，默认 1200
+  - horizon：地平线占画高比例，默认 0.70
+  - seed：远树影随机种子，默认 7
+crabapple_tree  海棠树
+  一棵完整的海棠花树：投影、主干、分枝、花冠、花、嫩叶、落花
+  - root：[x, y] 树根脚点，必填
+  - height：树高像素，默认 400
+  - seed：形态随机种子，默认 1
+  - bloom：花量 0 到 1，默认 1.0
+  - fade：往纸白淡化 0 到 1，远处调大，默认 0
+  - crown：树冠半径占树高的比例，默认 0.225；近树调大到 0.30 更团
+  - trunk：主干高度占树高的比例，默认 0.48；近树调小到 0.36 更矮壮
+crabapple_grove  海棠花林
+  一组树按 z 从远到近摆位，自动算近大远小、远淡近浓与遮挡
+  - trees：[{x, y, z, height, seed, bloom}, …]，必填；z 越大越远
+  - width：画面宽，默认 800
+  - z_max：z 的最大值，用来换算透视，默认 100
+crabapple_spray  海棠花枝特写
+  一簇重瓣海棠花、狭长叶与枝条，背景虚化色团，用作真实照片的转绘底稿
+  - width：画面宽，默认 900
+  - height：画面高，默认 1200
+  - seed：随形态种子，默认 3
+  - part：画哪一层：bg 背景 / branch 枝叶 / bloom 花簇 / all 整幅
+grove_label  包装文字
+  产品名、真实属性名、产品特点、净含量，写成原生文字层
+  - title：产品名，默认 冷晶苹香花萃粉
+  - subtitle：真实属性名，默认 固体饮料
+  - features：特点行数组
+  - net：净含量文字
+  - color：产品名字色，默认 #6B2F24
+  - sub_color：副文字色，默认 #8A6A3A
+  - y_title：产品名基线，默认 150
+  - y_features：特点首行基线，默认 1090
+  - width：画面宽，默认 800
+perspective_scene  透视场景
+  按相机参数把真实尺寸的方块、球、柱、锥、树投影到画面，自动近大远小与遮挡
+  - width：画面宽，默认 900
+  - height：画面高，默认 1200
+  - horizon：视平线占画高比例，默认 0.55
+  - focal：焦距像素，默认 965，约等于 50 度水平视野
+  - camera_h：相机高度，米，默认 1.6
+  - objects：物体数组，每项含 type、坐标与尺寸；type 取 box / sphere / cylinder / cone / tree / segment / leaf / flower / bud
+mesh_scene  网格场景
+  顶点、变换矩阵、透视或正交相机、面排序和背面剔除，画三维白模
+  - meshes：[{type, …}, …]，必填；type 写 mesh、box、sphere、cylinder、cone、capsule、lathe、sweep
+  - camera：{position, target, up, focal, frame, projection, ortho_scale, near}，可选；near 默认 0.001
+  - lighting：{direction, ambient, diffuse}，可选；写 false 是平涂
+  - seal：是否补面缝，默认 true
+  - named_faces：是否给每个面起名，默认 false
+  - group_by：按网格名归组，同一类网格的各个实例归成一组
+organic_layer  有机形状层
+  花瓣、叶片、花苞按三维位置和朝向贴到画面，朝向决定压窄程度
+  - camera：{position, target, up, focal, frame, projection}，必填
+  - items：形状数组，每项含 shape（petal/leaf/bud）、center、size，可选 facing、radial、width、color、spin、petals；花另有 layers（默认 2）、stamens（8 到 10，默认 9）、heart
+bottle  饮料瓶
+  细长瓶身、红色标签、金色瓶盖的冰红茶瓶，可整体倾斜
+  - base：[中心x, 瓶底y]，必填
+  - height：瓶高像素，默认 300
+  - width：瓶身宽，默认瓶高的 0.30 倍
+  - tilt：倾斜角度，默认 0
+  - name：组名与部件名前缀，可选
+  - colors：{body, highlight, tea, label, badge, cap}，可选
+apple  苹果
+  带果柄和一片叶子的红苹果，右上可咬出缺口
+  - center：[中心x, 中心y]，必填
+  - radius：半径像素，默认 100
+  - tilt：倾斜角度，默认 0
+  - bite：是否咬掉右上缺口，默认 false
+  - bite_color：缺口颜色，写成背景色才透得出来，默认 surface
+  - name：组名与部件名前缀，可选
+  - colors：{body, highlight, stem, leaf}，可选
+apple_tree  苹果树
+  树干加三层树冠，可挂果或开花
+  - root：[中心x, 地面y]，必填
+  - height：树高像素，默认 350
+  - fruit：是否挂红果，默认 false
+  - blossom：是否开浅粉白花，默认 false
+  - name：组名与部件名前缀，可选
+  - colors：{trunk, crown, crown_light, fruit_color, blossom_color}，可选
+truck  厢式货车
+  侧视货车，车厢、驾驶室、车窗、两只轮子
+  - origin：[车厢左上角x, y]，必填
+  - scale：整体缩放，默认 1.0
+  - name：组名与部件名前缀，可选
+  - colors：{bed, cab, window, wheel, hub}，可选
+display_stand  梯形货台
+  超市水果堆头，可自动码放几层苹果
+  - frame：[x, y, 宽, 高]，必填
+  - rows：果堆层数，默认 3
+  - per_row：每层个数，默认 6
+  - apples：是否码放果堆，默认 true
+  - name：组名与部件名前缀，可选
+  - colors：{stand, rim, apple}，可选
+holding_hand  握持的手
+  托住物体的手掌加三根并拢的手指
+  - center：[中心x, 中心y]，必填
+  - scale：整体缩放，默认 1.0
+  - name：组名与部件名前缀，可选
+  - colors：{skin}，可选
