@@ -108,41 +108,6 @@ def cmd_doctor(args) -> int:
     return 0
 
 
-def cmd_shade(args) -> int:
-    from .autoshade import auto_shade, parts_from_commands, report
-    from .palette import resolve_palette
-    from .engine import Engine
-
-    plan = load_plan(args.plan)
-    commands, meta = compose_plan(plan)
-    palette = resolve_palette(plan.get("palette"))
-    parts = parts_from_commands(commands)
-    shaded = auto_shade(parts, palette)
-
-    # 按出现顺序把新颜色写回形状指令
-    index = 0
-    for command in commands:
-        if command.get("command") != "shape.create":
-            continue
-        if index >= len(shaded):
-            break
-        command["params"]["fill"] = shaded[index]["hex"]
-        index += 1
-    print(report(shaded))
-
-    if args.out:
-        from pathlib import Path as _Path
-        output = _Path(args.out).resolve()
-        with Engine(read_root=_Path.cwd(), write_root=output.parent) as engine:
-            engine.new_document(meta["width"], meta["height"], meta["name"],
-                                background=meta.get("document_background"))
-            for command in commands:
-                engine.execute(command["command"], command.get("params") or {})
-            engine.save(output)
-        print(f"已出图 {output}")
-    return 0
-
-
 def _apply_colors(plan_path: Path, colors: list[dict]) -> int:
     """把求解出来的配色写回方案文件。"""
     raw = json.loads(plan_path.read_text(encoding="utf-8"))
@@ -324,23 +289,29 @@ def cmd_prompt(args) -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     if args.caption_only:
-        out.write_text(caption_from_plan(plan) + "\n", encoding="utf-8")
-        print("描述：%s" % out)
+        if args.compile_to:
+            draft_caption = {"caption": caption_from_plan(plan)}
+            out.write_text(json.dumps(draft_caption, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            compiled = Path(args.compile_to)
+            compiled.parent.mkdir(parents=True, exist_ok=True)
+            from .prompt_compiler import compile_layout
+            compiled.write_text(compile_layout(draft_caption, custom_home=Path(args.skill_home) if args.skill_home else None) + "\n", encoding="utf-8")
+            print("描述草稿：%s" % out)
+            print("已编译描述：%s" % compiled)
+        else:
+            out.write_text(caption_from_plan(plan) + "\n", encoding="utf-8")
+            print("描述：%s" % out)
         return 0
     draft = layout_from_plan(plan, args.width, args.height, caption_from_plan(plan))
     out.write_text(json.dumps(draft, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("Layout 草稿：%s | %d 项" % (out, len(draft["items"])))
     if args.compile_to:
-        import subprocess
-        import sys as _sys
-        skill = Path("/home/wanli/cb-cwd-20261007/.codebuddy/skills/moss-image-prompt-enhancer")
-        result = subprocess.run(
-            [_sys.executable, str(skill / "scripts/compile_prompt.py"), str(out),
-             "--output", args.compile_to], capture_output=True, text=True)
-        print(result.stdout.strip() or result.stderr.strip())
-        if result.returncode:
-            return result.returncode
-        print("提示词：%s" % args.compile_to)
+        compiled = Path(args.compile_to)
+        compiled.parent.mkdir(parents=True, exist_ok=True)
+        from .prompt_compiler import compile_layout
+        text = compile_layout(draft, custom_home=Path(args.skill_home) if args.skill_home else None)
+        compiled.write_text(text + "\n", encoding="utf-8")
+        print("已编译提示词：%s" % compiled)
     return 0
 
 
@@ -398,6 +369,13 @@ def cmd_brief(args) -> int:
     from .brief import build_brief
 
     info = build_brief(load_plan(args.plan))
+    if getattr(args, "details", False):
+        plan = load_plan(args.plan)
+        from .details import combine_brief, reference_labels
+        plan["_plan_dir"] = str(Path(args.plan).resolve().parent)
+        plan["_plan_path"] = str(Path(args.plan).resolve())
+        info["zh"] = combine_brief(info["zh"], plan, "zh")
+        info["en"] = combine_brief(info["en"], plan)
     print("=== 中文稿 ===")
     print(info["zh"])
     print()
@@ -407,6 +385,24 @@ def cmd_brief(args) -> int:
         Path(args.out_zh).write_text(info["zh"] + "\n", encoding="utf-8")
     if args.out_en:
         Path(args.out_en).write_text(info["en"] + "\n", encoding="utf-8")
+    return 0
+
+
+def cmd_details(args) -> int:
+    from .details import detail_brief, prepare_request, validate_details
+    source = Path(args.plan).resolve()
+    plan = json.loads(source.read_text(encoding="utf-8"))
+    plan["_plan_dir"] = str(source.parent)
+    plan["_plan_path"] = str(source)
+    errors = validate_details(plan)
+    if errors:
+        raise ValueError("细节规划有问题：" + "; ".join(errors))
+    if args.request:
+        target = Path(args.request)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(prepare_request(plan, output_file=source.stem + ".png"), ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"请求：{target}")
+    print(detail_brief(plan, args.lang))
     return 0
 
 
@@ -691,11 +687,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    shade = sub.add_parser("shade", help="按相邻关系自动分配色阶并出图")
-    shade.add_argument("plan", help="绘制方案文件")
-    shade.add_argument("--out", help="输出 PNG 路径")
-    shade.set_defaults(func=cmd_shade)
-
     colors = sub.add_parser("colors", help="检查相邻部件的颜色冲突")
     colors.add_argument("plan", help="绘制方案文件")
     colors.add_argument("--gap", type=float, default=0.12, help="相邻部件的最小亮度差")
@@ -770,7 +761,8 @@ def build_parser() -> argparse.ArgumentParser:
     prompt.add_argument("--width", type=int, default=896, help="目标宽，16 的倍数")
     prompt.add_argument("--height", type=int, default=1200, help="目标高，16 的倍数")
     prompt.add_argument("--caption-only", action="store_true", help="只出整体描述，不出 Layout")
-    prompt.add_argument("--compile-to", help="编译后的提示词路径")
+    prompt.add_argument("--compile-to", help="用 MOSS Prompt Enhancer 官方编译器输出提示词")
+    prompt.add_argument("--skill-home", help="显式指定 image-prompt 技能目录，可省略")
     prompt.set_defaults(func=cmd_prompt)
 
     sheet = sub.add_parser("sheet", help="把成图、三视图和放大拼成一页手稿")
@@ -795,6 +787,13 @@ def build_parser() -> argparse.ArgumentParser:
     brief.add_argument("plan", help="绘制方案文件")
     brief.add_argument("--out-zh", help="中文稿输出路径")
     brief.add_argument("--out-en", help="英文稿输出路径")
+    brief.add_argument("--details", action="store_true", help="融合方案中的造型细节和多白模职责，不生成白模")
+
+    details = sub.add_parser("details", help="检查多白模、各属性细节与参考图职责")
+    details.add_argument("plan", help="绘制方案文件")
+    details.add_argument("--lang", choices=["zh", "en"], default="zh", help="细节清单语言")
+    details.add_argument("--request", help="输出一个未上传的生成请求 JSON")
+    details.set_defaults(func=cmd_details)
     brief.set_defaults(func=cmd_brief)
 
     check = sub.add_parser("check", help="校验绘制方案并统计绘制指令")

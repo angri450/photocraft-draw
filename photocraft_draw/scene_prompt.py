@@ -13,7 +13,6 @@ CAPTIONS = {
                "a shallow notch at each tip and a ring of golden stamens at the heart",
     "bud": "a deep rose crabapple bud with green sepals, closed and rounded",
     "leaf": "a narrow dark green leaf with a fine serrated edge",
-    "branch": "a slender brown twig with fine taper and small nodes",
 }
 
 # 网格按形状给出默认描述，写方案时不用逐个手写；写了 caption 就用写的那个。
@@ -85,6 +84,41 @@ def _table_boxes(params):
 def _tapestry_boxes(params):
     return [(box, "a hanging tapestry with soft folds")
             for box in _rects(params.get("tapestries"))]
+
+
+def _font_boxes(command, width, height):
+    """按 type.create 指令的原生文字、字号和基线估算布局框。
+
+    这里不加载字体做实际字形测量，得到的是带余量的估算框。
+    """
+    p = command.get("params") or {}
+    text = str(p.get("text") or "")
+    if not text.strip():
+        return None
+    size = float(p.get("size") or 24)
+    x = float(p.get("x") or 0)
+    baseline = float(p.get("y") or 0)
+    tracking = float(p.get("tracking") or 0) * size / 1000.0
+    lines = text.split("\n")
+    longest = max(lines, key=len)
+    char_units = sum(1.0 if ord(c) > 255 else 0.56 for c in longest)
+    box_width = max(size, char_units * size + tracking * len(longest) * 1.2)
+    align = str(p.get("align") or "left")
+    center = x if align == "center" else x + box_width / 2
+    if align == "right":
+        center = x - box_width / 2
+    box = _clamp([center - box_width * 0.55,
+                  baseline - len(lines) * size * 1.12,
+                  center + box_width * 0.55,
+                  baseline + size * 0.38], width, height)
+    if not box:
+        return None
+    font = str(p.get("font") or "sans-serif")
+    color = str(p.get("color") or "black")
+    weight = " bold" if int(p.get("weight") or 400) >= 600 else ""
+    return {"label": "text", "text": text,
+            "caption": f"Exact {color}{weight} typography in {font}, {size:g}px, aligned {align}, clean legible lettering",
+            "bbox": [round(v, 1) for v in box]}
 
 
 # 老组件用屏幕坐标画，没有相机可投影。这里按各自的参数报出占位矩形，
@@ -250,8 +284,37 @@ def layout_from_plan(plan: dict, width: int, height: int, caption: str) -> dict:
                     if box:
                         items.append({"label": "object", "caption": label,
                                       "bbox": [round(v, 1) for v in box]})
+    # 原生文字组件直接生成文字框；不新增对方案名称等绘制约束。
+    from .palette import resolve_palette
+    from .commands import Pen
+    from .components.crabapple import build_label
+    ref_width = int(plan.get("ref_width", 800))
+    pen = Pen(ref_width, int(plan.get("canvas", [width, height])[1]),
+              ref_width=ref_width, palette=resolve_palette(plan.get("palette")))
+    for layer in plan.get("layers", []):
+        for component in layer.get("components", []):
+            if component.get("component") == "grove_label":
+                build_label(component.get("params") or {}, pen)
+    from .plan import validate_plan, compose_plan
+    commands = list(pen.commands)
+    if not validate_plan(plan):
+        commands = compose_plan(plan)[0]
+    for command in commands:
+        if command.get("command") == "type.create":
+            item = _font_boxes(command, width, height)
+            if item:
+                items.append(item)
+    # 投影顶点重合的格子去重，免得提示词反复说同一个元素。
+    unique = []
+    seen = set()
+    for item in items:
+        signature = (item["label"], item.get("text"), tuple(item["bbox"]))
+        if signature not in seen:
+            seen.add(signature)
+            unique.append(item)
+    items = unique
     if not items:
-        raise ValueError("方案里没有可以投影的物体")
+        raise ValueError("方案里没有可以投影的物体或文字")
     return {"width": width, "height": height,
             "bbox_coord_space": "abs", "bbox_format": "xyxy",
             "summary": {"meta": _meta(plan),
@@ -275,9 +338,9 @@ STYLE = ("pale warm beige paper, flat colour planes, fine even outlines, "
 
 
 def caption_from_plan(plan: dict) -> str:
-    """从方案里读数量与主体，拼一段整体描述；方案顶层写了 caption 就直接用。"""
-    if plan.get("caption"):
-        return str(plan["caption"])
+    """从方案里读数量与主体拼整体描述；顶层写了 scene_caption 就直接用。"""
+    if plan.get("scene_caption"):
+        return str(plan["scene_caption"])
 
     flowers = buds = leaves = 0
     shapes = {}

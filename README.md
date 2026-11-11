@@ -18,6 +18,12 @@
 | 三维坐标 | 每个部件带 x、y、z 的位置，z 决定谁挡谁 |
 | 画面稿 | 从绘制方案翻译出来的提示词，分中文和英文两版 |
 
+## 关于工作树和判定分支
+
+技能使用的完整判定树见 [skills/photocraft-draw/references/workflow.yaml](skills/photocraft-draw/references/workflow.yaml)。它把任务分流、结构验收、三视图条件、局部白模、多参考职责、模型路线、返修改哪一个节点和讲解交付写在一起。
+
+三视图用于复杂空间关系，普通图不必每次运行。手稿页 `sheet` 和图层批注页 `annotate` 服务于讲解或逐层确认，不因生图自动产生。参数合法、颜色能辨、空间可碰、视觉相符和生图成功各自独立记录；完成对哪一层的检查，就只宣称那一层成立。
+
 ## 七步工作流
 
 1. 收到题目先想清楚画面要讲什么，把画面分成几个图层，每层写一句用途。
@@ -56,7 +62,6 @@ photocraft_draw/
   split.py         兵器按深度分段
   brief.py         画面稿翻译：方案转中英文提示词
   scatter.py       撒点填充
-  autoshade.py     自动色阶，实验代码，没接进主流程
   annotate.py      图层批注页
   cli.py           命令行入口
   components/      构图组件
@@ -239,13 +244,20 @@ photocraft-draw colors plans/xxx.json --pixel --fix --global-fix --apply
 
 ```sh
 photocraft-draw draw plans/spray.json --png out/spray.png
-photocraft-draw prompt plans/spray.json --out out/layout.json --compile-to out/prompt.txt
+photocraft-draw prompt plans/spray.json --out out/layout.json --compile-to out/moss-prompt.txt
+photocraft-draw prompt plans/spray.json --out out/caption.json --caption-only --compile-to out/caption.txt
 python3 tools/eval_layout.py out/layout.json <模型出图后存下的成品图>
 ```
 
 第二个参数换成模型出图后存下来的图片，脚本按粉色掩膜找出每朵花，再和 Layout 草稿里的计划框逐个比对。
 
-`prompt` 把方案里的每朵花、每个苞、每片叶、每根枝逐个投影成像素框，拼成 Layout 草稿，再调 `moss-image-prompt-enhancer` 技能的编译器转成模型要的单行格式，框以画面中心为原点。全过程不手填坐标。
+`prompt` 把方案里的每朵花、每个苞、每片叶、每根枝逐个投影成像素框，拼成 Layout 草稿。原生文字组件的文字、颜色、字体、字号和对齐也进入草稿。文字框按字号和字符宽度估算，不是字体测量结果。全过程不手填坐标。
+
+`--compile-to` 通过 `IMAGE_PROMPT_HOME` 环境变量或工作区 `skills/image-prompt` 定位 MOSS 官方编译器，把草稿从 `abs/xyxy` 编译为 MOSS-Image 的 `abs_centralized/yxyx`。旧环境变量 `MOSS_PROMPT_ENHANCER` 和旧目录作为兼容路径保留。本地合并和来源见该目录的 `LOCAL-INTEGRATION.md`、`PROVENANCE.md`。Layout 草稿的宽高必须为 16 的倍数。
+
+编译结果是 MOSS-Image 专属提示词格式，MOSS-Image 未在本机安装。H3-Image 的本机通道支持写精确排版要求和最多 16 张参考图，但其接口不定义 MOSS 的居中 JSON 格式；这个布局草稿需按 `skills/image-prompt/references/minimax-h3-image.md` 转成自然语言。自然语言提示词继续走 `brief`。
+
+`scene_caption` 覆盖 Layout 的整体描述；`caption` 继续生成画面左下角的小字标题。
 
 `eval_layout` 出图之后量贴合度：按粉色掩膜找每朵花，先腐蚀分开挨在一起的花，再和计划框按交并比一对一分配，逐朵给出计划框、实际框、偏移、面积比和匹配与否，最后给平均交并比、匹配数和多余连通域。平均交并比低于 0.45 或匹配数不到计划数的八成，退出码为 1。整簇矩形的交并比只作参考，它会被花朵尺度带偏。
 
@@ -321,6 +333,25 @@ with Engine(read_root=".", write_root="out") as engine:
     book.render_to("out/preview.png", max_side=1200)
 ```
 
+
+## 白模之后分配全部细节
+
+七步工作流先确定结构。结构确认之后，`details` 接着处理身份、外形、服饰、道具、人体、纹样、材质、表情、构图、配色、光线、风格和连续性。`subjects` 按已有图层或演员选择作用对象；`priority` 标出本轮主矛盾和保护项，`reject` 与 `acceptance` 写出禁止继承的缺点和可见验收标准。
+
+`details.references` 不限制白模数量。一张白模可以承担整幅构图，也可以只管一个接触点。每张参考图通过 `roles` 和 `targets` 写清职责与对象，`source` 区分 `whitebox` 白模与 `character-sheet` 角色造型卡，`avoid` 防止继承旧姿势或缺陷。不同对象可以调用不同参考，不能笼统要求模型参考全图。
+
+```sh
+# 合并同一份方案中的结构画面稿和细节清单，不直接调用生图。
+photocraft-draw brief example-with-details.json --details --out-zh refined-brief.txt
+
+# 清单里已列出结构图层时，也可以单独组装一份请求草稿。
+photocraft-draw details example-with-details.json --request out/request.json
+```
+
+`prepare_request()` 只生成 `prompt`、画幅、输出名和按原顺序排列的 `_reference_sources`。本地图片必须先用图像连接器的上传工具获得临时地址，再将对应 `url` 与 `mime_type` 按原顺序写入 `reference_images`，每次只提交一个请求。程序不会伪造上传结果，也不会自动把本地路径直接发送给模型。一个或多个白模只是几何指导，不能替代造型参考与造型文字。
+
+新细节输入要求绑定实际图层或演员。示例中的简化轮廓不可以代替真实场景的结构检查。每轮新图先检查主要问题，再检查是否破坏此前已经成立的部分。清单减少的是盲目修改，不承诺每次生图一次成功。
+
 ## 组件目录
 
 一共 51 个，`photocraft-draw components` 输出完整参数。画法约定在 `docs/component-references.md`，人物和马的比例配方在 `docs/figure-recipes.md`，遮挡规则在 `docs/occlusion-rules.md`。
@@ -389,7 +420,7 @@ photocraft-draw colors plans/scene-landscape.json --pixel
 photocraft-draw draw plans/scene-landscape.json --out-dir out
 ```
 
-当前测试结果：611 项通过，1 条第三方 pytest 插件的弃用警告。最近精修的 15 份样例均通过 `colors --pixel`，并且成功生成 PNG 和 PSD。这组样例包括 `mona-lisa`、`scene-landscape`、`dining-hall`、`framework`、`supper-demo`、`last-supper`、`scene-street`、`alpine-crossing`、`dawn-scene`、`dawn-napoleon`、`dawn-napoleon3d`、`mountain-horse`、`spray`、`scene-interior`、`scene-still-life`。
+当前测试结果：649 项通过，1 条第三方 pytest 插件的弃用警告。新增测试覆盖了任意数量白模、属性细节、参考职责、参考来源与本地请求组装。最近精修的 15 份样例均通过 `colors --pixel`，并且成功生成 PNG 和 PSD。这组样例包括 `scene-landscape`、`dining-hall`、`framework`、`supper-demo`、`last-supper`、`scene-street`、`alpine-crossing`、`dawn-scene`、`dawn-napoleon`、`dawn-napoleon3d`、`mountain-horse`、`spray`、`scene-interior`、`scene-still-life`。
 
 其中 11 份在额外的 `verify` 中仍报告画布边缘裁切。裁切来自原有的前景石头、四角暗角、花枝、右侧建筑或透视桌面，本轮配色精修没有调整它们的布局。颜色检查通过、实际出图成功、全部结构检查通过，这三个结果不要混为一谈。
 
@@ -453,7 +484,7 @@ photocraft-draw draw plans/scene-landscape.json --out-dir out
 2. 引擎是 early alpha，PSD 能否在 Adobe Photoshop 里正常打开没有验证过，只保证引擎自己能读、第三方 psd-tools 能解析。
 3. 引擎的渐变是近似，带滤镜的组会被栅格化，复杂画面要逐张看。
 4. 一张画面超过一百条指令，先想能不能拆组件或简化，不要硬堆。
-5. 颜色仍要人工定。按物体组自动重排色阶试过三版，都会把天空打散或把形状压平，`autoshade` 只作为实验代码留着。
+5. 颜色仍要人工定。按物体组自动重排色阶试过三版，都会把天空打散或把形状压平，自动色阶代码已删除。
 6. 批注页目前只导出意见，回改要人工或脚本按 JSON 执行，还没有一键回改。
 
 ## 许可证

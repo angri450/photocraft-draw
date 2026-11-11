@@ -100,6 +100,8 @@ def load_plan(path: str | Path) -> dict:
     errors = validate_plan(plan)
     if errors:
         raise ValueError("绘制方案有问题：\n- " + "\n- ".join(errors))
+    plan["_plan_path"] = str(source.resolve())
+    plan["_plan_dir"] = str(source.resolve().parent)
     return resolve_depths(plan)
 
 
@@ -442,6 +444,10 @@ def validate_plan(plan: dict) -> list[str]:
             _validate_depth_z(pairs, errors)
     else:
         _validate_component_list(plan.get("components"), "components", errors)
+
+    # details 只安排生成前的造型、参考图和当前矛盾，不改变白模。
+    from .details import validate_details
+    errors.extend(validate_details(plan))
 
     return errors
 

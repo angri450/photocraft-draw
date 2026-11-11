@@ -7,6 +7,16 @@ description: 用三维坐标设计白模，压成 2.5 维画面，再把结构�
 
 # PhotoCraft-Draw
 
+## 从任务到验收的工作树
+
+先按 [workflow.yaml](references/workflow.yaml) 走判定与分叉。工作树覆盖文字任务、自由构图、精确结构、局部白模、多参考细节、模型路线、返修和按需手稿。它是 agent 的路由约定，不会自动上传或生图。
+
+三视图只在多人交错、空间碰撞或兵器前后关系需要解释时使用，普通图不必每次做。只有实际运行过三视图且用户需要讲解过程，才把它放入手稿；图层批注也按需生成，不自动补一套创作过程。
+
+`quick` 用于快速比较位置；`plan` 用于需要考虑深度与遮挡的结构稿；`details` 在结构验收之后分配造型和参考职责。`check`、`colors`、`relations`、`motion` 各自检查一件事，任何单项通过都不等于整幅图验收通过。骨模关节同色、远景不同色、主体有意裁切这些例外按工作树归类，不能机械地报告全部失败。
+
+生图前以实际模型的输入约定为准，MOSS 的 Layout 编译不通用。每轮结果若需要优化，只把当前最突出的问题设为 `primary`，已经成立的部分设为 `preserve`。返修前按工作树选择结构、手部接触、造型、材质或连续性，避免整幅重来。
+
 ## 这个技能做什么用
 
 这个技能不是「画图工具」，是**白模设计器**。画笔只负责把结构摆对，质感和光影交给生图模型。
@@ -17,6 +27,7 @@ description: 用三维坐标设计白模，压成 2.5 维画面，再把结构�
 
 | 要做的事 | 去哪 |
 |---|---|
+| 完整节点、输入、判定条件、分叉和返修路由 | [workflow.yaml](references/workflow.yaml) |
 | 查某个组件的完整参数 | [组件目录](references/组件目录.txt)，全量快照，不用跑命令 |
 | 遮挡关系定深度的办法 | [关于明确遮挡关系的意见](references/关于明确遮挡关系的意见.md) |
 | 先定人物动作状态的办法 | [关于确定动作状态的思维链](references/关于确定动作状态的思维链.md) |
@@ -118,10 +129,10 @@ mcode-tools connector call connector__matrix__generate_image --args-file 出图�
 ```
 
 ```json
-{"requests": [{"prompt": "英文稿全文", "aspect_ratio": "3:4", "resolution": "2K", "output_file": "final.png"}]}
+{"requests": [{"prompt": "英文稿全文", "aspect_ratio": "3:4", "area": "2K", "output_file": "final.png"}]}
 ```
 
-`aspect_ratio` 可选 `1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`21:9`，`resolution` 可选 `1K`、`2K`、`4K`。一次只提交一条请求。成功后返回 `node_id`，调 `mcode-tools get_asset_url <node_id>` 取下载地址，再自己存到本地。
+`aspect_ratio` 可选 `1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`21:9`，`area` 可选 `1K`、`2K`、`4K`。一次只提交一条请求。成功后返回 `node_id`，调 `mcode-tools get_asset_url <node_id>` 取下载地址，再自己存到本地。
 
 ## 可用组件与常见陷阱
 

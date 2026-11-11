@@ -116,6 +116,11 @@ def test_legacy_components_report_boxes_without_camera():
     assert "mossy rock" in captions
 
 
+def test_empty_plan_keeps_original_error_message():
+    with pytest.raises(ValueError, match="没有可以投影的物体"):
+        layout_from_plan({"layers": [{"components": []}]}, 800, 800, "x")
+
+
 def test_tree_box_sits_above_its_root():
     draft = layout_from_plan(TREE_PLAN, 900, 1200, "x")
     tree = draft["items"][0]["bbox"]

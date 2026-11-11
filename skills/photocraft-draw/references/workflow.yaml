@@ -1,0 +1,257 @@
+schema: photocraft-draw-workflow/v1
+name: "PhotoCraft-Draw 从任务到成品的工作树"
+language: "节点的说明使用中文，命令、字段、状态使用项目实际英文"
+policy:
+  execution: "本文件是模型的路由与验收约定，不是独立调度器。各命令仍由 agent 执行"
+  objective: "先消除含糊的任务与结构，再按职责细化造型，最后只修当前主要问题"
+  no_automatic_generation: "workflow、details、request-plan 都不调用生图"
+  no_false_success: "结构检查、可辨识颜色、空间关系、视觉验收和生图成功各自记录，不互相顶替"
+  repeat_preparation: "不要为每张图新造重复的检查脚本，固定命令和复现文件优先"
+artifact_kinds:
+  task_brief: "用途、画幅、主体与必须可见的关系"
+  plan: "包含层次、部件、深度和说明的绘制方案 JSON"
+  quick_spec: "仅用于位置草图的命令序列 JSON，不承担最终造型"
+  whitebox: "正面结构 PNG 与可编辑 PSD"
+  verification: "结构、颜色、位置、动作、空间或图面报告"
+  detail_spec: "写入 plan 的 details.subjects 与 details.references"
+  detail_image: "按需生成的局部白模、造型卡、色彩图或照片"
+  request_draft: "包含 prompt 和 _reference_sources 的本地草稿，不能直接生图"
+  submission: "经模型专用 schema 校验的单一生成请求"
+  result_receipt: "实际模型回执与下载结果，保存完整记录"
+  review_notes: "本轮主要问题、已成立项、下一轮修正对象"
+  presentation_sheet: "预设花枝样例的手稿页，参数改造需另定通用参数；不能直接当作缠斗手稿"
+model_adapter:
+  decision: "根据实际使用的模型能力选择提示词格式，不共通中间格式"
+  options:
+    minimax_h3:
+      when: "默认使用当前本机 MiniMax 图像连接器，H3 标准版"
+      compiler: "brief --details 将几何意图写成自然语言；不把 prompt --compile-to 的 MOSS JSON 交给它"
+      max_references: 16
+      one_request_at_a_time: true
+      request_fields: "由 connector tool 的实时 input_schema 决定，当前使用 area、aspect_ratio、reference_images"
+    moss:
+      when: "明确选择 MOSS 且需要其 JSON Layout 时"
+      compiler: "prompt --compile-to 使用官方编译器把 Layout 从 abs/xyxy 编码为 abs_centralized/yxyx"
+      limitation: "本机未安装 MOSS，未验证真实出图；未选择该路线就在文档阶段停止"
+    reference_preserving_edit:
+      when: "用户明确要延续上一张画面时，以所选版本为参考，再提取 identity、costume、material 或 style"
+      preserve: "未要求变更的主体与画面范围"
+      edit: "只修用户指出的变化，不把重画同场景当成像素编辑"
+entry:
+  inputs: [task_brief]
+  branches:
+    - id: "entry_text_only"
+      when: "用户只要提示词或文字判断，不要求图像或结构文件"
+      next: "write_unrendered_brief"
+      draws_whitebox: false
+    - id: "entry_existing_edit"
+      when: "已有选定图片，用户指定改动，几何和未改部分可以原样保留"
+      next: "model_adapter >> reference_preserving_edit"
+      draws_whitebox: false
+    - id: "entry_free_composition"
+      when: "新画面，几何关系简单，没有需要精确碰撞、握持、遮挡或跨格参照的约束，允许自由构图"
+      next: "build_geometry_plan"
+      draws_whitebox: false
+    - id: "entry_quick_position"
+      when: "新画面仅要比较位置、边界、文字行位，暂不要求精确碰撞与遮挡，不需要长期复用层次"
+      next: "quick_sketch"
+      draws_whitebox: true
+    - id: "entry_structured_composition"
+      when: "人物、动物、道具或场景之间有必须成立的遮挡、握持、咬合、站位、深度或复用关系"
+      next: "build_geometry_plan"
+      draws_whitebox: true
+      note: "当前缠斗走此路"
+structure:
+  common:
+    - id: "build_geometry_plan"
+      input: task_brief
+      action: "先查 registry 和已有 plan；每项只描述该图真正可见或必须检验的事物；补充 describe_en、z、depth、motion、face、holder、axis 和接触意图"
+      success: "组件已登记，所有必填信息已写入 plan；不能用说明代替实际几何"
+      failure: "补已有参数；确缺画法再新增通用组件；不要为单个角色身份或花纹造组件"
+      output: plan
+      next: "validate_plan_and_palette"
+    - id: "validate_plan_and_palette"
+      commands:
+        - "photocraft-draw check {plan}"
+        - "photocraft-draw verify {plan} --expect {person|horse} --envelope {person|horse}"
+        - "photocraft-draw colors {plan} --pixel"
+      branches:
+        - when: "方案语法、组件参数或人物结构错误"
+          next: "build_geometry_plan"
+          result: blocking
+        - when: "figure_rig 的关节同色来自骨模画法，或同一物体的有意同组被误报"
+          next: "verify_other_structure_checks"
+          result: documented_warning
+          exception: "改用 verify、occlusion、contact 检查真实关系；不使用 colors 为骨模关节强制换色"
+        - when: "可见主体因同色而难以辨认，尤其是手、兵器和接触处"
+          next: "adjust_only_colliding_colours"
+          result: blocking_whitebox_readability
+          action: "只调局部明度和隔离，不改变物体身份颜色；不重排全局色阶"
+        - when: "部件出画"
+          next: "assess_crop_intent"
+          result: requires_context
+          condition: "前景裁切、主体裁切、错误裁切分开判断，不把出画一律当失败"
+        - when: "以上没有阻塞项"
+          next: "verify_other_structure_checks"
+      outputs: [verification]
+    - id: "verify_other_structure_checks"
+      commands:
+        - "photocraft-draw motion {plan}"
+        - "photocraft-draw facing {plan}"
+      success: "人物动作、交战方向与脸朝向相符"
+      failure: "先改动作轴和关节，不增加形容词掩盖姿态"
+      next: "route_spatial_checks"
+    - id: "quick_sketch"
+      command: "photocraft-draw quick {quick_spec}"
+      success: "用户或 agent 已看清本次位置关系"
+      failure: "修 quick_spec 的命令和画布"
+      next: "进入 build_geometry_plan 或 write_unrendered_brief；quick 不自动进入完整造型流程"
+    - id: "assess_crop_intent"
+      next: "有意前景裁切则返回 verify_other_structure_checks；裁坏主体则返回 build_geometry_plan"
+spatial:
+  judgement: "出图前的必要几何核对不等于每次画三视图；单纯两张正面图也不能证明空间相交"
+  decision:
+    - id: "simple_layout"
+      when: "有互不交叉的层次，或普通场景、静物、花卉，无需碰撞解析"
+      action: "按 Draw→layout→occlusion 核对层次、重心和留白"
+      commands:
+        - "photocraft-draw draw {plan} --out-dir {out}"
+        - "photocraft-draw layout {whitebox_png} --grid {grid_png} --json {layout_json}"
+      next: "structure_acceptance"
+      whitebox_reference: "仅完整正面白模"
+    - id: "multiple_jointed_subjects"
+      when: "已有必要 z 数据，仍需要解释两人交错、兵器深度或多人反向施力的空间关系"
+      action: "必要时出三视图辅助解释深度；视图只覆盖人物与兵器，禁止上传成生图参考；不拿此前没跑过的 views 充当验收"
+      command: "photocraft-draw views {plan} --out-dir {views_out} --unit 40 --json {views_json}"
+      next: "weapon_or_contact_checks"
+      whitebox_reference: "仅完整正面白模"
+    - id: "crossing_weapons"
+      when: "兵器必须在画面上交叉且在空间中碰得到，或一件兵器斜穿多层深度"
+      action: "独立计算兵器轴与深度，交叉处默认深度差不超过 24 像素；地面投影不得折线"
+      command: "photocraft-draw relations {plan} --json {relations_json}"
+      failure: "回到深度分段、z 和轴线的参数；不能靠图面重复相交证明实际接触"
+      next: "weapon_or_contact_checks"
+      whitebox_reference: "仅完整正面白模"
+    - id: "weapon_or_contact_checks"
+      when: "存在握持、咬合、碰撞、接缝或遮挡意图"
+      action: "画完正面白模再检查真实图面，接触允许轻微压盖住，手不得只是隔空"
+      command: "photocraft-draw contact {whitebox_psd} --plan {plan} --map {contact_map}"
+      failure: "回到部件、关节或层间深度；必要时另画一张只负责接触细节的局部白模"
+      on_failure: "register_detail_reference"
+      next: "structure_acceptance"
+    - id: "needed_part_has_empty_coverage"
+      when: "views、contact 等简化检查没有覆盖犬腿、衣褶或复杂轮廓"
+      action: "在该对象的白模、文字和本地补图中确认，不声称那条命令验过了整幅场景"
+      next: "structure_acceptance"
+structure_acceptance:
+  input: [whitebox, verification]
+  judge_task: "本任务最重要的关系是什么"
+  pass_when: "该关系已由结构参数、检测或亲自看图确认；local colour warnings 已分类"
+  fail_next: "按失败属于 plan、geometry、depth、facing、colour 或 contact 返回相应节点"
+  protect: "记录已经成立的坐标、兵器交点、接触关系和可辨识性，不把未改部分重新随机化"
+  output: "可上传的正面白模，以及由它命名的待细化对象"
+  next: "choose_detail_coverage"
+details:
+  workflow: "先记录本轮主矛盾与保护项，再按对象分配细节和参考图；进 details 不表示之前的检测已通过"
+  choose_detail_coverage:
+    branches:
+      - id: "one_full_whitebox_enough"
+        when: "一幅正面白模已覆盖当前全部重要关系，细节主要在服饰、材质、风格"
+        refs: "一个 whitebox，必要时另加角色造型卡"
+        next: "declare_subjects_and_references"
+      - id: "one_whitebox_multiple_jobs"
+        when: "同一个局部图能同时表达解剖、握持、道具方向等多个细节"
+        refs: "一条 reference 中写多个 roles 和明确 targets"
+        next: "declare_subjects_and_references"
+      - id: "separate_local_whiteboxes"
+        when: "握持、咬合或其他局部关系在全图中不够清楚；正面白模已通过整体验收"
+        refs: "新增若干局部 whitebox；每张只能负责已声明的细节，控制数量，不重复整幅图"
+        action: "本地 drawing/cropping 不等同精确真实解剖；局部结构不清时先修图，不上传"
+        next: "declare_subjects_and_references"
+      - id: "no_whitebox_needed"
+        when: "自由构图任务只需要整体风格描述"
+        refs: "不写 whitebox 或其他伪造参考"
+        next: "declare_subjects_and_references"
+  declare_subjects_and_references:
+    requires:
+      subject: "target 必须为已有图层或演员；aspects 使用项目支持的对象级属性"
+      aspect_scope: "身份、外形、服装、道具、人体、材质、表情、花纹、接触、姿势、构图、颜色、光线、风格、文字、连续性以及 reject、acceptance"
+      priority: "primary 当前主要矛盾；preserve 已成立项；support 次要指导"
+      reference: "source 为 whitebox、character-sheet、palette、photo、other；roles、targets、priority 和 avoid 明确"
+      details_avoid: "写入不应继承的缺点，服饰与风格参考不能控制手部或兵器方向"
+    commands:
+      - "photocraft-draw details {plan} --request {request_draft}"
+      - "photocraft-draw brief {plan} --details --out-en {generation_brief}"
+    aspects.reject_and_acceptance: "目标级禁止与验收可写在 aspects 内，也可写在同级；没有 details 的旧方案保持原样"
+    blocking: "target 必须在已有层或演员；只填 subjects.acceptance 不自动通过结构检查"
+    outputs: [detail_spec, request_draft, generation_brief]
+    on_invalid_subject_or_role: "回 declare_subjects_and_references"
+    on_reference_missing: "回 choose_detail_coverage 或输入真实参考，不生成占位 URL"
+    next: "model_route"
+generation:
+  model_route:
+    branch: "model_adapter"
+    moss: "有明确模型需求才运行 prompt --compile-to；不得把其格式通用化"
+    open_question: "要增加按 plan 自动选局部参考、自动下载与回执筛选，需另行修改小范围代码；本配置不声称已自动完成"
+    h3: "brief --details 的结果传入 prompt，参考数量受实时 schema 限制"
+  assemble_valid_request:
+    input: [request_draft, detail_image]
+    requires:
+      actual_tool_schema: "先读取 connector tool 的 live schema；request-fields 不凭旧文档"
+      local_inputs: "只上传用户授权的真实本地图；_reference_sources 不等同 reference_images"
+      fresh_reference_mapping: "每次运行随即上传需要上传的图，按 _reference_sources 原序填入 URL、mime_type"
+      transient_urls: "临时地址只留在本地参数和回执，不写入文档、聊天或交付脚本"
+      no_fake_completion: "上传返回不等于生图成功；status code 0 也不等于 success_items 非空"
+    action: "先检查 prompt 包含细节，文件尺寸符合 schema，单请求 n=1，然后提交一次"
+    on_input_rejection: "修正上传文件和参考 URL 的映射后重试同一请求；不换图、不扩写提示词、不增加候选"
+    next: "record_actual_result"
+  record_actual_result:
+    requires:
+      node_id: "真实成功返回的节点编号"
+      local_image: "按返回 file_name 下载到工作目录后再交付原图"
+      receipt: "成功与错误各自保存，不把模型未运行记成抽图失败"
+    on_success: "deliver_result_then_review_if_requested"
+    on_generation_failure: "区分输入错误、临时服务端故障和任务失败；只按原因重试，不用抽图代替修复"
+delivery_and_review:
+  deliver_result_then_review_if_requested:
+    first: "每张成功图交付实际文件，不把组装参数当交付"
+    default: "模型返回即结束；不自动审查、不自动扩图"
+    requested_review: "用户要求一轮一轮优化时，检查一次再定主矛盾"
+  review:
+    inputs: [actual_image, plan, detail_spec]
+    outputs: [review_notes]
+    branches:
+      - when: "身份、服装或画风偏离，位置关系已符合"
+        next: "details.subjects 或 character-sheet 参考"
+        preserve: [geometry, successfully_judged_contacts]
+      - when: "整体姿势、站位或遮挡偏离"
+        next: "build_geometry_plan 或 whitebox 的姿态说明"
+        preserve: [identity, costume, style]
+      - when: "手、脸、犬口或兵器局部出错"
+        next: "对应对象的 anatomy、contact、props，并决定是否新增局部白模"
+        preserve: ["当前已经成立的其他对象与整体构图"]
+      - when: "色彩、材质或光线偏离"
+        next: "对应目标的 colour、material、light 与 palette 参考"
+        preserve: ["几何与人物身份"]
+      - when: "多格之间人物或道具不连续"
+        next: "continuity 和共享角色设定，不把上一格所有姿势当共同参考"
+        preserve: ["每格自己的几何"]
+      - when: "本轮达到任务要求的可见结果"
+        next: "停止"
+    rule: "每轮只把当前最突出的目标设为 primary，其他保持 preserve/support；修局部不重画所有已成立要素"
+presentation:
+  trigger: "用户需要讲解、复述创作过程、确认具体图层时执行；不因出图自动补"
+  manuscript:
+    when: "用户需要白模、三视图、局部放大与成图的同页讲述"
+    current_limit: "sheet 仍为花枝专用样例，字体、caption、notes、--moss 命名固定；views 传三视图合成图；缠斗使用前需参数化，不自动出图"
+    command: "photocraft-draw sheet --model {whitebox_png} --views {view_left_png} --moss {final_image} --out {presentation_sheet}"
+    inputs: "三视图仅在实际运行 views 且需要讲解时提供，不倒推补出没有发生的过程"
+  annotation:
+    when: "讲解或逐层确认时需要框选某层、某块位置写修改意见；局部错误一般的返修直接用 review_notes 管理"
+    command: "photocraft-draw annotate {plan} --out-dir {out}"
+    return_loop: "review JSON 按图层路由回 plan，改正结构再重验；不是手绘文字层"
+unconnected_automation:
+  plan_graph_or_transition_execution: "可选择后续小型改造，本 YAML 当前不宣称自动执行树"
+  upload_output_secret_redaction: "新增生成回执的输出过滤，不让临时地址出现在常规交付"
+  generic_manuscript_page: "现有 sheet 支持花枝示意；把普通花鸟变成缠斗等通用任务须另接收 title、subtitle、caption、notes、字体和图二标签"
+  no_repeated_cost: "workflow 旨在减少不清楚就生成、重复抽整图和保留失败数据的成本；不能承诺每次生图一次成功"
