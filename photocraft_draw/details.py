@@ -128,7 +128,7 @@ def validate_details(plan):
             if role not in REFERENCE_ROLES:
                 errors.append(f"{where}.roles 有未知职责：{role}")
         if not reference.get("path") and not reference.get("url"):
-            errors.append(f"{where} 要指定本地 path 或已上传 url")
+            errors.append(f"{where} 要指定本地 path 或外部参考 url")
         targets_value = _items(reference.get("targets", ["*"]), where + ".targets", errors)
         for target in targets_value:
             if target != "*" and target not in known and not any(
@@ -202,117 +202,59 @@ def build_details(plan):
 
 
 def reference_labels(references):
-    """输出给生成模型的逐图职责，角色序号仅存在于组装完成的请求。"""
+    """只写参考画面的职责，不写流程动作。"""
     blocks = []
     for i, ref in enumerate(references, 1):
-        lines = [f"Reference image {i} ({ref['source']}): apply only {', '.join(ref['roles'])} "
-                 f"to {', '.join(ref['targets'])}."]
+        lines = [f"Reference image {i}: use {', '.join(ref['roles'])} for {', '.join(ref['targets'])} only."]
         if ref.get("instruction"):
             lines.append(str(ref["instruction"]))
         if ref.get("avoid"):
-            lines.append("Do not imitate: " + "; ".join(ref["avoid"]) + ".")
-        if ref["priority"] == "primary":
-            lines.append("This reference controls the main conflict, but only in its assigned aspects and targets.")
-        elif ref["priority"] == "preserve":
-            lines.append("Use this reference to preserve the named features; it cannot move other geometry.")
-        else:
-            lines.append("Subordinate this reference to all explicitly assigned primary references.")
-        if ref["kind"] == "path":
-            lines[0] += " Upload this file, keep its index and role unchanged."
+            lines.append("Exclude " + "; ".join(ref["avoid"]) + ".")
         blocks.append("\n".join(lines))
     return blocks
 
 
 def detail_brief(plan, lang="en"):
+    """对象可见属性，优先级和验收只供流程使用。"""
     data = build_details(plan)
-    if lang == "zh":
-        lines = []
-        for subject in data["subjects"]:
-            lines.append(f"{subject['target']}：{subject['priority_zh']}")
-            for facet in subject["aspects"]:
-                meaning = ASPECT_LABELS.get(facet["kind"], facet["meaning"])
-                lines.append(f"  {meaning}：" + "；".join(facet["items"]))
-            if subject["reject"]:
-                lines.append("  不得出现：" + "；".join(subject["reject"]))
-            if subject["acceptance"]:
-                lines.append("  验收：" + "；".join(subject["acceptance"]))
-        for i, ref in enumerate(data["references"], 1):
-            line = f"参考图{i}（{ref['source_label']}）：" + "、".join(ref["role_meanings"]) + f"，作用于{'、'.join(ref['targets'])}"
-            if ref.get("instruction"):
-                line += "；" + ref["instruction"]
-            if ref["avoid"]:
-                line += "；不要模仿：" + "；".join(ref["avoid"])
-            lines.append(line)
-        return "\n".join(lines)
     lines = []
+    if lang == "zh":
+        for subject in data["subjects"]:
+            for facet in subject["aspects"]:
+                if facet["kind"] != "acceptance":
+                    meaning = ASPECT_LABELS.get(facet["kind"], facet["meaning"])
+                    lines.append(f"{subject['target']}的{meaning}：" + "；".join(facet["items"]))
+            lines.extend(f"{subject['target']}不应出现：{item}" for item in subject["reject"])
+        for i, ref in enumerate(data["references"], 1):
+            items = [f"参考图{i}：" + "、".join(ref["role_meanings"]) + "，作用于" + "、".join(ref["targets"])]
+            if ref.get("instruction"):
+                items.append(ref["instruction"])
+            if ref.get("avoid"):
+                items.append("不要采用：" + "；".join(ref["avoid"]))
+            lines.extend(items)
+        return "\n".join(lines)
     for subject in data["subjects"]:
-        lines.append(f"{subject['target']} ({subject['priority']}):")
         for facet in subject["aspects"]:
-            lines.append(f"  {facet['kind']}: " + "; ".join(facet["items"]))
-        if subject["reject"]:
-            lines.append("  Never depict: " + "; ".join(subject["reject"]))
-        if subject["acceptance"]:
-            lines.append("  Acceptance: " + "; ".join(subject["acceptance"]))
+            if facet["kind"] != "acceptance":
+                lines.append(f"{subject['target']} {facet['kind']}: " + "; ".join(facet["items"]))
+        lines.extend(f"{subject['target']} exclude: {item}." for item in subject["reject"])
     lines.extend(reference_labels(data["references"]))
     return "\n".join(lines)
 
 
 def combine_brief(normal_brief, plan, lang="en"):
-    """把结构描述和细节描述合并成单一提示词；未写 details 的旧方案保持不变。"""
+    """有对象细节就只交场景与对象说明，不重复逐层画稿。"""
     errors = validate_details(plan)
     if errors:
         raise ValueError("细节规划有问题：" + "; ".join(errors))
-    extra = detail_brief(plan, lang)
-    if not extra:
+    raw = plan.get("details") or {}
+    if not raw.get("subjects"):
         return normal_brief
-    heading = "\n\n结构与细节清单：\n" if lang == "zh" else "\n\nVisual details and reference roles:\n"
-    return normal_brief + heading + extra
+    return "\n".join(str(part) for part in [raw.get("scene") or raw.get("scenario"), detail_brief(plan, lang)] if part)
 
 
-def prepare_request(plan, aspect_ratio=None, area="2K", output_file=None):
-    """组合一个生成请求，不调用模型，也不上传或伪造参考文件地址。"""
-    data = build_details(plan)
-    result = {
-        "prompt": combine_brief(build_brief(plan)["en"], plan),
-        "aspect_ratio": aspect_ratio or _ratio(plan.get("canvas") or [1, 1]),
-        "area": area,
-        "output_file": output_file or Path(str(plan.get("_plan_path", "photocraft.png"))).stem + ".png",
-    }
-    if data["references"]:
-        result["_reference_sources"] = data["references"]
-    return result
-
-
-def _ratio(canvas):
-    from math import gcd
-    try:
-        width, height = int(round(canvas[0])), int(round(canvas[1]))
-        div = gcd(width, height)
-        return f"{width // div}:{height // div}"
-    except (ValueError, TypeError, IndexError, ZeroDivisionError):
-        return "auto"
-
-
-if __name__ == "__main__":
-    import argparse
-    from .plan import load_plan
-
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("plan")
-    parser.add_argument("--lang", choices=["zh", "en"], default="zh")
-    parser.add_argument("--request", help="可选的单一请求输出路径，不含上传后的地址")
-    args = parser.parse_args()
-    source = Path(args.plan).resolve()
-    loaded = json.loads(source.read_text(encoding="utf-8"))
-    loaded["_plan_dir"] = str(source.parent)
-    loaded["_plan_path"] = str(source)
-    problems = validate_details(loaded)
-    if problems:
-        raise SystemExit("细节规划有问题：" + "; ".join(problems))
-    if args.request:
-        target = Path(args.request)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(prepare_request(loaded), ensure_ascii=False, indent=2),
-                          encoding="utf-8")
-        print(f"请求：{target}")
-    print(detail_brief(loaded, args.lang))
+def visual_handoff(plan):
+    """通用画面交接，没有模型、上传或请求参数。"""
+    return {"description": combine_brief(build_brief(plan)["en"], plan),
+            "canvas": plan.get("canvas") or [1, 1],
+            "references": build_details(plan)["references"]}

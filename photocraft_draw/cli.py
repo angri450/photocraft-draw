@@ -283,35 +283,20 @@ def cmd_layout(args) -> int:
 
 
 def cmd_prompt(args) -> int:
-    from .scene_prompt import caption_from_plan, layout_from_plan
+    """导出画面描述与结构 Layout；下游如何使用由 image-prompt 决定。"""
+    from .scene_prompt import caption_from_plan
 
     plan = load_plan(args.plan)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     if args.caption_only:
-        if args.compile_to:
-            draft_caption = {"caption": caption_from_plan(plan)}
-            out.write_text(json.dumps(draft_caption, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-            compiled = Path(args.compile_to)
-            compiled.parent.mkdir(parents=True, exist_ok=True)
-            from .prompt_compiler import compile_layout
-            compiled.write_text(compile_layout(draft_caption, custom_home=Path(args.skill_home) if args.skill_home else None) + "\n", encoding="utf-8")
-            print("描述草稿：%s" % out)
-            print("已编译描述：%s" % compiled)
-        else:
-            out.write_text(caption_from_plan(plan) + "\n", encoding="utf-8")
-            print("描述：%s" % out)
+        out.write_text(caption_from_plan(plan) + "\n", encoding="utf-8")
+        print("描述：%s" % out)
         return 0
-    draft = layout_from_plan(plan, args.width, args.height, caption_from_plan(plan))
+    from .layout_tool import export_layout
+    draft = export_layout(plan, args.width, args.height, caption_from_plan(plan), detail=args.detail)
     out.write_text(json.dumps(draft, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("Layout 草稿：%s | %d 项" % (out, len(draft["items"])))
-    if args.compile_to:
-        compiled = Path(args.compile_to)
-        compiled.parent.mkdir(parents=True, exist_ok=True)
-        from .prompt_compiler import compile_layout
-        text = compile_layout(draft, custom_home=Path(args.skill_home) if args.skill_home else None)
-        compiled.write_text(text + "\n", encoding="utf-8")
-        print("已编译提示词：%s" % compiled)
+    print("Layout 草稿：%s" % out)
     return 0
 
 
@@ -320,7 +305,7 @@ def cmd_sheet(args) -> int:
 
     path = build_page(
         Path(args.model), Path(args.views), Path(args.out),
-        moss=Path(args.moss) if args.moss else None,
+        artwork=Path(args.artwork) if args.artwork else None,
         title=args.title,
         detail_box=tuple(int(part) for part in args.detail.split(",")) if args.detail else None,
     )
@@ -389,7 +374,7 @@ def cmd_brief(args) -> int:
 
 
 def cmd_details(args) -> int:
-    from .details import detail_brief, prepare_request, validate_details
+    from .details import detail_brief, validate_details, visual_handoff
     source = Path(args.plan).resolve()
     plan = json.loads(source.read_text(encoding="utf-8"))
     plan["_plan_dir"] = str(source.parent)
@@ -397,11 +382,11 @@ def cmd_details(args) -> int:
     errors = validate_details(plan)
     if errors:
         raise ValueError("细节规划有问题：" + "; ".join(errors))
-    if args.request:
-        target = Path(args.request)
+    if args.handoff:
+        target = Path(args.handoff)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(prepare_request(plan, output_file=source.stem + ".png"), ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"请求：{target}")
+        target.write_text(json.dumps(visual_handoff(plan), ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"画面交接：{target}")
     print(detail_brief(plan, args.lang))
     return 0
 
@@ -755,20 +740,19 @@ def build_parser() -> argparse.ArgumentParser:
     layout.add_argument("--rules", help="规则文件，JSON 对象")
     layout.set_defaults(func=cmd_layout)
 
-    prompt = sub.add_parser("prompt", help="把方案编译成生图提示词或 Layout")
+    prompt = sub.add_parser("prompt", help="导出画面描述或结构 Layout")
     prompt.add_argument("plan", help="绘制方案文件")
     prompt.add_argument("--out", default="out/layout.json", help="Layout 草稿输出路径")
     prompt.add_argument("--width", type=int, default=896, help="目标宽，16 的倍数")
     prompt.add_argument("--height", type=int, default=1200, help="目标高，16 的倍数")
     prompt.add_argument("--caption-only", action="store_true", help="只出整体描述，不出 Layout")
-    prompt.add_argument("--compile-to", help="用 MOSS Prompt Enhancer 官方编译器输出提示词")
-    prompt.add_argument("--skill-home", help="显式指定 image-prompt 技能目录，可省略")
+    prompt.add_argument("--detail", choices=["semantic", "components", "geometry"], default="geometry", help="结构层次：对象语义、实际部件或完整绘制几何")
     prompt.set_defaults(func=cmd_prompt)
 
     sheet = sub.add_parser("sheet", help="把成图、三视图和放大拼成一页手稿")
     sheet.add_argument("--model", required=True, help="结构成图")
     sheet.add_argument("--views", required=True, help="三视图")
-    sheet.add_argument("--moss", help="模型重绘的成图，可省略")
+    sheet.add_argument("--artwork", help="模型重绘的成图，可省略")
     sheet.add_argument("--out", required=True, help="手稿页输出路径")
     sheet.add_argument("--title", default="海棠花枝 · 结构研究", help="页首标题")
     sheet.add_argument("--detail", help="局部放大的裁剪框，写成 x,y,边长")
@@ -792,7 +776,7 @@ def build_parser() -> argparse.ArgumentParser:
     details = sub.add_parser("details", help="检查多白模、各属性细节与参考图职责")
     details.add_argument("plan", help="绘制方案文件")
     details.add_argument("--lang", choices=["zh", "en"], default="zh", help="细节清单语言")
-    details.add_argument("--request", help="输出一个未上传的生成请求 JSON")
+    details.add_argument("--handoff", help="输出画面说明和本地参考职责，不选生图模型")
     details.set_defaults(func=cmd_details)
     brief.set_defaults(func=cmd_brief)
 

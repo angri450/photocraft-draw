@@ -1,38 +1,92 @@
 # PhotoCraft-Draw
 
-这是一个白模设计器。用三维坐标把画面的结构摆对，压成 2.5 维的画面，再把结构翻译成生图提示词，交给模型补质感和光影。结构这一段由构图组件和绘制方案写成，脚本换算成画布坐标和绘制指令，引擎输出 PNG 和 PSD。PSD 里图层是图层组，文字是文字层，交付后还能改。
+这是一个画面结构工具。`plan` 用三维坐标描述对象、位置、形状、遮挡关系，绘制器按实际命令生成白模和分层 PSD。
 
-## 中文叫法
+人物造型、颜色、材质、光线以对象说明或明确参考为准；输出不包含模型适配或生成请求。
 
-| 叫法 | 含义 |
+**当前统一主链：** 目标判断 → 必要时 `plan` → 校验 → 白模 → `prompt` 输出通用 `photocraft-layout/v2` → 细节交接。
+
+## 常用输入和输出
+
+| 名称 | 含义 |
 |---|---|
-| 构图组件 | 一段可复用的绘图代码，负责画面的一部分 |
-| 绘制方案 | 一份 JSON，按图层列出用哪些构图组件、各给什么参数 |
-| 组件目录 | 构图组件的清单和参数说明 |
-| 图层 | 画面的一层，PSD 里是一个图层组 |
-| 画面模板 | 整套构图方式，比如室内场景、海报 |
-| 绘制指令 | 发给引擎的一条条命令 |
-| 绘制服务 | 常驻进程，接收绘制指令并调用引擎 |
-| 执行摘要 | 引擎返回的简短结果 |
-| 白模 | 只有结构和位置、没有质感的画面，交给模型之前的中间稿 |
-| 三维坐标 | 每个部件带 x、y、z 的位置，z 决定谁挡谁 |
-| 画面稿 | 从绘制方案翻译出来的提示词，分中文和英文两版 |
+| `plan` | 组件、位置、尺寸和绘制层次的 JSON |
+| 白模 | 确认几何关系的 PNG，另有分层 PSD |
+| Layout | 从真实绘制命令导出的 v2 结构 |
+| `details` | 对象造型要求及每张参考的职责 |
+| `quick` | 只比较位置时的快速命令序列 |
 
-## 关于工作树和判定分支
+## 新版使用流程
 
-技能使用的完整判定树见 [skills/photocraft-draw/references/workflow.yaml](skills/photocraft-draw/references/workflow.yaml)。它把任务分流、结构验收、三视图条件、局部白模、多参考职责、模型路线、返修改哪一个节点和讲解交付写在一起。
+PhotoCraft-Draw 用三维坐标控制对象的位置、形状、接触和遮挡。人物造型、服饰、材质和光线由画面说明或指定参考图负责。
 
-三视图用于复杂空间关系，普通图不必每次运行。手稿页 `sheet` 和图层批注页 `annotate` 服务于讲解或逐层确认，不因生图自动产生。参数合法、颜色能辨、空间可碰、视觉相符和生图成功各自独立记录；完成对哪一层的检查，就只宣称那一层成立。
+### 先判断是否需要几何
 
-## 七步工作流
+1. 关系简单的画面直接写目标，交给 `image-prompt`，不用建立 `plan`。
+2. 已有图片只改选定对象时，写清对象、保留区域和排除项，不用重画结构。
+3. 只比较主体位置、大小和图文排布时，使用 `quick` 出试稿。
+4. 人物关节、握持、咬合、兵器碰撞或前后遮挡必须成立时，再写 `plan` 并生成正面白模。
 
-1. 收到题目先想清楚画面要讲什么，把画面分成几个图层，每层写一句用途。
-2. 到组件目录里找现成的构图组件，先搜再用，不要重复造。
-3. 没有合适的组件，就新写一个：`photocraft_draw/components/` 下建文件，写 `build(params, pen)`，再到 `registry.py` 登记。
-4. 把组件按层填进绘制方案，每层可以放一个或多个组件。
-5. 做完一层就先 `check` 看指令数和参数，确认这一层没问题。
-6. 所有层按从后到前的顺序排好，`draw` 一次组装成图；程序会把每个顶层组提到最前，保证后画的压在前面。
-7. `annotate` 生成单文件批注页，你在网页上点图层、拖方框、写意见，导出 JSON 发回来，我按 JSON 改。
+完整判定树位于 [完整判定树](skills/photocraft-draw/references/workflow.yaml)。本项目负责几何、白模和参考职责；模型、提示词转换、上传、生图和下载由 `image-prompt` 负责。
+
+### 精确结构的实际命令
+
+花果、人物和场景共用同一套绘制命令。下面用遮挡盒子演示，曾在本机实际执行：
+
+```sh
+photocraft-draw components --search 盒
+photocraft-draw verify plans/box3d-test.json
+photocraft-draw draw plans/box3d-test.json --out-dir out
+photocraft-draw prompt plans/box3d-test.json --out out/layout.json
+```
+
+1. 在 `plan` 中声明画布、组件、部件参数和必要的深度关系。
+2. `verify` 检查真实部件和画布范围；`check` 同时检查配色。
+3. `draw` 输出 PNG 白模和 PSD，两种格式必须放在同一个目录。
+4. `prompt` 用同一套绘制命令导出 `photocraft-layout/v2`。默认等于 `--detail geometry`。
+5. 检查没通过，改原 `plan`。不要修改生成 JSON 掩盖几何问题，也不用生图反复试错。
+
+如果只需要试验位置，可以跳过前两步：把一串绘制命令交给 `quick`。
+
+```sh
+photocraft-draw quick whitebox.json
+```
+
+### 检查器按当前问题使用
+
+1. `verify`：部件数量、位置、画布边缘裁切。
+2. `motion`、`facing`：施力方向和人物朝向。
+3. `relations`：兵器、手臂及空间交叉。
+4. `contact`：握持、咬合和遮挡必须落实到 PSD 时使用。
+5. `views`：仅靠正面图无法解释空间关系时使用。
+6. `colors`、`occlusion`：分辨相邻颜色、检查实际层间遮挡时使用。
+
+要判定的关系成立就结束几何工作。这些检查不必全部执行，某一项通过也不证明画面全部正确。
+
+### 按需输出几何、语义和参考职责
+
+```sh
+photocraft-draw prompt plans/xxx.json --detail geometry --out out/layout.json
+photocraft-draw prompt plans/xxx.json --detail semantic --out out/semantic.json
+photocraft-draw prompt plans/xxx.json --detail components --out out/components.json
+photocraft-draw details plans/with-details.json --handoff out/visual.json
+```
+
+默认 `geometry` 在 `layers` 中给出实际绘制层、部件与坐标范围。`semantic` 给出方案层语义，按已有的 `details` 增加对象说明和参考职责。`components` 在相同结构上另加 `components`。
+
+形状直接来自绘制命令，曲线按离散后的填充形状计范围。人物骨架只来自 `figure_rig` 的姿态表。兵器主轴和分段来自已有几何切分器。
+
+`details` 只记录必要对象细节。每张参考图应说明 `targets`、`roles`、`instruction`、`avoid`，多张图可以分管局部，同一张也可承担多个职责。
+
+`visual.json` 只含画面描述、画布和参考职责，不包含模型参数或上传地址。说明明确的对象造型不必另造白模，没有声明的参考不自动补造。
+
+### 结果与返修的分工
+
+`depth` 控制遮挡顺序，`z` 控制空间深度。文字用 `annotations` 记录，文字框是估算，不是光栅化测量。人物骨架当前只覆盖 `figure_rig`，其他人物组件不补造关节。
+
+返修时先指认当前问题：位置和关节回改 `plan`，造型与材质回对象说明，接触问题只改动相关对象。已成立的部分列为保留项。
+
+`sheet` 和 `annotate` 只用于讲解、复述或逐层确认，不进入常规结构流程。
 
 ## 目录
 
@@ -238,30 +292,20 @@ photocraft-draw colors plans/xxx.json --pixel --fix --global-fix --apply
 
 `relations` 算兵器和肢体在空间里的关系。拿线段算最近距离、算两件兵器在画面上交叉没有、算兵器有没有从持械者的胳膊和兵器之间的那个缝里穿过去。兵器压在胳膊上而深度在前头三十像素以上，报「从前面扫过去」，那是对的；深度卡在两者中间才报「缝里穿过去」，那是错。另外算每件兵器的地面投影，各段的深度连不成一条直线就报「地面投影是折的」。
 
-## 从三维场景到成图
+## 几何数据与坐标来源
 
-场景类方案不走组件逐个摆的老路，用两个组件配同一个相机：`mesh_scene` 画能算体积的东西（枝条、瓶罐、果子、建筑），`organic_layer` 把花瓣、叶片、花苞这类二维形状按三维位置和朝向贴到画面上。花枝、静物、风景、室内、街道、名画复刻都是这条路，方案在 `plans/` 下。
+`semantic`、`components` 或 `geometry` 只是数据取用的层次，它们使用同一套几何来源。
+`bbox_source` 区分填充路径离散、基本图元和线段中心线。计算时不含描边。文字记录为 `font_estimate`，其范围不是字体实际渲染测量。
+`scene_caption` 提供整体画面描述，`caption` 用于左下角小标题。
 
-```sh
-photocraft-draw draw plans/spray.json --png out/spray.png
-photocraft-draw prompt plans/spray.json --out out/layout.json --compile-to out/moss-prompt.txt
-photocraft-draw prompt plans/spray.json --out out/caption.json --caption-only --compile-to out/caption.txt
-python3 tools/eval_layout.py out/layout.json <模型出图后存下的成品图>
-```
 
-第二个参数换成模型出图后存下来的图片，脚本按粉色掩膜找出每朵花，再和 Layout 草稿里的计划框逐个比对。
+## 组件扩展的编写约定
 
-`prompt` 把方案里的每朵花、每个苞、每片叶、每根枝逐个投影成像素框，拼成 Layout 草稿。原生文字组件的文字、颜色、字体、字号和对齐也进入草稿。文字框按字号和字符宽度估算，不是字体测量结果。全过程不手填坐标。
+`photocraft-draw components` 列出当前组件，完整目录见 `skills/photocraft-draw/references/组件目录.txt`。花、人物、道具和网格使用相同的 Layout 导出规则。
 
-`--compile-to` 通过 `IMAGE_PROMPT_HOME` 环境变量或工作区 `skills/image-prompt` 定位 MOSS 官方编译器，把草稿从 `abs/xyxy` 编译为 MOSS-Image 的 `abs_centralized/yxyx`。旧环境变量 `MOSS_PROMPT_ENHANCER` 和旧目录作为兼容路径保留。本地合并和来源见该目录的 `LOCAL-INTEGRATION.md`、`PROVENANCE.md`。Layout 草稿的宽高必须为 16 的倍数。
 
-编译结果是 MOSS-Image 专属提示词格式，MOSS-Image 未在本机安装。H3-Image 的本机通道支持写精确排版要求和最多 16 张参考图，但其接口不定义 MOSS 的居中 JSON 格式；这个布局草稿需按 `skills/image-prompt/references/minimax-h3-image.md` 转成自然语言。自然语言提示词继续走 `brief`。
+`--width`、`--height`、`--detail geometry` 控制目标画布几何尺寸和输出增量；布局与画面人物各自独立。
 
-`scene_caption` 覆盖 Layout 的整体描述；`caption` 继续生成画面左下角的小字标题。
-
-`eval_layout` 出图之后量贴合度：按粉色掩膜找每朵花，先腐蚀分开挨在一起的花，再和计划框按交并比一对一分配，逐朵给出计划框、实际框、偏移、面积比和匹配与否，最后给平均交并比、匹配数和多余连通域。平均交并比低于 0.45 或匹配数不到计划数的八成，退出码为 1。整簇矩形的交并比只作参考，它会被花朵尺度带偏。
-
-几何场景可以直接用 `sweep`、`make_capsule`、`make_lathe`、`subdivide`，投影、遮挡、消隐都在 `mesh.py` 和 `ortho.py` 里。动渲染之前先跑 `python3 tools/regression.py`，老场景的轮廓交并比低于 0.97 就判失败。
 
 ## 命令目录
 
@@ -334,24 +378,6 @@ with Engine(read_root=".", write_root="out") as engine:
 ```
 
 
-## 白模之后分配全部细节
-
-七步工作流先确定结构。结构确认之后，`details` 接着处理身份、外形、服饰、道具、人体、纹样、材质、表情、构图、配色、光线、风格和连续性。`subjects` 按已有图层或演员选择作用对象；`priority` 标出本轮主矛盾和保护项，`reject` 与 `acceptance` 写出禁止继承的缺点和可见验收标准。
-
-`details.references` 不限制白模数量。一张白模可以承担整幅构图，也可以只管一个接触点。每张参考图通过 `roles` 和 `targets` 写清职责与对象，`source` 区分 `whitebox` 白模与 `character-sheet` 角色造型卡，`avoid` 防止继承旧姿势或缺陷。不同对象可以调用不同参考，不能笼统要求模型参考全图。
-
-```sh
-# 合并同一份方案中的结构画面稿和细节清单，不直接调用生图。
-photocraft-draw brief example-with-details.json --details --out-zh refined-brief.txt
-
-# 清单里已列出结构图层时，也可以单独组装一份请求草稿。
-photocraft-draw details example-with-details.json --request out/request.json
-```
-
-`prepare_request()` 只生成 `prompt`、画幅、输出名和按原顺序排列的 `_reference_sources`。本地图片必须先用图像连接器的上传工具获得临时地址，再将对应 `url` 与 `mime_type` 按原顺序写入 `reference_images`，每次只提交一个请求。程序不会伪造上传结果，也不会自动把本地路径直接发送给模型。一个或多个白模只是几何指导，不能替代造型参考与造型文字。
-
-新细节输入要求绑定实际图层或演员。示例中的简化轮廓不可以代替真实场景的结构检查。每轮新图先检查主要问题，再检查是否破坏此前已经成立的部分。清单减少的是盲目修改，不承诺每次生图一次成功。
-
 ## 组件目录
 
 一共 51 个，`photocraft-draw components` 输出完整参数。画法约定在 `docs/component-references.md`，人物和马的比例配方在 `docs/figure-recipes.md`，遮挡规则在 `docs/occlusion-rules.md`。
@@ -420,54 +446,15 @@ photocraft-draw colors plans/scene-landscape.json --pixel
 photocraft-draw draw plans/scene-landscape.json --out-dir out
 ```
 
-当前测试结果：649 项通过，1 条第三方 pytest 插件的弃用警告。新增测试覆盖了任意数量白模、属性细节、参考职责、参考来源与本地请求组装。最近精修的 15 份样例均通过 `colors --pixel`，并且成功生成 PNG 和 PSD。这组样例包括 `scene-landscape`、`dining-hall`、`framework`、`supper-demo`、`last-supper`、`scene-street`、`alpine-crossing`、`dawn-scene`、`dawn-napoleon`、`dawn-napoleon3d`、`mountain-horse`、`spray`、`scene-interior`、`scene-still-life`。
+当前测试结果：637 项通过，1 条第三方 pytest 插件的弃用警告。测试覆盖通用几何、人物骨架、兵器分段、文本估算、属性细节、参考职责和画面交接。最近精修的 15 份样例均通过 `colors --pixel`，并且成功生成 PNG 和 PSD。这组样例包括 `scene-landscape`、`dining-hall`、`framework`、`supper-demo`、`last-supper`、`scene-street`、`alpine-crossing`、`dawn-scene`、`dawn-napoleon`、`dawn-napoleon3d`、`mountain-horse`、`spray`、`scene-interior`、`scene-still-life`。
 
 其中 11 份在额外的 `verify` 中仍报告画布边缘裁切。裁切来自原有的前景石头、四角暗角、花枝、右侧建筑或透视桌面，本轮配色精修没有调整它们的布局。颜色检查通过、实际出图成功、全部结构检查通过，这三个结果不要混为一谈。
 
 配色规则的详细说明见 [docs/color-rules.md](docs/color-rules.md)，本轮重构与参数约定见 [docs/color-refactor-notes.md](docs/color-refactor-notes.md)。
 
-## 批注页
+## 图层批注与按需展示
 
-`annotate` 会为每个顶层图层单独导出一张透明 PNG，只有这一层可见；网页按顺序叠放这些图，等于一个简易 Photoshop。页面是单文件，图层图和图层树都内嵌，可以直接发布到 WorkBuddy 站点：在 CodeBuddy 里用 Artifact 工具上传，拿到公开链接。`--serve` 只是本地预览的备选，端口默认 8898。
-
-网页上可以：
-
-1. 左边图层树点选图层，前面的眼睛开关控制显隐，关掉别的层就只看这一层。
-2. 在图上拖动框选区域，卡片会自动识别框内的图层，默认取最具体的那层。
-3. 框选后框可以拖动，拖右下角可以缩放；已保存的框也能拖走，先点评桌子、再框盘子，互不影响。
-4. 写说明，Enter 保存；每条意见在图上画一个编号框。
-5. 「批注」页集中列出所有意见，点一条跳回对应区域。
-6. 导出 `review.json`，或在页面里复制 JSON。
-
-默认用透明文档，不生成 `Background`，图层树最底下就是室内背景。只有显式写 `document_background: white` 时，才会出现 `Background` 那个底层像素层；它不是构图组件，能用眼睛开关，自动识别批注图层时会跳过它。
-
-导出的格式是图层、区域、意见三层数据：
-
-```json
-{
-  "plan": "框架示例",
-  "image": "framework.png",
-  "canvas": [1600, 900],
-  "annotations": [
-    {
-      "id": 1, "index": 1,
-      "layer": 53, "layer_name": "长条餐桌", "kind": "Group",
-      "rect": [925, 626, 44, 20],
-      "layers": [
-        {"id": 53, "name": "长条餐桌", "kind": "Group"},
-        {"id": 22, "name": "室内背景", "kind": "Group"}
-      ],
-      "visible_layers": ["文字层", "长条餐桌", "拱形窗户", "室内背景", "底色"],
-      "hidden_layers": [],
-      "note": "往右挪 20 像素"
-    }
-  ]
-}
-```
-
-框选后卡片会自动列出框内可见的顶层图层，默认取面积最小的那个作为批注对象；同时记下当时的显隐状态。JSON 里 `layer` 是选中的图层，`layers` 是框内所有可见图层，`visible_layers` 和 `hidden_layers` 是保存时哪些顶层图层显示、哪些关掉。拿到 JSON 后按名称找到构图组件参数，改绘制方案再重新出图。
-
-按顶层图层出透明图要跑几次引擎，5 个顶层大约 2.3 秒，结果缓存在 `out/_layers/`。
+`annotate` 生成 PSD 的逐层开关与选区批注页。只在用户要求查看或修改单个图层时运行，`sheet` 同样按需运行。
 
 ## 写法约定
 

@@ -9,13 +9,13 @@ description: 用三维坐标设计白模，压成 2.5 维画面，再把结构�
 
 ## 从任务到验收的工作树
 
-先按 [workflow.yaml](references/workflow.yaml) 走判定与分叉。工作树覆盖文字任务、自由构图、精确结构、局部白模、多参考细节、模型路线、返修和按需手稿。它是 agent 的路由约定，不会自动上传或生图。
+先按 [workflow.yaml](references/workflow.yaml) 走判定与分叉。工作树覆盖文字任务、自由构图、精确结构、必要时局部参考、细节交接和返修；手稿是独立工具。它是 agent 的路由约定，不会自动上传或生图。
 
 三视图只在多人交错、空间碰撞或兵器前后关系需要解释时使用，普通图不必每次做。只有实际运行过三视图且用户需要讲解过程，才把它放入手稿；图层批注也按需生成，不自动补一套创作过程。
 
 `quick` 用于快速比较位置；`plan` 用于需要考虑深度与遮挡的结构稿；`details` 在结构验收之后分配造型和参考职责。`check`、`colors`、`relations`、`motion` 各自检查一件事，任何单项通过都不等于整幅图验收通过。骨模关节同色、远景不同色、主体有意裁切这些例外按工作树归类，不能机械地报告全部失败。
 
-生图前以实际模型的输入约定为准，MOSS 的 Layout 编译不通用。每轮结果若需要优化，只把当前最突出的问题设为 `primary`，已经成立的部分设为 `preserve`。返修前按工作树选择结构、手部接触、造型、材质或连续性，避免整幅重来。
+所有模型与后续生图事务交给 `image-prompt` 技能。每轮结果若需要优化，只把当前最突出的问题设为 `primary`，已经成立的部分设为 `preserve`。返修前按工作树选择结构、手部接触、造型、材质或连续性，避免整幅重来。
 
 ## 这个技能做什么用
 
@@ -118,21 +118,19 @@ photocraft-draw relations plans/xxx.json --unit 40 --json out/relations.json
 photocraft-draw brief plans/xxx.json --out-zh 中文.txt --out-en 英文.txt
 ```
 
-方案里每层写 `describe_zh` 和 `describe_en`，顶层写 `brief_zh` 和 `brief_en`（主体、风格、光线、氛围、视角、色调）。`brief` 按图层顺序串成两段话，中文给人看，英文给模型看。
+方案里每层写 `describe_zh` 和 `describe_en`，顶层写 `brief_zh` 和 `brief_en`（主体、风格、光线、氛围、视角、色调）。`brief` 按图层顺序串成两段话，中文给人看，英文交给 `image-prompt` 作为画面素材。
 
 **图层名和 `describe_en` 都要写英文**。英文稿是直接喂给文生图模型的，图层名留中文，模型会照着中文乱画。没写 `describe_en` 的层，英文稿里会原样冒中文名，这是方案没写全，不是工具出错。
 
-英文稿喂生图走本机的 MiniMax 出图通道：
+后续生成统一交给 `image-prompt` 技能。模型、上传、请求和下载由该技能管理。
 
-```sh
-mcode-tools connector call connector__matrix__generate_image --args-file 出图参数.json
-```
+## 通用 Layout 的按需导出
 
-```json
-{"requests": [{"prompt": "英文稿全文", "aspect_ratio": "3:4", "area": "2K", "output_file": "final.png"}]}
-```
+`prompt` 默认使用 `--detail geometry`，直接输出实际绘制层、部件、关节和兵器轴线。需要方案层次、对象属性和参考职责时用 `--detail semantic`；需要将实际部件放在 `components` 字段时用 `--detail components`。实际形状和文字统一读取绘制命令。
 
-`aspect_ratio` 可选 `1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`21:9`，`area` 可选 `1K`、`2K`、`4K`。一次只提交一条请求。成功后返回 `node_id`，调 `mcode-tools get_asset_url <node_id>` 取下载地址，再自己存到本地。
+人物骨架目前只来自 `figure_rig` 的姿态表，其他人物组件不自动补造关节。人物关节与白模共用姿态表和参考画布比例，兵器主轴和分段位置来自几何切分器。`z_offset` 是人物的参考坐标像素偏移，兵器的 `z_from`、`z_to` 是该段在参考坐标中的深度范围；它们不等于目标画布的显示尺寸。`depth` 决定遮挡顺序。导出这些结构不代表完成人物造型或握持验收，`relations` 和其他必要检查仍按工作树运行。
+
+没有 `details.references` 的方案不会被补造参考图职责。参考职责只由 `semantic` 导出，本地路径仍需真实存在。组件包围盒按填充路径、图元或线段中心线标明来源，不能与字体估算框混为一谈。
 
 ## 可用组件与常见陷阱
 
@@ -180,7 +178,7 @@ photocraft-draw draw plans/xxx.json --out-dir out
 photocraft-draw annotate plans/xxx.json --out-dir out
 ```
 
-批注页是 `out/xxx.review.html`，放在 PNG 旁边。`--png` 和 `--psd` 指向的文件不存在时会先自动出图。加 `--serve` 会起本地网页服务，默认端口 8898。要把批注页发给别人，用 `website_deploy` 发布成 MiniMax 站点链接，不要给内网地址。
+批注页是 `out/xxx.review.html`，放在 PNG 旁边。`--png` 和 `--psd` 指向的文件不存在时会先自动出图。加 `--serve` 会起本地网页服务，默认端口 8898。要把批注页发给别人，用 `website_deploy` 发布成站点链接，不要给内网地址。
 
 批注返回的 JSON 带 `layer_name`、`rect` 和意见，按图层名回改绘制方案，重新验、重新译、重新出图。
 

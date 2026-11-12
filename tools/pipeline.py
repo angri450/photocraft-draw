@@ -6,10 +6,10 @@
 产物：
     out/spray-hybrid.png   结构成图
     out/spray-views.png    三视图
-    out/spray-brief.txt    给 MOSS 的英文短稿
+    out/spray-brief.txt    英文画面说明
     charts/spray-sheet.png 研究手稿页
 
-MOSS 出图不在这一步里，它要九分多钟，单独后台跑。
+后续图像生成由 image-prompt 技能另行负责。
 """
 from __future__ import annotations
 

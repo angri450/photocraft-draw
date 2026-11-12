@@ -466,6 +466,7 @@ def ordered_units(plan: dict) -> list[dict]:
                 "depth": float(layer.get("depth", 0.0)),
                 "components": layer["components"],
                 "exempt": layer.get("exempt"),
+                "layout": layer,
             })
             continue
         axis = axis_of(layer["components"], layer.get("axis"))
@@ -475,9 +476,13 @@ def ordered_units(plan: dict) -> list[dict]:
                 "depth": float(layer.get("depth", 0.0)),
                 "components": layer["components"],
                 "exempt": layer.get("exempt"),
+                "layout": layer,
             })
             continue
         for segment in segments:
+            # 绘制单元自身携带深度，Layout 和绘制器读取同一份来源。
+            source = {**layer, **segment, "components": layer["components"],
+                      "name": layer["name"], "role": "prop_segment"}
             components = []
             for item in layer["components"]:
                 params = item.get("params") or {}
@@ -493,6 +498,7 @@ def ordered_units(plan: dict) -> list[dict]:
                 "name": name,
                 "depth": float(segment.get("depth", layer.get("depth", 0.0))),
                 "components": components,
+                "layout": source,
             })
     units.sort(key=lambda unit: -unit["depth"])
     return units
@@ -520,7 +526,7 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
     if layers:
         units = ordered_units(plan)
         for unit in units:
-            pen.stage(unit["name"], exempt=unit.get("exempt"))
+            pen.stage(unit["name"], exempt=unit.get("exempt"), layout=unit["layout"])
             for item in unit["components"]:
                 component = get_component(item["component"])
                 pen.stage(component.name, nested=True)
@@ -530,14 +536,14 @@ def compose_plan(plan: dict) -> tuple[list[dict], dict]:
     else:
         for item in plan["components"]:
             component = get_component(item["component"])
-            pen.stage(component.name)
+            pen.stage(component.name, layout={"role": "component"})
             component.build(item.get("params") or {}, pen)
         component_count = len(plan["components"])
         layer_count = 1
 
     caption = plan.get("caption")
     if caption:
-        pen.stage("文字层")
+        pen.stage("文字层", layout={"role": "annotation"})
         pen.text(
             pen.ref_width * 0.04, pen.ref_height * 0.96, caption,
             size=14, color=plan.get("caption_color", "surface"),

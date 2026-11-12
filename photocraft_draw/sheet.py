@@ -49,7 +49,7 @@ def _frame(page, box, alpha=90):
     draw.rectangle(box, outline=(122, 98, 72, alpha), width=2)
 
 
-def build_page(model: Path, views: Path, out: Path, moss: Path | None = None,
+def build_page(model: Path, views: Path, out: Path, artwork: Path | None = None,
                title: str = "海棠花枝 · 结构研究",
                subtitle: str = "PhotoCraft 网格重构  ·  尺寸按厘米记",
                notes=DEFAULT_NOTES, detail_box=None) -> Path:
@@ -68,11 +68,11 @@ def build_page(model: Path, views: Path, out: Path, moss: Path | None = None,
               font=_font(NOTO, 24), fill=SOFT)
 
     mx, my = 836, 300
-    if moss and Path(moss).is_file():
-        painting = _fit(Image.open(moss).convert("RGB"), (640, 853))
+    if artwork and Path(artwork).is_file():
+        painting = _fit(Image.open(artwork).convert("RGB"), (640, 853))
         page.paste(painting, (mx, my))
         _frame(page, [mx, my, mx + painting.width, my + painting.height])
-        caption = "图二  同一构图交给 MOSS 重绘，工笔设色"
+        caption = "图二  同一构图重绘，工笔设色"
     else:
         draw.rectangle([mx, my, mx + 640, my + 853], outline=(122, 98, 72, 90), width=2)
         draw.text((mx + 220, my + 400), "模型重绘留空", font=_font(XK, 38), fill=SOFT)
@@ -86,7 +86,7 @@ def build_page(model: Path, views: Path, out: Path, moss: Path | None = None,
     draw.text((vx, vy + picture.height + 12), "图三  同一枝的正、左、俯三视，花用五瓣薄片表示朝向",
               font=_font(NOTO, 24), fill=SOFT)
 
-    source = moss if (moss and Path(moss).is_file()) else model
+    source = artwork if (artwork and Path(artwork).is_file()) else model
     full = Image.open(source).convert("RGB")
     if detail_box:
         left, top, side = detail_box

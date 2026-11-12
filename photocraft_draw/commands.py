@@ -120,7 +120,7 @@ class Pen:
                 params["group"] = subject
         return params
 
-    def stage(self, name: str, nested: bool = False, exempt=None) -> None:
+    def stage(self, name: str, nested: bool = False, exempt=None, layout=None) -> None:
         if not nested:
             self._layer = str(name)
             self._exempt = [str(item) for item in (exempt or [])]
@@ -132,6 +132,8 @@ class Pen:
         if not nested and self._has_stage:
             self.commands.append({"command": "layer.select", "params": {"name": self.base_layer}})
         command = {"command": "layer.new.group", "params": {"name": str(name)}}
+        if layout is not None:
+            command["_layout"] = layout
         if nested:
             command["_nested"] = True
         self.commands.append(command)
